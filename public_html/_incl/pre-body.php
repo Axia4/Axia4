@@ -143,8 +143,8 @@ if (!isset($APP_CODE)) {
           <input id="bmenub" type="checkbox" class="show" />
           <label for="bmenub" class="burger button">menú</label>
           <div class="menu">
-            <?php if (file_exists(__DIR__ . "/..$APP_ROOT/__menu.php")) { ?>
-              <?php require_once __DIR__ . "/..$APP_ROOT/__menu.php"; ?>
+            <?php if (file_exists(__DIR__ . "/.." . $APP_ROOT . "/__menu.php")) { ?>
+              <?php require_once __DIR__ . "/.." . $APP_ROOT . "/__menu.php"; ?>
             <?php } ?>
             <?php if ($APP_CODE != "ax4") { ?>
               <a href="/" class="button pseudo" style="background: #9013FE; color: white;">Ax<sup>4</sup></a>
