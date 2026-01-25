@@ -2,7 +2,7 @@
 require_once "_incl/auth_redir.php";
 require_once "_incl/pre-body.php"; 
 $aulario_id = $_GET["id"];
-$centro_id = $_SESSION["entreaulas_auth_data"]["centro"];
+$centro_id = $_SESSION["auth_data"]["entreaulas"]["centro"];
 $aulario = json_decode(file_get_contents("/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json"), true);
 ?>
 <div class="card pad">
@@ -18,12 +18,13 @@ $aulario = json_decode(file_get_contents("/DATA/entreaulas/Centros/$centro_id/Au
         </br>
         Panel Diario
     </a>
-    <a href="/entreaulas/admin/aularios.php?action=edit&aulario=<?= urlencode($aulario_id) ?>" class="button grid-item">
+    <?php if (in_array("sysadmin:access", $_SESSION["auth_data"]["permissions"] ?? [])): ?>
+    <a href="/sysadmin/aularios.php?action=edit&aulario=<?= urlencode($aulario_id) ?>" class="button grid-item">
         <img src="/static/iconexperience/gear_edit.png" height="125">
         <br>
         Administración del Aulario
     </a>
-
+    <?php endif; ?>
 </div>
 
 <script>

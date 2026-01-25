@@ -1,3 +1,1 @@
-    </main>
-  </body>
-</html>
+<?php require_once __DIR__ . "/../../_incl/post-body.php"; ?>

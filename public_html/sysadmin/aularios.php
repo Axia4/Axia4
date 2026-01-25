@@ -1,10 +1,10 @@
 <?php
-require_once "../_incl/auth_redir.php";
-require_once "../_incl/pre-body.php"; 
+require_once "_incl/auth_redir.php";
+require_once "_incl/pre-body.php"; 
 switch ($_GET["form"]) {
     case "create":
-        $user_data = $_SESSION["entreaulas_auth_data"];
-        $centro_id = $user_data["centro"];
+        $user_data = $_SESSION["auth_data"];
+        $centro_id = $user_data["entreaulas"]["centro"];
         $aulario_id = uniqid("aulario_");
         $aulario_data = [
             "name" => $_POST["name"],
@@ -14,7 +14,7 @@ switch ($_GET["form"]) {
         @mkdir("/DATA/entreaulas/Centros/$centro_id/Aularios/", 0777, true);
         file_put_contents("/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json", json_encode($aulario_data));
         // Update user data
-        $_SESSION["entreaulas_auth_data"]["aulas"][] = $aulario_id;
+        $_SESSION["auth_data"]["entreaulas"]["aulas"][] = $aulario_id;
         header("Location: ?action=index");
         exit();
         break;
@@ -59,4 +59,4 @@ switch ($_GET["action"]) {
 
 
 
-require_once "../_incl/post-body.php"; ?>
+require_once "_incl/post-body.php"; ?>

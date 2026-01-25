@@ -1,0 +1,1 @@
+<?php require_once "../../_incl/post-body.php"; ?>
