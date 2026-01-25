@@ -11,8 +11,8 @@ switch ($_GET["form"]) {
             "icon" => $_POST["icon"] ?? "/static/logo-entreaulas.png"
         ];
         // Make path recursive (mkdir -p equivalent)
-        @mkdir("/srv/storage/entreaulas/Centros/$centro_id/Aularios/", 0777, true);
-        file_put_contents("/srv/storage/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json", json_encode($aulario_data));
+        @mkdir("/DATA/entreaulas/Centros/$centro_id/Aularios/", 0777, true);
+        file_put_contents("/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json", json_encode($aulario_data));
         // Update user data
         $_SESSION["entreaulas_auth_data"]["aulas"][] = $aulario_id;
         header("Location: ?action=index");

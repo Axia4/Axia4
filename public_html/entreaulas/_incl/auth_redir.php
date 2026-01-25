@@ -7,7 +7,7 @@ if (str_starts_with($ua, "EntreAulasAuth/")) {
     $username = explode("/", $ua)[1];
     $userpass = explode("/", $ua)[2];
     $_SESSION["entreaulas_auth_user"] = $username;
-    $_SESSION["entreaulas_auth_data"] = json_decode(file_get_contents("/srv/storage/entreaulas/Usuarios/$username.json"), true);
+    $_SESSION["entreaulas_auth_data"] = json_decode(file_get_contents("/DATA/entreaulas/Usuarios/$username.json"), true);
     $_SESSION["entreaulas_auth_ok"] = true;
     session_regenerate_id();
     ini_set("session.use_only_cookies", "true");
