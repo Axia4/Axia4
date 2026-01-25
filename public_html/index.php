@@ -7,6 +7,7 @@
     <div class="card grid-item">
         <img src="/static/logo-club.png" alt="Logo Club">
         <b>La web del club</b>
+        <b>No disponible</b>
         <a href="/club/" class="button">Acceso publico</a>
     </div>
     <div class="card grid-item">
@@ -15,12 +16,12 @@
         <span>Gestión de aularios conectados.</span>
         <a href="/entreaulas/" class="button">Tengo cuenta</a>
     </div>
-    <div class="card grid-item">
+    <!--<div class="card grid-item">
         <img src="/static/logo-oscar.png" alt="Logo OSCAR">
         <b>OSCAR</b>
         <span>Red de IA Absoluta.</span>
         <a href="/oscar/" disabled class="button">No disponible</a>
-    </div>
+    </div>-->
     <div class="card grid-item">
         <img src="/static/logo-aularios.png" alt="Logo Aularios">
         <b>Aularios<sup>2</sup></b>

@@ -1,24 +1,14 @@
 services:
   axia4-web:
-    build: .
+    image: ghcr.io/axia4/axia4:main
     container_name: axia4-app
     ports:
-      - "${WEB_PORT:-8080}:80"
+      - "882:80"
     volumes:
       # Mount the DATA directory for persistent storage
-      - ${DATA_DIR:-./DATA}:/DATA
+      - ./DATA:/DATA
       # Optional: Mount the application code for development
       # - ./public_html:/var/www/html
     environment:
       - APACHE_DOCUMENT_ROOT=/var/www/html
     restart: unless-stopped
-    networks:
-      - axia4-network
-
-networks:
-  axia4-network:
-    driver: bridge
-
-volumes:
-  data:
-    driver: local

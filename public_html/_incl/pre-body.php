@@ -1,5 +1,4 @@
-<?php require_once __DIR__ . "/../_autoreload.php";
-
+<?php 
 if (!isset($APP_CODE)) {
   $APP_CODE = "ax4";
   $APP_ROOT = "/";

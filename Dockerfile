@@ -34,7 +34,13 @@ RUN chown -R www-data:www-data /var/www/html && \
 
 # Configure PHP settings
 RUN echo "session.cookie_lifetime = 604800" >> /usr/local/etc/php/conf.d/custom.ini && \
-    echo "session.gc_maxlifetime = 604800" >> /usr/local/etc/php/conf.d/custom.ini
+    echo "session.gc_maxlifetime = 604800" >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo "upload_max_filesize = 500M" >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo "post_max_size = 500M" >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo "memory_limit = 512M" >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo "max_execution_time = 300" >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo "date.timezone = UTC" >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo "display_errors = off" >> /usr/local/etc/php/conf.d/custom.ini
 
 # Expose port 80
 EXPOSE 80
