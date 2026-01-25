@@ -2,7 +2,7 @@
 session_start();
 if ($_GET["reload_users"] == "1") {
     $user = $_SESSION['entreaulas_auth_user'];
-    $userdata = json_decode(file_get_contents("/srv/storage/entreaulas/Usuarios/$user.json"), true);
+    $userdata = json_decode(file_get_contents("/DATA/entreaulas/Usuarios/$user.json"), true);
     $_SESSION['entreaulas_auth_data'] = $userdata;
     header("Location: /entreaulas/");
     die();
@@ -16,7 +16,7 @@ if (isset($_POST["user"])) {
     $valid = "";
     $user = trim(strtolower($_POST["user"]));
     $password = $_POST["password"];
-    $userdata = json_decode(file_get_contents("/srv/storage/entreaulas/Usuarios/$user.json"), true);
+    $userdata = json_decode(file_get_contents("/DATA/entreaulas/Usuarios/$user.json"), true);
     if (!isset($userdata["password_hash"])) {
         $valid = "El usuario no existe.";
     }

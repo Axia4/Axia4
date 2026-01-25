@@ -11,7 +11,7 @@ require_once "_incl/pre-body.php";?>
     <?php $user_data = $_SESSION["entreaulas_auth_data"];
     $centro_id = $user_data["centro"];
     foreach ($user_data["aulas"] as $aulario_id) {
-        $aulario = json_decode(file_get_contents("/srv/storage/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json"), true);
+        $aulario = json_decode(file_get_contents("/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json"), true);
         echo '<a href="/entreaulas/aulario.php?id=' . $aulario_id . '" class="button grid-item">
             <img style="height: 125px;" src="' . $aulario["icon"] . '" alt="' . htmlspecialchars($aulario["name"]) . ' Icono">
             <br>

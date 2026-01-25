@@ -5,7 +5,7 @@ if (isset($_POST["user"])) {
     $valid = "";
     $user = trim(strtolower($_POST["user"]));
     $password = $_POST["password"];
-    $users = json_decode(file_get_contents("/mnt/dietpi_userdata/www_userdata/Usuarios.json"), true);
+    $users = json_decode(file_get_contents("/DATA/Usuarios.json"), true);
     if (!isset($users)) {
         $valid = "Fallo del sistema: No hay cuentas.";
     }

@@ -3,7 +3,7 @@ require_once "_incl/auth_redir.php";
 require_once "_incl/pre-body.php"; 
 $aulario_id = $_GET["id"];
 $centro_id = $_SESSION["entreaulas_auth_data"]["centro"];
-$aulario = json_decode(file_get_contents("/srv/storage/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json"), true);
+$aulario = json_decode(file_get_contents("/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json"), true);
 ?>
 <div class="card pad">
     <h1>Aulario: <?= htmlspecialchars($aulario["name"]) ?></h1>
