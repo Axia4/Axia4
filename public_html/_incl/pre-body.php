@@ -106,16 +106,16 @@ if (!isset($APP_CODE)) {
       padding: 15px 25px;
     }
 
-    a.grid-item.button {
+    a.grid-item {
       margin-bottom: 10px !important;
       padding: 15px;
       width: 250px;
       text-align: center;
     }
 
-    a.grid-item.button img {
+    a.grid-item img {
       margin: 0 auto;
-      height: 100px;
+      /*height: 100px;*/
     }
     details summary {
       cursor: pointer;
