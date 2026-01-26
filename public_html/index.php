@@ -15,32 +15,62 @@
         <span>Gestión de aularios conectados.</span>
         <a href="/entreaulas/" class="button">Tengo cuenta</a>
     </div>
-    <!--<div class="card grid-item">
+    <div class="card grid-item" style="opacity: 0.5;">
         <img src="/static/logo-oscar.png" alt="Logo OSCAR">
         <b>OSCAR</b>
         <span>Red de IA Absoluta.</span>
-        <a href="/oscar/" disabled class="button">No disponible</a>
-    </div>-->
-    <div class="card grid-item">
+    </div>
+    <div class="card grid-item" style="opacity: 0.5;">
+        <img src="/static/logo-media.png" alt="Logo ET Media">
+        <b>ET Media</b>
+        <span>Streaming de pelis y series.</span>
+    </div>
+    <div class="card grid-item" style="opacity: 0.5;">
+        <img src="/static/logo-hyper.png" alt="Logo Hyper">
+        <b>Hyper</b>
+        <span>Plataforma de gestión empresarial.</span>
+    </div>
+    <div class="card grid-item" style="opacity: 0.5;">
+        <img src="/static/logo-mail.png" alt="Logo Comunicaciones">
+        <b>Comunicaciones</b>
+        <span>Correos electrónicos y mensajería.</span>
+    </div>
+    <div class="card grid-item" style="opacity: 0.5;">
+        <img src="/static/logo-account.png" alt="Logo Account">
+        <b>Cuenta y identidad</b>
+        <span>Acceso a la plataforma y pagos.</span>
+    </div>
+    <div class="card grid-item" style="opacity: 0.5;">
+        <img src="/static/logo-malla.png" alt="Logo Malla">
+        <b>Malla Meshtastic</b>
+        <span>Red de comunicación por radio.</span>
+    </div>
+    <div class="card grid-item" style="opacity: 0.5;">
         <img src="/static/logo-aularios.png" alt="Logo Aularios">
         <b>Aularios<sup>2</sup></b>
-        <span>Acceso centralizado a los Aularios.</span>
-        <a href="https://aularios.tech.eus" class="button">Tengo cuenta</a>
-        <small>Externo</small>
+        <span>Visita virtual a los aularios.</span>
+        <!--<a href="https://aularios.tech.eus" class="button">Tengo cuenta</a>-->
+        <small>Solo lectura - Migrando a Axia4</small>
     </div>
-    <div class="card grid-item">
-        <img src="/static/logo.png" alt="Logo Axia4 Cloud">
-        <b>Nube Axia4</b>
+    <div class="card grid-item" style="opacity: 0.5;">
+        <img src="/static/logo-nube.png" alt="Logo Axia4 Cloud">
+        <b>Nube Axia4.NET</b>
         <span>Almacenamiento central de datos.</span>
-        <a href="https://axia4.net" class="button">Tengo cuenta</a>
-        <small>Externo</small>
+        <!--<a href="https://axia4.net" class="button">Tengo cuenta</a>-->
+        <small>Cerrado por migración a Axia4</small>
     </div>
-    <div class="card grid-item">
-        <img src="/static/logo-nk4.svg" alt="Logo NK5">
+    <div class="card grid-item" style="opacity: 0.5;">
+        <img src="/static/logo-nk4.png" alt="Logo Nube Kasa">
         <b>Nube Kasa</b>
         <span>Nube personal con domotica.</span>
-        <a href="https://nk4.tech.eus/_familia/" class="button">Acceso privado</a>
-        <small>Externo</small>
+        <!--<a href="https://nk4.tech.eus/_familia/" class="button">Acceso privado</a>-->
+        <small>Cerrado por mantenimiento</small>
+    </div>
+    <div class="card grid-item">
+        <img src="/static/logo-sysadmin.png" alt="Logo SysAdmin">
+        <b>SysAdmin</b>
+        <span>Panel de administración de sistemas.</span>
+        <a href="/sysadmin/" class="button">Acceso privado</a>
     </div>
 </div>
 
@@ -48,7 +78,7 @@
     .grid-item {
         margin-bottom: 10px !important;
         padding: 15px;
-        width: 250px;
+        width: 235px;
         text-align: center;
     }
 
@@ -61,7 +91,7 @@
 
 <script>
     var msnry = new Masonry('#grid', {
-        "columnWidth": 250,
+        "columnWidth": 235,
         "itemSelector": ".grid-item",
         "gutter": 10,
         "transitionDuration": 0

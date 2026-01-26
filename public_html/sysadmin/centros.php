@@ -42,6 +42,33 @@ switch ($_GET["form"]) {
         header("Location: ?action=edit&centro=" . urlencode($centro_id));
         exit();
         break;
+    case "edit_activity":
+        ini_set('memory_limit', '512M');
+        ini_set("display_errors", 1);
+        ini_set('upload_max_filesize', '256M');
+        ini_set('post_max_size', '256M');
+        $centro_id = $_GET['centro'] ?? '';
+        $activity_name = $_GET['activity'] ?? '';
+        $activity_path = "/DATA/entreaulas/Centros/$centro_id/Panel/Actividades/$activity_name";
+        if (!is_dir($activity_path)) {
+            die("Actividad no válida.");
+        }
+        $activity_photo = $_FILES["file"] ?? null;
+        if ($activity_photo !== null && $activity_photo["error"] === UPLOAD_ERR_OK) {
+            $photo_path = "$activity_path/photo.jpg";
+            move_uploaded_file($activity_photo["tmp_name"], $photo_path);
+        }
+        if ($_POST['nombre'] != $_GET['activity']) {
+            $new_activity_name = $_POST['nombre'];
+            $new_activity_path = "/DATA/entreaulas/Centros/$centro_id/Panel/Actividades/$new_activity_name";
+            if (is_dir($new_activity_path)) {
+                die("Ya existe una actividad con ese nombre.");
+            }
+            rename($activity_path, $new_activity_path);
+        }
+        header("Location: ?action=edit&centro=" . urlencode($centro_id));;
+        exit();
+        break;
 }
 
 require_once "_incl/pre-body.php"; 
@@ -60,13 +87,18 @@ switch ($_GET["action"]) {
         Desde esta sección puedes administrar la actividad seleccionada del panel del centro <?php echo htmlspecialchars($centro_id); ?>.
     </span>
     <form method="post" action="?form=edit_activity&centro=<?php echo urlencode($centro_id); ?>&activity=<?php echo urlencode($activity_name); ?>" enctype="multipart/form-data">
+        <label>
+            Nombre de la actividad:<br>
+            <input required type="text" name="nombre" value="<?php echo htmlspecialchars($activity_name); ?>">
+        </label><br><br>
+        Foto (pulsa para cambiarla):<br>
         <div style="width: 200px;">
             <label class="dropimage" style="background-image: url('<?php
                 $image_path = "$activity_path/photo.jpg";
                 $image_fetchpath = file_exists($image_path) ? "/entreaulas/_filefetch.php?type=panel_actividades&centro=" . urlencode($centro_id) . "&activity=" . urlencode($activity_name) : '/static/logo-entreaulas.png';
                 echo htmlspecialchars($image_fetchpath);
             ?>');">
-                <input title="Drop image or click me" type="file">
+                <input title="Drop image or click me" type="file" name="file" accept="image/*">
             </label>
         </div>
         <button type="submit">Guardar Cambios</button>
@@ -224,7 +256,5 @@ switch ($_GET["action"]) {
 <?php 
         break;
 }
-
-
 
 require_once "_incl/post-body.php"; ?>

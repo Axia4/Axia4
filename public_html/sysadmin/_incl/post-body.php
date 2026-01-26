@@ -1,1 +1,1 @@
-<?php require_once "../../_incl/post-body.php"; ?>
+<?php require __DIR__ . "/../../_incl/post-body.php"; ?>

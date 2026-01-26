@@ -24,6 +24,12 @@ require_once "_incl/pre-body.php"; ?>
         <span>Administra los usuarios del sistema.</span>
         <a href="/sysadmin/users.php" class="button">Gestionar Usuarios</a>
     </div>
+    <div class="card grid-item">
+        <img src="/static/logo-club.png" alt="Logo Club">
+        <b>Generar miniaturas</b>
+        <span>Genera miniaturas para las imágenes del club.</span>
+        <a href="/sysadmin/club_mkthumb.php" class="button">Generar Miniaturas</a>
+    </div>
 </div>
 <style>
     .grid-item {

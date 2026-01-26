@@ -28,7 +28,7 @@ if (file_exists($path . ".thumbnail") && $_GET["thumbnail"] == "1") {
 }
 header("Content-Type: " . $mime);
 header('Content-Length: ' . filesize($path));
-header('Cache-Control: max-age=7200');
+//header('Cache-Control: max-age=7200');
 header("X-Accel-Redirect: $uripath");
 
 // // stream the file

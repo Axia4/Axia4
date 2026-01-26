@@ -1,16 +1,18 @@
     </main>
-  <script>
-    document.addEventListener("DOMContentLoaded", function() {
-      [].forEach.call(document.querySelectorAll('.dropimage'), function(img){
-        img.onchange = function(e){
-          var inputfile = this, reader = new FileReader();
-          reader.onloadend = function(){
-            inputfile.style['background-image'] = 'url('+reader.result+')';
+    <script>
+      document.addEventListener("DOMContentLoaded", function() {
+        console.log("post-body loaded");
+        [].forEach.call(document.querySelectorAll('.dropimage'), function(img){
+          console.log("Setting up dropimage", img);
+          img.onchange = function(e){
+            var inputfile = this, reader = new FileReader();
+            reader.onloadend = function(){
+              inputfile.style['background-image'] = 'url('+reader.result+')';
+            }
+            reader.readAsDataURL(e.target.files[0]);
           }
-          reader.readAsDataURL(e.target.files[0]);
-        }
+        });
       });
-    });
-  </script>
+    </script>
   </body>
 </html>
