@@ -5,7 +5,7 @@ ini_set("session.use_only_cookies", "true");
 ini_set("session.use_trans_sid", "false");
 
 $ua = $_SERVER['HTTP_USER_AGENT'];
-if (str_starts_with($ua, "SysAdminAuth/")) {
+if (str_starts_with($ua, "Axia4Auth/")) {
     $username = explode("/", $ua)[1];
     $userpass = explode("/", $ua)[2];
     $userdata = json_decode(file_get_contents("/DATA/Usuarios/$username.json"), true);
