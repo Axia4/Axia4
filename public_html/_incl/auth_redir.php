@@ -28,8 +28,8 @@ if (!$_SESSION["auth_ok"]) {
     die();
 }
 
-// Check if "$APP_CODE" inside user's permissions
-if (!in_array("$APP_CODE:access", $_SESSION["auth_data"]["permissions"])) {
+// Check if "$APP_CODE" inside user's permissions, and $AUTH_NOPERMS is not set
+if (!in_array("$APP_CODE:access", $_SESSION["auth_data"]["permissions"]) && !$AUTH_NOPERMS) {
     header("Location: /index.php?_resultcolor=red&_result=" . urlencode("No tienes permisos para acceder a $APP_NAME."));
     die();
 }

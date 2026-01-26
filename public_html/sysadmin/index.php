@@ -19,7 +19,7 @@ require_once "_incl/pre-body.php"; ?>
         <a href="/sysadmin/aularios.php" class="button">Gestionar Aularios</a>
     </div>
     <div class="card grid-item">
-        <img src="/static/logo.png" alt="Logo Usuarios">
+        <img src="/static/logo-account.png" alt="Logo Cuentas y Identidad">
         <b>Gestión de Usuarios</b>
         <span>Administra los usuarios del sistema.</span>
         <a href="/sysadmin/users.php" class="button">Gestionar Usuarios</a>
