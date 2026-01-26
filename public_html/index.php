@@ -7,7 +7,6 @@
     <div class="card grid-item">
         <img src="/static/logo-club.png" alt="Logo Club">
         <b>La web del club</b>
-        <b>No disponible</b>
         <a href="/club/" class="button">Acceso publico</a>
     </div>
     <div class="card grid-item">

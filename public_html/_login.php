@@ -33,6 +33,10 @@ if (isset($_POST["user"])) {
     }
 
 }
+if (!file_exists("/DATA/SISTEMA_INSTALADO.txt")) {
+    header("Location: /_install.php");
+    die();
+}
 require_once "_incl/pre-body.php"; ?>
 <div class="card pad">
 

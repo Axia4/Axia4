@@ -53,7 +53,7 @@ switch ($_GET["action"]) {
         Calendario
       </a>
       <!-- Actividades -->
-      <a onclick="document.getElementById('click-sound').play()" href="?action=activities&aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>" class="button grid-item">
+      <a onclick="document.getElementById('click-sound').play()" href="?action=actividades&aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>" class="button grid-item">
         <span class="iconify" style="font-size: 125px" data-icon="mdi-school"></span>
         <br>
         Actividades
@@ -93,6 +93,52 @@ switch ($_GET["action"]) {
       }, 250); window.onresize = () => {msnry.layout()}
     </script>
 
+    <?php
+    break;
+  case "actividades":
+    // Actividades, establecidas en /DATA/entreaulas/Centros/$centro/Panel/Actividades.json
+    // Formato: {"NOMBRE_ACTIVIDAD": {"Foto": "url"}}
+    $actividades = json_decode(file_get_contents("/DATA/entreaulas/Centros/" . $_SESSION["auth_data"]["entreaulas"]["centro"] . "/Panel/Actividades.json"), true);
+    ?>
+    <div class="card pad">
+      <h1>Actividades</h1>
+      <span>
+        Aquí podrás ver y seleccionar las actividades del día para el aulario.
+      </span>
+    </div>
+    <div id="grid">
+      <?php foreach ($actividades as $actividad_name => $actividad_data) { ?>
+        <a class="button grid-item">
+          <img src="<?php echo htmlspecialchars($actividad_data["Foto"]); ?>" height="125">
+          <br>
+          <?php echo htmlspecialchars($actividad_name); ?>
+        </a>
+      <?php } ?>
+    </div>
+    <style>
+      .grid-item {
+        margin-bottom: 10px !important;
+        padding: 15px;
+        width: 250px;
+        text-align: center;
+      }
+
+      .grid-item img {
+        margin: 0 auto;
+        height: 125px;
+      }
+    </style>
+    <script>
+      var msnry = new Masonry('#grid', {
+        "columnWidth": 250,
+        "itemSelector": ".grid-item",
+        "gutter": 10,
+        "transitionDuration": 0
+      });
+      setTimeout(() => {
+        msnry.layout()
+      }, 250); window.onresize = () => {msnry.layout()}
+    </script>
     <?php
     break;
   case "menu":
@@ -243,9 +289,6 @@ switch ($_GET["action"]) {
     </script>
 
     <?php
-    break;
-  case "activities":
-    // Actividades
     break;
   case "calendar":
     // Calendario, elegir el dia, mes, y dia-de-la-semana.

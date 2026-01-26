@@ -1,0 +1,230 @@
+<?php
+require_once "_incl/auth_redir.php";
+switch ($_GET["form"]) {
+    case "create":
+        $centro_id = $_POST["name"];
+        if (empty($centro_id)) {
+            die("Nombre del centro no proporcionado.");
+        }
+        $centro_path = "/DATA/entreaulas/Centros/$centro_id";
+        if (is_dir($centro_path)) {
+            die("El centro ya existe.");
+        }
+        mkdir($centro_path, 0777, true);
+        header("Location: ?action=index");
+        exit();
+        break;
+    case "create_activity":
+        ini_set('memory_limit', '512M');
+        ini_set("display_errors", 1);
+        ini_set('upload_max_filesize', '256M');
+        ini_set('post_max_size', '256M');
+        $centro_id = $_GET['centro'] ?? '';
+        $centro_path = "/DATA/entreaulas/Centros/$centro_id";
+        if (!is_dir($centro_path)) {
+            die("Centro no válido.");
+        }
+        $activity_name = $_POST["name"] ?? '';
+        if (empty($activity_name)) {
+            die("Nombre de la actividad no proporcionado.");
+        }
+        $activity_photo = $_FILES["photo"] ?? null;
+        if ($activity_photo === null || $activity_photo["error"] !== UPLOAD_ERR_OK) {
+            die("Error al subir la foto.");
+        }
+        $activity_path = "$centro_path/Panel/Actividades/$activity_name";
+        if (is_dir($activity_path)) {
+            die("La actividad ya existe.");
+        }
+        mkdir($activity_path, 0777, true);
+        $photo_path = "$activity_path/photo.jpg";
+        move_uploaded_file($activity_photo["tmp_name"], $photo_path);
+        header("Location: ?action=edit&centro=" . urlencode($centro_id));
+        exit();
+        break;
+}
+
+require_once "_incl/pre-body.php"; 
+switch ($_GET["action"]) {
+    case "edit_activity":
+        $centro_id = $_GET['centro'] ?? '';
+        $activity_name = $_GET['activity'] ?? '';
+        $activity_path = "/DATA/entreaulas/Centros/$centro_id/Panel/Actividades/$activity_name";
+        if (!is_dir($activity_path)) {
+            die("Actividad no válida.");
+        }
+?>
+<div class="card pad">
+    <h1>Gestión de la Actividad: <?php echo htmlspecialchars($activity_name); ?></h1>
+    <span>
+        Desde esta sección puedes administrar la actividad seleccionada del panel del centro <?php echo htmlspecialchars($centro_id); ?>.
+    </span>
+    <form method="post" action="?form=edit_activity&centro=<?php echo urlencode($centro_id); ?>&activity=<?php echo urlencode($activity_name); ?>" enctype="multipart/form-data">
+        <div style="width: 200px;">
+            <label class="dropimage" style="background-image: url('<?php
+                $image_path = "$activity_path/photo.jpg";
+                $image_fetchpath = file_exists($image_path) ? "/entreaulas/_filefetch.php?type=panel_actividades&centro=" . urlencode($centro_id) . "&activity=" . urlencode($activity_name) : '/static/logo-entreaulas.png';
+                echo htmlspecialchars($image_fetchpath);
+            ?>');">
+                <input title="Drop image or click me" type="file">
+            </label>
+        </div>
+        <button type="submit">Guardar Cambios</button>
+    </form>
+</div>
+<?php
+        break;
+    case "new_activity":
+        $centro_id = $_GET['centro'] ?? '';
+        $centro_path = "/DATA/entreaulas/Centros/$centro_id";
+        if (!is_dir($centro_path)) {
+            die("Centro no válido.");
+        }
+?>
+<div class="card pad">
+    <h1>Nueva Actividad del Panel</h1>
+    <span>
+        Aquí puedes crear una nueva actividad para el panel del centro <?php echo htmlspecialchars($centro_id); ?>.
+    </span>
+    <form method="post" action="?form=create_activity&centro=<?php echo urlencode($centro_id); ?>" enctype="multipart/form-data">
+        <label>
+            Nombre de la actividad:<br>
+            <input required type="text" name="name" placeholder="Ej: Biblioteca">
+        </label><br><br>
+        <label>
+            Foto:<br>
+            <input required type="file" name="photo" accept="image/*">
+        </label><br><br>
+        <button type="submit">Crear Actividad</button>
+    </form>
+</div>
+<?php
+        break;
+    case "new":
+        ?>
+<div class="card pad">
+    <h1>Nuevo Centro</h1>
+    <span>
+        Aquí puedes crear un nuevo centro para el sistema.
+    </span>
+    <form method="post" action="?form=create">
+        <label>
+            ID del centro:<br>
+            <input required type="text" name="name" placeholder="Ej: Centro-Principal-001">
+        </label><br><br>
+        <button type="submit">Crear Centro</button>
+    </form>
+</div>
+
+<?php
+        break;
+    case "edit":
+        $centro_id = $_GET['centro'] ?? '';
+        $centro_path = "/DATA/entreaulas/Centros/$centro_id";
+        if (!is_dir($centro_path)) {
+            die("Centro no válido.");
+        }
+?>
+<div class="card pad">
+    <h1>Gestión del Centro: <?php echo htmlspecialchars($centro_id); ?></h1>
+    <span>
+        Desde esta sección puedes administrar el centro seleccionado.
+    </span>
+</div>
+<div class="card pad">
+    <h2>Aularios</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Icono</th>
+                <th>Nombre</th>
+                <th>
+                    <a href="/sysadmin/aularios.php?action=new&centro=<?php echo urlencode($centro_id); ?>" class="button pseudo" style="background: white; color: black;">+ Nuevo</a>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php
+            $aulas_filelist = glob("/DATA/entreaulas/Centros/$centro_id/Aularios/*.json");
+            foreach ($aulas_filelist as $aula_file) {
+                $aula_data = json_decode(file_get_contents($aula_file), true);
+                echo '<tr>';
+                echo '<td><img src="' . htmlspecialchars($aula_data['icon'] ?? '/static/logo-entreaulas.png') . '" alt="Icono" style="height: 50px;"></td>';
+                echo '<td>' . htmlspecialchars($aula_data['name'] ?? 'Sin Nombre') . '</td>';
+                echo '<td><a href="/sysadmin/aularios.php?action=edit&aulario=' . urlencode(basename($aula_file, ".json")) . '&centro=' . urlencode($centro_id) . '" class="button">Gestionar</a></td>';
+                echo '</tr>';
+            }
+            ?>
+        </tbody>
+    </table>
+</div>
+<div class="card pad">
+    <h2>Actividades del panel</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Foto</th>
+                <th>Nombre</th>
+                <th>
+                    <a href="?action=new_activity&centro=<?php echo urlencode($centro_id); ?>" class="button pseudo" style="background: white; color: black;">+ Nuevo</a>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php
+            $activities = glob("/DATA/entreaulas/Centros/$centro_id/Panel/Actividades/*", GLOB_ONLYDIR);
+            foreach ($activities as $activity_path) {
+                $activity_name = basename($activity_path);
+                $image_path = "/DATA/entreaulas/Centros/$centro_id/Panel/Actividades/" . basename($activity_name) . "/photo.jpg";
+                $image_fetchpath = file_exists($image_path) ? "/entreaulas/_filefetch.php?type=panel_actividades&centro=" . urlencode($centro_id) . "&activity=" . urlencode(basename($activity_name)) : '/static/logo-entreaulas.png';
+                echo '<tr>';
+                echo '<td><img src="' . htmlspecialchars($image_fetchpath) . '" alt="Foto" style="height: 50px;"></td>';
+                echo '<td>' . htmlspecialchars($activity_name) . '</td>';
+                echo '<td><a href="?action=edit_activity&centro=' . urlencode($centro_id) . '&activity=' . urlencode($activity_name) . '" class="button">Gestionar</a></td>';
+                echo '</tr>';
+            }
+            ?>
+        </tbody>
+    </table>
+</div>
+
+    <?php
+        break;
+    case "index":
+    default:
+?>
+<div class="card pad">
+    <h1>Gestión de Centros</h1>
+    <span>
+        Desde esta sección puedes administrar los centros asociados al sistema.
+    </span>
+    <a href="?action=new" class="button">Nuevo Centro</a>
+    <table>
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php
+            $user_data = $_SESSION["auth_data"];
+            $centros_filelist = glob("/DATA/entreaulas/Centros/*");
+            foreach ($centros_filelist as $centro_folder) {
+                $centro_id = basename($centro_folder);
+                echo '<tr>';
+                echo '<td>' . htmlspecialchars($centro_id) . '</td>';
+                echo '<td><a href="?action=edit&centro=' . urlencode($centro_id) . '" class="button">Gestionar</a></td>';
+                echo '</tr>';
+            }
+            ?>
+        </tbody>
+    </table>
+</div>
+<?php 
+        break;
+}
+
+
+
+require_once "_incl/post-body.php"; ?>
