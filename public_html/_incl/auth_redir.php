@@ -13,7 +13,7 @@ if (str_starts_with($ua, "SysAdminAuth/")) {
         header("HTTP/1.1 403 Forbidden");
         die();
     }
-    if ($userdata["password"] !== hash("sha256", $userpass)) {
+    if (password_verify($userpass, $userdata["password"])) {
         header("HTTP/1.1 403 Forbidden");
         die();
     }
