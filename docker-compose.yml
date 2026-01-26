@@ -1,6 +1,9 @@
 services:
   axia4-web:
     image: ghcr.io/axia4/axia4:main
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: axia4-app
     ports:
       - "882:80"
@@ -8,7 +11,7 @@ services:
       # Mount the DATA directory for persistent storage
       - ./DATA:/DATA
       # Optional: Mount the application code for development
-      # - ./public_html:/var/www/html
+      - ./public_html:/var/www/html
     environment:
       - APACHE_DOCUMENT_ROOT=/var/www/html
     restart: unless-stopped

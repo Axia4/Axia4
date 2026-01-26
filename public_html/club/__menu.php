@@ -1,0 +1,2 @@
+<a href="/club/upload/" class="button pseudo">Subir fotos</a>
+<!-- <a href="https://www.google.com/maps/d/u/0/embed?mid=1-iMb0N6ZhLDMu1ArK4fCVW_vVTA-giA&ehbc=2E312F&noprof=1" class="button pseudo">Lugares de interes</a> -->

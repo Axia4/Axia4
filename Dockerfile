@@ -1,27 +1,23 @@
-# Use official PHP image with Apache
-FROM php:8.2-apache
+# Use FrankenPHP (Caddy + PHP)
+FROM dunglas/frankenphp
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    libpng-dev \
-    libjpeg-dev \
-    libfreetype6-dev \
-    zip \
-    unzip \
-    && rm -rf /var/lib/apt/lists/*
+# # Install system dependencies
+# RUN apt-get update && apt-get install -y \
+#     zip \
+#     unzip \
+#     && rm -rf /var/lib/apt/lists/*
 
 # Configure PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) gd
-
-# Enable Apache modules
-RUN a2enmod rewrite
+RUN install-php-extensions gd
 
 # Set working directory
 WORKDIR /var/www/html
 
 # Copy application files
 COPY public_html/ /var/www/html/
+
+# Copy FrankenPHP (Caddy) configuration
+COPY docker/Caddyfile /etc/frankenphp/Caddyfile
 
 # Create DATA directory with proper permissions
 RUN mkdir -p /DATA && \
@@ -44,6 +40,3 @@ RUN echo "session.cookie_lifetime = 604800" >> /usr/local/etc/php/conf.d/custom.
 
 # Expose port 80
 EXPOSE 80
-
-# Start Apache
-CMD ["apache2-foreground"]

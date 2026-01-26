@@ -1,0 +1,27 @@
+{
+    frankenphp
+}
+
+:80 {
+    root * /var/www/html
+    encode zstd gzip
+
+	route {
+		intercept {
+			@accel header X-Accel-Redirect *
+			handle_response @accel {
+				root * /DATA/
+				rewrite * {resp.header.X-Accel-Redirect}
+				method * GET
+
+				# Remove the X-Accel-Redirect header set by PHP for increased security
+				header -X-Accel-Redirect
+
+				file_server
+			}
+		}
+
+		php_server
+	}
+
+}
