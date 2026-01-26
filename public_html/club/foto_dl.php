@@ -12,12 +12,15 @@ if (!file_exists($path) || !is_file($path)) {
     header("HTTP/1.1 404 Not Found");
     die("File not found");
 }
+$mime = mime_content_type($path);
+
+// Check if thumbnail is requested
 if (file_exists($path . ".thumbnail") && $_GET["thumbnail"] == "1") {
     $path .= ".thumbnail";
     $uripath .= ".thumbnail";
-    // die();
+    $mime = "image/jpeg";
 }
-header("Content-Type: " . mime_content_type($path));
+header("Content-Type: " . $mime);
 header('Content-Length: ' . filesize($path));
 header('Cache-Control: max-age=7200');
 header("X-Accel-Redirect: $uripath");
