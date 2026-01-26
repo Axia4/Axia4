@@ -94,13 +94,14 @@ switch ($_GET["action"]) {
     <span>
         Desde esta sección puedes administrar los aularios asociados al centro que estás administrando.
     </span>
-    <a href="?action=new" class="button">Nuevo Aulario</a>
     <table>
         <thead>
             <tr>
                 <th>Icono</th>
                 <th>Nombre</th>
-                <th>Acciones</th>
+                <th>
+                    <a href="?action=new" class="button pseudo" style="background: white; color: black;">+ Nuevo</a>
+                </th>
             </tr>
         </thead>
         <tbody>

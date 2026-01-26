@@ -123,14 +123,15 @@ switch ($_GET['action'] ?? '') {
     <div class="card pad">
       <h1>Gestión de Usuarios</h1>
       <p>Desde esta sección puedes gestionar los usuarios del sistema. Puedes agregar, editar o eliminar usuarios según sea necesario.</p>
-      <a href="?action=add" class="button">Agregar Nuevo Usuario</a>
       <table>
         <thead>
           <tr>
             <th>Usuario</th>
             <th>Nombre</th>
             <th>Correo</th>
-            <th>Acciones</th>
+            <th>
+              <a href="?action=add" class="button pseudo" style="background: white; color: black;">+ Nuevo</a>
+            </th>
           </tr>
         </thead>
         <tbody>

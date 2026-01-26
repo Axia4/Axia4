@@ -1,4 +1,9 @@
 <?php
+session_start([ 'cookie_lifetime' => 604800 ]);
+session_regenerate_id();
+ini_set("session.use_only_cookies", "true");
+ini_set("session.use_trans_sid", "false");
+
 if (!isset($APP_CODE)) {
   $APP_CODE = "ax4";
   $APP_ROOT = "/";
@@ -141,10 +146,12 @@ if (!isset($APP_CODE)) {
         <img class="logo" loading="lazy" src="/static/<?php echo $APP_ICON ?? "logo.png"; ?>" />
         <span><?php echo $APP_NAME ?? "Axia<sup>4</sup>"; ?></span>
       </a>
-      <a href="/lazo.php" class="brand">
-        <img class="logo" title="Nuestra solidaridad con las víctimas y familiares del grave accidente de Adamuz"
-          alt="Nuestra solidaridad con las víctimas y familiares del grave accidente de Adamuz" src="/static/lazo_negro.png" />
-      </a>
+      <?php if ($APP_CODE == "ax4") { ?>
+        <a href="/lazo.php" class="brand" style="padding: 0;">
+          <img style="margin: 0;" class="logo" title="Nuestra solidaridad con las víctimas y familiares del grave accidente de Adamuz"
+            alt="Nuestra solidaridad con las víctimas y familiares del grave accidente de Adamuz" src="/static/lazo_negro.png" />
+        </a>
+      <?php } ?>
       <input id="bmenub" type="checkbox" class="show" />
       <label for="bmenub" class="burger button">menú</label>
       <div class="menu">

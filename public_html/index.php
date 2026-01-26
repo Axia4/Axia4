@@ -13,7 +13,23 @@
         <img src="/static/logo-entreaulas.png" alt="Logo EntreAulas">
         <b>EntreAulas</b>
         <span>Gestión de aularios conectados.</span>
-        <a href="/entreaulas/" class="button">Tengo cuenta</a>
+        <?php if ($_SESSION["auth_ok"] && in_array('entreaulas:access', $_SESSION["auth_data"]["permissions"] ?? [])) { ?>
+            <a href="/entreaulas/" class="button">Acceder</a>
+        <?php } else { ?>
+            <hr>
+            <small>No tienes permiso para acceder</small>
+        <?php } ?>
+    </div>
+    <div class="card grid-item">
+        <img src="/static/logo-account.png" alt="Logo Account">
+        <b>Mi Cuenta</b>
+        <span>Acceso a la plataforma y pagos.</span>
+        <?php if ($_SESSION["auth_ok"]) { ?>
+            <a href="/account/" class="button">Ir a mi cuenta</a>
+        <?php } else { ?>
+            <a href="/_login.php?redir=/account/" class="button">Iniciar sesión</a>
+            <a href="/account/register.php" class="button">Crear cuenta</a>
+        <?php } ?>
     </div>
     <div class="card grid-item" style="opacity: 0.5;">
         <img src="/static/logo-oscar.png" alt="Logo OSCAR">
@@ -34,11 +50,6 @@
         <img src="/static/logo-mail.png" alt="Logo Comunicaciones">
         <b>Comunicaciones</b>
         <span>Correos electrónicos y mensajería.</span>
-    </div>
-    <div class="card grid-item" style="opacity: 0.5;">
-        <img src="/static/logo-account.png" alt="Logo Account">
-        <b>Cuenta y identidad</b>
-        <span>Acceso a la plataforma y pagos.</span>
     </div>
     <div class="card grid-item" style="opacity: 0.5;">
         <img src="/static/logo-malla.png" alt="Logo Malla">
@@ -69,8 +80,13 @@
     <div class="card grid-item">
         <img src="/static/logo-sysadmin.png" alt="Logo SysAdmin">
         <b>SysAdmin</b>
-        <span>Panel de administración de sistemas.</span>
-        <a href="/sysadmin/" class="button">Acceso privado</a>
+        <span>Configuración de Axia4.</span>
+        <?php if (in_array('sysadmin:access', $_SESSION["auth_data"]["permissions"] ?? [])) { ?>
+            <a href="/sysadmin/" class="button">Acceder</a>
+        <?php } else { ?>
+            <hr>
+            <small>No tienes permiso para acceder</small>
+        <?php } ?>
     </div>
 </div>
 

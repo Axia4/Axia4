@@ -4,12 +4,14 @@ if ($_GET["reload_user"] == "1") {
     $user = $_SESSION['auth_user'];
     $userdata = json_decode(file_get_contents("/DATA/Usuarios/$user.json"), true);
     $_SESSION['auth_data'] = $userdata;
-    header("Location: /");
+    $redir = $_GET["redir"] ?? "/";
+    header("Location: $redir");
     die();
 }
 if ($_GET["logout"] == "1") {
     session_destroy();
-    header("Location: /_login.php");
+    $redir = $_GET["redir"] ?? "/";
+    header("Location: $redir");
     die();
 }
 if (isset($_POST["user"])) {
@@ -26,7 +28,8 @@ if (isset($_POST["user"])) {
         $_SESSION['auth_user'] = $user;
         $_SESSION['auth_data'] = $userdata;
         $_SESSION['auth_ok'] = true;
-        header("Location: /");
+        $redir = $_GET["redir"] ?? "/";
+        header("Location: $redir");
         die();
     } else {
         $_GET["_result"] = "La contraseña no es correcta.";

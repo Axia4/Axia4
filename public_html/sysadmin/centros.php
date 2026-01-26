@@ -230,12 +230,13 @@ switch ($_GET["action"]) {
     <span>
         Desde esta sección puedes administrar los centros asociados al sistema.
     </span>
-    <a href="?action=new" class="button">Nuevo Centro</a>
     <table>
         <thead>
             <tr>
                 <th>Nombre</th>
-                <th>Acciones</th>
+                <th>
+                    <a href="?action=new" class="button pseudo" style="background: white; color: black;">+ Nuevo</a>
+                </th>
             </tr>
         </thead>
         <tbody>

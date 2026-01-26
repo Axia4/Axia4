@@ -8,26 +8,19 @@ require_once "_incl/pre-body.php"; ?>
 <div id="grid">
     <div class="card grid-item">
         <img src="/static/logo-entreaulas.png" alt="Logo EntreAulas">
-        <b>Gestión de Centros</b>
-        <span>Administra los centros del sistema EntreAulas.</span>
+        <b>EntreAulas</b>
         <a href="/sysadmin/centros.php" class="button">Gestionar Centros</a>
-    </div>
-    <div class="card grid-item">
-        <img src="/static/logo-entreaulas.png" alt="Logo EntreAulas">
-        <b>Gestión de Aularios</b>
-        <span>Administra los aularios dentro de los centros.</span>
         <a href="/sysadmin/aularios.php" class="button">Gestionar Aularios</a>
     </div>
     <div class="card grid-item">
-        <img src="/static/logo-account.png" alt="Logo Cuentas y Identidad">
-        <b>Gestión de Usuarios</b>
-        <span>Administra los usuarios del sistema.</span>
+        <img src="/static/logo-account.png" alt="Logo Mi Cuenta">
+        <b>Mi Cuenta</b>
         <a href="/sysadmin/users.php" class="button">Gestionar Usuarios</a>
+        <a href="/sysadmin/invitations.php" class="button">Gestionar Invitaciones</a>
     </div>
     <div class="card grid-item">
         <img src="/static/logo-club.png" alt="Logo Club">
-        <b>Generar miniaturas</b>
-        <span>Genera miniaturas para las imágenes del club.</span>
+        <b>La web del Club</b>
         <a href="/sysadmin/club_mkthumb.php" class="button">Generar Miniaturas</a>
     </div>
 </div>
