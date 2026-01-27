@@ -121,7 +121,7 @@ if (!isset($APP_CODE)) {
       margin: 0 auto;
     } */
     .card.pad {
-      padding: 15px 25px;
+      padding: 10px;
       margin-bottom: 10px;
     }
     details summary {
