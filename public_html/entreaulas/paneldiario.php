@@ -14,17 +14,19 @@ switch ($_GET["form"]) {
     header("Refresh: 10; URL=/entreaulas/paneldiario.php?aulario=" . urlencode($_GET['aulario'] ?? ''));
     ?>
     <div class="card pad">
-      <h1>Menú Seleccionado</h1>
-      <span>
-        Has seleccionado el siguiente menú para el día <?php echo htmlspecialchars($selected_date); ?>:
-      </span>
-      <ul>
-        <li>Primer Plato: <?php echo htmlspecialchars($plato1); ?></li>
-        <li>Segundo Plato: <?php echo htmlspecialchars($plato2); ?></li>
-        <li>Postre: <?php echo htmlspecialchars($postre); ?></li>
-      </ul>
-      <a href="/entreaulas/paneldiario.php?aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>" class="button">Volver
-        al Panel Diario</a>
+        <div class="card-body">
+            <h1 class="card-title">Menú Seleccionado</h1>
+            <span>
+                Has seleccionado el siguiente menú para el día <?php echo htmlspecialchars($selected_date); ?>:
+            </span>
+            <ul>
+                <li>Primer Plato: <?php echo htmlspecialchars($plato1); ?></li>
+                <li>Segundo Plato: <?php echo htmlspecialchars($plato2); ?></li>
+                <li>Postre: <?php echo htmlspecialchars($postre); ?></li>
+            </ul>
+            <a href="/entreaulas/paneldiario.php?aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>" class="btn btn-primary">Volver
+                al Panel Diario</a>
+        </div>
     </div>
     <?php
     die();
@@ -40,26 +42,28 @@ switch ($_GET["action"]) {
   case "index":
     ?>
     <div class="card pad">
-      <h1>Panel diario</h1>
-      <span>
-        Desde este panel puedes apuntar las actividades diarias del aulario.
-      </span>
+        <div class="card-body">
+            <h1 class="card-title">Panel diario</h1>
+            <span>
+                Desde este panel puedes apuntar las actividades diarias del aulario.
+            </span>
+        </div>
     </div>
     <div id="grid">
       <!-- Calendario -->
-      <a onclick="document.getElementById('click-sound').play()" href="?action=calendar&aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>" class="button grid-item">
+      <a onclick="document.getElementById('click-sound').play()" href="?action=calendar&aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>" class="btn btn-primary grid-item">
         <img src="/static/arasaac/calendario.png" height="125">
         <br>
         Calendario
       </a>
       <!-- Actividades -->
-      <a onclick="document.getElementById('click-sound').play()" href="?action=actividades&aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>" class="button grid-item">
+      <a onclick="document.getElementById('click-sound').play()" href="?action=actividades&aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>" class="btn btn-primary grid-item">
         <span class="iconify" style="font-size: 125px" data-icon="mdi-school"></span>
         <br>
         Actividades
       </a>
       <!-- Menú del comedor -->
-      <a onclick="document.getElementById('click-sound').play()" href="?action=menu&aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>" class="button grid-item">
+      <a onclick="document.getElementById('click-sound').play()" href="?action=menu&aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>" class="btn btn-primary grid-item">
         <span class="iconify" style="font-size: 125px" data-icon="mdi-silverware-fork-knife"></span>
         <br>
         Menú del Comedor
@@ -101,14 +105,16 @@ switch ($_GET["action"]) {
     $actividades = json_decode(file_get_contents("/DATA/entreaulas/Centros/" . $_SESSION["auth_data"]["entreaulas"]["centro"] . "/Panel/Actividades.json"), true);
     ?>
     <div class="card pad">
-      <h1>Actividades</h1>
-      <span>
-        Aquí podrás ver y seleccionar las actividades del día para el aulario.
-      </span>
+        <div class="card-body">
+            <h1 class="card-title">Actividades</h1>
+            <span>
+                Aquí podrás ver y seleccionar las actividades del día para el aulario.
+            </span>
+        </div>
     </div>
     <div id="grid">
       <?php foreach ($actividades as $actividad_name => $actividad_data) { ?>
-        <a class="button grid-item">
+        <a class="btn btn-primary grid-item">
           <img src="<?php echo htmlspecialchars($actividad_data["Foto"]); ?>" height="125">
           <br>
           <?php echo htmlspecialchars($actividad_name); ?>
@@ -275,7 +281,19 @@ switch ($_GET["action"]) {
         </a>
       <?php } ?>
     </div>
+    <style>
+      .grid-item {
+        margin-bottom: 10px !important;
+        padding: 15px;
+        width: 250px;
+        text-align: center;
+      }
 
+      .grid-item img {
+        margin: 0 auto;
+        height: 125px;
+      }
+    </style>
     <script>
       var msnry = new Masonry('.grid', {
         "columnWidth": 250,
@@ -325,7 +343,7 @@ switch ($_GET["action"]) {
         $ds = date('N', strtotime(date('Y-m-') . sprintf("%02d", $dia)));
         if ($ds > 5) {
           ?>
-          <div class="card grid-item" style="width: 130px; background-color: #000; color: #fff; height: 100px;">
+          <div class="card grid-item" style="background-color: #000; color: #fff; text-align: center;">
             <span style="font-size: 48px;"><?php echo $dia; ?></span>
           </div>
           <?php
@@ -333,12 +351,27 @@ switch ($_GET["action"]) {
         }
         $is_today = ($dia == $dia_correcto);
         ?>
-        <a class="card grid-item" style="width: 130px; height: 100px; color: black;"
+        <a class="card grid-item" style="color: black; text-align: center;"
           onclick="seleccionarDia(this, <?php echo $dia; ?>, <?php echo $mes_correcto; ?>, <?php echo date('Y'); ?>, <?php echo $ds; ?>);">
           <span style="font-size: 48px;"><?php echo $dia; ?></span>
         </a>
       <?php } ?>
     </div>
+    <style>
+      .grid-item {
+        margin-bottom: 10px !important;
+        padding: 15px;
+        width: 130px;
+        height: 100px;
+        text-align: center;
+        text-decoration: none;
+      }
+
+      .grid-item img {
+        margin: 0 auto;
+        height: 125px;
+      }
+    </style>
     <script>
       var msnry = new Masonry('.grid', {
         "columnWidth": 130,
@@ -407,6 +440,20 @@ switch ($_GET["action"]) {
         </a>
       <?php } ?>
     </div>
+    <style>
+      .grid-item {
+        margin-bottom: 10px !important;
+        padding: 15px;
+        width: 225px;
+        text-align: center;
+        text-decoration: none;
+      }
+
+      .grid-item img {
+        margin: 0 auto;
+        height: 125px;
+      }
+    </style>
     <script>
       var msnry = new Masonry('.grid', {
         "columnWidth": 225,
@@ -488,6 +535,20 @@ switch ($_GET["action"]) {
         </a>
       <?php } ?>
     </div>
+    <style>
+      .grid-item {
+        margin-bottom: 10px !important;
+        padding: 15px;
+        width: 180px;
+        text-align: center;
+        text-decoration: none;
+      }
+
+      .grid-item img {
+        margin: 0 auto;
+        height: 125px;
+      }
+    </style>
     <script>
       var msnry = new Masonry('.grid', {
         "columnWidth": 180,

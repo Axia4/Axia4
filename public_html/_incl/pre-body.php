@@ -1,8 +1,9 @@
 <?php
-session_start([ 'cookie_lifetime' => 604800 ]);
+session_start(['cookie_lifetime' => 604800]);
 session_regenerate_id();
 ini_set("session.use_only_cookies", "true");
 ini_set("session.use_trans_sid", "false");
+ini_set("display_errors", 0);
 
 if (!isset($APP_CODE)) {
   $APP_CODE = "ax4";
@@ -23,13 +24,13 @@ if (!isset($APP_CODE)) {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title><?php echo $APP_TITLE ?? "Axia4"; ?></title>
-  <link rel="stylesheet" href="/static/picnic.min.css" />
+  <link rel="stylesheet" href="/static/bootstrap.min.css" />
   <link rel="icon" type="image/png" href="/static/<?php echo $APP_ICON ?? "logo.png"; ?>" />
 </head>
 
 <body>
   <style>
-    fieldset label {
+    /* fieldset label {
       margin-bottom: 15px;
     }
 
@@ -65,7 +66,7 @@ if (!isset($APP_CODE)) {
 
     th {
       text-align: center;
-    }
+    } */
 
     @media print {
       .no-print {
@@ -97,6 +98,7 @@ if (!isset($APP_CODE)) {
       -moz-appearance: textfield;
     }
 
+    /* 
     h1,
     h2,
     h3,
@@ -107,9 +109,6 @@ if (!isset($APP_CODE)) {
       padding: 0;
     }
 
-    .card.pad {
-      padding: 15px 25px;
-    }
 
     a.grid-item {
       margin-bottom: 10px !important;
@@ -120,11 +119,26 @@ if (!isset($APP_CODE)) {
 
     a.grid-item img {
       margin: 0 auto;
-      /*height: 100px;*/
+    } */
+    .card.pad {
+      padding: 15px 25px;
+      margin-bottom: 10px;
     }
     details summary {
       cursor: pointer;
       display: list-item;
+    }
+    .text-black {
+      color: black !important;
+    }
+    .btn {
+      margin-bottom: 5px;
+    }
+    .navbar-nav > a.btn {
+      margin-right: 10px;
+    }
+    .bg-custom {
+      background-color: #9013FE;
     }
   </style>
 
@@ -132,46 +146,51 @@ if (!isset($APP_CODE)) {
   <script src="//code.iconify.design/1/1.0.6/iconify.min.js"></script>
   <?php if ($_GET["_hidenav"] == "yes") { ?>
     <main style="padding: 10px;">
-  <?php } elseif ($_GET["_hidenav"] == "widget") { ?>
-    <main style="padding: 0px;">
-  <?php } else { ?>
-    <style>
-      body {
-        height: calc(100% - 3em);
-        background: #ddd;
-      }
-    </style>
-    <nav>
-      <a href="<?php echo $APP_ROOT ?? ""; ?>" class="brand">
-        <img class="logo" loading="lazy" src="/static/<?php echo $APP_ICON ?? "logo.png"; ?>" />
-        <span><?php echo $APP_NAME ?? "Axia<sup>4</sup>"; ?></span>
-      </a>
-      <?php if ($APP_CODE == "ax4") { ?>
-        <a href="/lazo.php" class="brand" style="padding: 0;">
-          <img style="margin: 0;" class="logo" title="Nuestra solidaridad con las víctimas y familiares del grave accidente de Adamuz"
-            alt="Nuestra solidaridad con las víctimas y familiares del grave accidente de Adamuz" src="/static/lazo_negro.png" />
-        </a>
-      <?php } ?>
-      <input id="bmenub" type="checkbox" class="show" />
-      <label for="bmenub" class="burger button">menú</label>
-      <div class="menu">
-        <?php if (file_exists(__DIR__ . "/.." . $APP_ROOT . "/__menu.php")) { ?>
-          <?php require_once __DIR__ . "/.." . $APP_ROOT . "/__menu.php"; ?>
+    <?php } elseif ($_GET["_hidenav"] == "widget") { ?>
+      <main style="padding: 0px;">
+      <?php } else { ?>
+        <style>
+          body {
+            height: calc(100% - 3em);
+            background: #ddd;
+          }
+        </style>
+        <nav class="navbar navbar-expand-lg bg-<?= $APP_COLOR ?? ($APP_CODE == "ax4" ? "custom" : "primary") ?>" data-bs-theme="dark">
+          <div class="container-fluid">
+            <a href="<?php echo $APP_ROOT ?? ""; ?>" class="navbar-brand">
+              <img height="30" class="logo" loading="lazy" src="/static/<?php echo $APP_ICON ?? "logo.png"; ?>" style="<?=  $APP_ICON != "logo.png" ? '' : 'filter: invert(1);' ?>" />
+              <?php echo $APP_NAME ?? "Axia<sup>4</sup>"; ?>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarColor01" aria-controls="navbarColor01" aria-expanded="false" aria-label="Toggle navigation">
+              <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarColor01">
+              <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                  <a class="nav-link active" href="<?php echo $APP_ROOT ?? ""; ?>">Inicio
+                    <span class="visually-hidden">(current)</span>
+                  </a>
+                </li>
+                <?php if (file_exists("../$APP_CODE/__menu.php")) { ?>
+                  <?php require_once "../$APP_CODE/__menu.php"; ?>
+                <?php } ?>
+                
+              </ul>
+              <?php if ($APP_CODE != "ax4") { ?>
+                <a href="/" class="btn btn-secondary pseudo" style="background: #9013FE; color: white;">Salir a Axia4</a>
+              <?php } ?>
+            </div>
+          </div>
+        </nav>
+        <main style="padding: 20px; ">
         <?php } ?>
-        <?php if ($APP_CODE != "ax4") { ?>
-          <a href="/" class="button pseudo" style="background: #9013FE; color: white;">Ax<sup>4</sup></a>
+        <?php if (isset($_GET["_result"])) { ?>
+          <div class="card pad"
+            style="padding: 10px; background-color: <?php echo $_GET["_resultcolor"] ?? 'lightgreen'; ?>; text-align: center;">
+            <h3><?php echo $_GET["_result"]; ?></h3>
+          </div>
         <?php } ?>
-      </div>
-    </nav>
-    <main style="margin-top: 3em; padding: 20px; ">
-    <?php } ?>
-    <?php if (isset($_GET["_result"])) { ?>
-      <div class="card"
-        style="padding: 10px; background-color: <?php echo $_GET["_resultcolor"] ?? 'lightgreen'; ?>; text-align: center;">
-        <h3><?php echo $_GET["_result"]; ?></h3>
-      </div>
-    <?php } ?>
-    <!-- <div class="card" style="padding: 15px; background: #ffcc00; color: #000;">
+        <!-- <div class="card pad" style="padding: 15px; background: #ffcc00; color: #000;">
       <h2>Alerta Meteorologica</h2>
       <span>Viento fuerte en Portugalete.</span>
     </div> -->

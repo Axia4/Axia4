@@ -7,17 +7,16 @@
     <div class="card grid-item">
         <img src="/static/logo-club.png" alt="Logo Club">
         <b>La web del club</b>
-        <a href="/club/" class="button">Acceso publico</a>
+        <a href="/club/" class="btn btn-primary">Acceso publico</a>
     </div>
     <div class="card grid-item">
         <img src="/static/logo-entreaulas.png" alt="Logo EntreAulas">
         <b>EntreAulas</b>
         <span>Gestión de aularios conectados.</span>
         <?php if ($_SESSION["auth_ok"] && in_array('entreaulas:access', $_SESSION["auth_data"]["permissions"] ?? [])) { ?>
-            <a href="/entreaulas/" class="button">Acceder</a>
+            <a href="/entreaulas/" class="btn btn-primary">Acceder</a>
         <?php } else { ?>
-            <hr>
-            <small>No tienes permiso para acceder</small>
+            <small class="btn btn-dark disabled">No tienes permiso para acceder</small>
         <?php } ?>
     </div>
     <div class="card grid-item">
@@ -25,10 +24,11 @@
         <b>Mi Cuenta</b>
         <span>Acceso a la plataforma y pagos.</span>
         <?php if ($_SESSION["auth_ok"]) { ?>
-            <a href="/account/" class="button">Ir a mi cuenta</a>
+            <a href="/account/" class="btn btn-primary">Ir a mi cuenta</a>
+            <a href="/_logout.php?redir=/" class="btn btn-secondary">Cerrar sesión</a>
         <?php } else { ?>
-            <a href="/_login.php?redir=/account/" class="button">Iniciar sesión</a>
-            <a href="/account/register.php" class="button">Crear cuenta</a>
+            <a href="/_login.php?redir=/account/" class="btn btn-primary">Iniciar sesión</a>
+            <a href="/account/register.php" class="btn btn-primary">Crear cuenta</a>
         <?php } ?>
     </div>
     <div class="card grid-item" style="opacity: 0.5;">
@@ -60,21 +60,21 @@
         <img src="/static/logo-aularios.png" alt="Logo Aularios">
         <b>Aularios<sup>2</sup></b>
         <span>Visita virtual a los aularios.</span>
-        <!--<a href="https://aularios.tech.eus" class="button">Tengo cuenta</a>-->
+        <!--<a href="https://aularios.tech.eus" class="btn btn-primary">Tengo cuenta</a>-->
         <small>Solo lectura - Migrando a Axia4</small>
     </div>
     <div class="card grid-item" style="opacity: 0.5;">
         <img src="/static/logo-nube.png" alt="Logo Axia4 Cloud">
         <b>Nube Axia4.NET</b>
         <span>Almacenamiento central de datos.</span>
-        <!--<a href="https://axia4.net" class="button">Tengo cuenta</a>-->
+        <!--<a href="https://axia4.net" class="btn btn-primary">Tengo cuenta</a>-->
         <small>Cerrado por migración a Axia4</small>
     </div>
     <div class="card grid-item" style="opacity: 0.5;">
         <img src="/static/logo-nk4.png" alt="Logo Nube Kasa">
         <b>Nube Kasa</b>
         <span>Nube personal con domotica.</span>
-        <!--<a href="https://nk4.tech.eus/_familia/" class="button">Acceso privado</a>-->
+        <!--<a href="https://nk4.tech.eus/_familia/" class="btn btn-primary">Acceso privado</a>-->
         <small>Cerrado por mantenimiento</small>
     </div>
     <div class="card grid-item">
@@ -82,10 +82,9 @@
         <b>SysAdmin</b>
         <span>Configuración de Axia4.</span>
         <?php if (in_array('sysadmin:access', $_SESSION["auth_data"]["permissions"] ?? [])) { ?>
-            <a href="/sysadmin/" class="button">Acceder</a>
+            <a href="/sysadmin/" class="btn btn-primary">Acceder</a>
         <?php } else { ?>
-            <hr>
-            <small>No tienes permiso para acceder</small>
+            <small class="btn btn-dark disabled">No tienes permiso para acceder</small>
         <?php } ?>
     </div>
 </div>

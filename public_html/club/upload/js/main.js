@@ -40,7 +40,7 @@ $(document).ready(function() {
 function Progress(current, total) {
     var percent = ((current / total) * 100).toFixed(0) + "%";
 
-    document.getElementById('fileuploaderprog').value = ((current / total) * 100).toFixed(0);
+    document.getElementById('fileuploaderprog').style.width = percent;
     document.getElementById('fileuploaderprog').innerText = percent;
 }
 
@@ -51,9 +51,11 @@ function Finished() {
         document.getElementById('uploaderfileinp').value = "";
 
         document.getElementById('fileuploaderprog').innerText = "Subido!"
+        document.getElementById('fileuploaderprog').style.width = "100%";
         
         setTimeout(function() {
             document.getElementById('fileuploaderprog').innerText = "0%"
+            document.getElementById('fileuploaderprog').style.width = "0%";
             location.href="../cal.php?f=" + urlParams.get("f") 
             
         }, 3000);

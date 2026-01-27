@@ -1,30 +1,26 @@
-<?php ini_set("display_errors", "off");
-
+<?php 
 $APP_CODE = "club";
 $APP_NAME = "La web del Club<sup>3</sup>";
 $APP_TITLE = "La web del Club";
-require_once "/var/www/_incl/pre-body.php"; ?>
-<div class="card pad">
-    <h1>Subir fotos</h1>
-    <form action="form.php" method="get">
-        <fieldset class="card" style="border: 2px solid black; border-radius: 6.5px; padding: 5px 25px; max-width: 500px;">
-            <label>
-                <b>Tu nombre:</b> 
-                <input required type="text" name="n" value="<?php echo $_GET["n"] ?: "";?>" placeholder="Nombre...">
-            </label>
-            <br>
-            <label>
-                <b>Fecha:</b> 
-                <input required type="date" name="f" value="<?php echo $_GET["f"] ?: "";?>" placeholder="Fecha...">
-            </label>
-            <br>
-            <label>
-                <b>La contraseña:</b> 
-                <input required type="text" name="p" value="" placeholder="Contraseña...">
-            </label>
-            <br>
-            <button type="submit">Continuar...</button>
-        </fieldset>
-    </form>
+require_once "../../_incl/pre-body.php"; ?>
+<div class="card">
+    <div class="card-body">
+        <h1 class="card-title">Subir fotos</h1>
+        <form action="form.php" method="get">
+            <div class="mb-3">
+                <label for="n" class="form-label"><b>Tu nombre:</b></label>
+                <input required type="text" id="n" name="n" class="form-control" value="<?php echo $_GET["n"] ?: "";?>" placeholder="Nombre...">
+            </div>
+            <div class="mb-3">
+                <label for="f" class="form-label"><b>Fecha:</b></label>
+                <input required type="date" id="f" name="f" class="form-control" value="<?php echo $_GET["f"] ?: "";?>" placeholder="Fecha...">
+            </div>
+            <div class="mb-3">
+                <label for="p" class="form-label"><b>La contraseña:</b></label>
+                <input required type="text" id="p" name="p" class="form-control" value="" placeholder="Contraseña...">
+            </div>
+            <button type="submit" class="btn btn-primary">Continuar...</button>
+        </form>
+    </div>
 </div>
-<?php require_once "/var/www/_incl/post-body.php"; ?>
+<?php require_once "../../_incl/post-body.php"; ?>

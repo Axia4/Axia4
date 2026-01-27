@@ -22,35 +22,38 @@ $APP_CODE = "club";
 $APP_NAME = "La web del Club<sup>3</sup>";
 $APP_TITLE = "La web del Club";
 require_once "../_incl/pre-body.php"; ?>
-<div class="card pad">
-
-    <h1>Editar datos</h1>
-    
-    <form method="post">
-        <fieldset class="card" style="border: 2px solid black; border-radius: 6.5px; padding: 5px 25px; max-width: 500px;">
-            <label>
-                <b>Contraseña de administración:</b><br>
-                <input required type="text" name="adminpw" placeholder="Contraseña admin">
-            </label><br><br>
-            <label>
-                <b>Fecha:</b><br>
-                <input required type="date" name="date" value="<?php echo $file;?>" placeholder="Fecha">
-            </label><br><br><hr>
-            <label>
-                <b>Titulo:</b><br>
-                <input required type="text" name="title" value="<?php echo $val["title"] ?: "";?>" placeholder="Titulo">
-            </label><br><br>
-            <label>
-                <b>Descripción:</b><br>
-                <textarea rows="5" name="note" placeholder="Descripción"><?php echo $val["note"] ?: "";?></textarea>
-            </label><br><br>
-            <label>
-                <b>Enlace ruta mapa:</b><br>
-                <input type="url" name="mapa_url" value="<?php echo $val["mapa"]["url"] ?: "";?>" placeholder="Enlace Mapa">
-            </label><br><br>
-            <button type="submit">Guardar cambios</button>
-            <br><br>
-        </fieldset>
-    </form>
+<div class="card">
+    <div class="card-body">
+        <h1 class="card-title">Editar datos</h1>
+        
+        <form method="post">
+            <div class="card" style="max-width: 500px;">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="adminpw" class="form-label"><b>Contraseña de administración:</b></label>
+                        <input required type="text" id="adminpw" name="adminpw" class="form-control" placeholder="Contraseña admin">
+                    </div>
+                    <div class="mb-3">
+                        <label for="date" class="form-label"><b>Fecha:</b></label>
+                        <input required type="date" id="date" name="date" class="form-control" value="<?php echo $file;?>" placeholder="Fecha">
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <label for="title" class="form-label"><b>Titulo:</b></label>
+                        <input required type="text" id="title" name="title" class="form-control" value="<?php echo $val["title"] ?: "";?>" placeholder="Titulo">
+                    </div>
+                    <div class="mb-3">
+                        <label for="note" class="form-label"><b>Descripción:</b></label>
+                        <textarea rows="5" id="note" name="note" class="form-control" placeholder="Descripción"><?php echo $val["note"] ?: "";?></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="mapa_url" class="form-label"><b>Enlace ruta mapa:</b></label>
+                        <input type="url" id="mapa_url" name="mapa_url" class="form-control" value="<?php echo $val["mapa"]["url"] ?: "";?>" placeholder="Enlace Mapa">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                </div>
+            </div>
+        </form>
+    </div>
 </div>
 <?php require_once "../_incl/post-body.php"; ?>

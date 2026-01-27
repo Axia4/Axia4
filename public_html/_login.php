@@ -42,21 +42,24 @@ if (!file_exists("/DATA/SISTEMA_INSTALADO.txt")) {
 }
 require_once "_incl/pre-body.php"; ?>
 <div class="card pad">
-
-    <h1>Iniciar sesión en Axia4</h1>
-    
-    <form method="post">
-        <fieldset class="card" style="border: 2px solid black; border-radius: 6.5px; padding: 10px 25px; max-width: 500px;">
-            <label>
-                <b>Usuario:</b><br>
-                <input required type="text" name="user" placeholder="Ej: PepitoFlores3">
-            </label><br><br>
-            <label>
-                <b>Contraseña:</b><br>
-                <input required type="password" name="password" placeholder="Ej: PerroArbolPianoPizza">
-            </label>
-            <button type="submit">Iniciar sesión</button>
-        </fieldset>
-    </form>
+    <div class="card-body">
+        <h1 class="card-title">Iniciar sesión en Axia4</h1>
+        
+        <form method="post">
+            <div class="card pad" style="max-width: 500px;">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="user" class="form-label"><b>Usuario:</b></label>
+                        <input required type="text" id="user" name="user" class="form-control" placeholder="Ej: PepitoFlores3">
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label"><b>Contraseña:</b></label>
+                        <input required type="password" id="password" name="password" class="form-control" placeholder="Ej: PerroArbolPianoPizza">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Iniciar sesión</button>
+                </div>
+            </div>
+        </form>
+    </div>
 </div>
 <?php require_once "_incl/post-body.php"; ?>

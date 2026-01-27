@@ -34,14 +34,16 @@ switch ($_GET["step"]) {
         require_once "_incl/pre-body.php";
 ?>
 <div class="card pad">
-    <h1>Instalación de Axia4</h1>
-    <span>Bienvenidx al asistente de instalación de Axia4. Por favor, sigue los pasos para completar la configuración inicial del sistema.</span>
-    <ol>
-        <li>Crear el usuario administrador.</li>
-        <!--<li>Configurar los ajustes básicos del sistema.</li>-->
-        <li>Finalizar la instalación y acceder al sistema.</li>
-    </ol>
-    <a href="/_install.php?step=1" class="button">Comenzar instalación</a>
+    <div class="card-body">
+        <h1 class="card-title">Instalación de Axia4</h1>
+        <span>Bienvenidx al asistente de instalación de Axia4. Por favor, sigue los pasos para completar la configuración inicial del sistema.</span>
+        <ol>
+            <li>Crear el usuario administrador.</li>
+            <!--<li>Configurar los ajustes básicos del sistema.</li>-->
+            <li>Finalizar la instalación y acceder al sistema.</li>
+        </ol>
+        <a href="/_install.php?step=1" class="btn btn-primary">Comenzar instalación</a>
+    </div>
 </div>
 <?php 
         require_once "_incl/post-body.php";
@@ -50,18 +52,20 @@ switch ($_GET["step"]) {
         require_once "_incl/pre-body.php";
 ?>
 <div class="card pad">
-    <h1>Crear usuario administrador</h1>
-    <form method="post" action="?form=create_admin">
-        <label>
-            <b>Nombre de usuario:</b><br>
-            <input required type="text" name="admin_user" placeholder="Ej: AdminUser">
-        </label><br><br>
-        <label>
-            <b>Contraseña:</b><br>
-            <input required type="password" name="admin_password" placeholder="Ej: StrongPassword123">
-        </label><br><br>
-        <button type="submit">Crear usuario administrador</button>
-    </form>
+    <div class="card-body">
+        <h1 class="card-title">Crear usuario administrador</h1>
+        <form method="post" action="?form=create_admin">
+            <div class="mb-3">
+                <label for="admin_user" class="form-label"><b>Nombre de usuario:</b></label>
+                <input required type="text" id="admin_user" name="admin_user" class="form-control" placeholder="Ej: AdminUser">
+            </div>
+            <div class="mb-3">
+                <label for="admin_password" class="form-label"><b>Contraseña:</b></label>
+                <input required type="password" id="admin_password" name="admin_password" class="form-control" placeholder="Ej: StrongPassword123">
+            </div>
+            <button type="submit" class="btn btn-primary">Crear usuario administrador</button>
+        </form>
+    </div>
 </div>
 <?php 
         require_once "_incl/post-body.php";

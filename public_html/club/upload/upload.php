@@ -1,5 +1,5 @@
 <?php
-ini_set("display_errors", 0);
+ini_set("display_errors", 1);
 $config = json_decode(file_get_contents("/DATA/club/config.json"), true);
 if (strtoupper($_GET["pw"]) != $config["uploadpw"]) {
     header("HTTP/1.1 401 Unauthorized");
@@ -33,9 +33,9 @@ for ($i = 0; $i < $file_count; $i++) {
         // Generate thumbnail
         require_once "../_incl/tools.photos.php";
         $thumbnail_path = $location . ".thumbnail";
-        if (!file_exists($thumbnail_path)) {
-            generatethumbnail($location, $thumbnail_path, 240, 0);
-        }
+        #if (!file_exists($thumbnail_path)) {
+        #    generatethumbnail($location, $thumbnail_path, 240, 0);
+        #}
         header("HTTP/1.1 200 OK");
     } else {
         header("HTTP/1.1 500 Internal Server Error");

@@ -37,32 +37,35 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 }
 ?>
 <div class="card pad">
-    <h1>¡Crea una cuenta!</h1>
-    <form method="post">
-        <fieldset class="card pad" style="border: 2px solid black; border-radius: 6.5px; max-width: 500px;">
-            <label>
-                <b>Codigo de invitación:</b>
-                <input type="text" name="invitation_code" required />
-                <small>Codigo de invitación proporcionado por un administrador.<br>Formato: 123456-ABCDEF</small>
-            </label>
-            <label>
-                <b>Usuario:</b>
-                <input type="text" name="username" required />
-            </label>
-            <label>
-                <b>Contraseña:</b>
-                <input type="password" name="password" required />
-            </label>
-            <label>
-                <b>Nombre:</b>
-                <input type="text" name="display_name" required />
-            </label>
-            <label>
-                <b>Correo electronico:</b>
-                <input type="email" name="email" required />
-            </label>
-            <button type="submit">Crear cuenta</button>
-            <br><br>
-        </fieldset>
-    </form>
+    <div class="card-body">
+        <h1 class="card-title">¡Crea una cuenta!</h1>
+        <form method="post">
+            <div class="card pad" style="max-width: 500px;">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="invitation_code" class="form-label"><b>Codigo de invitación:</b></label>
+                        <input type="text" id="invitation_code" name="invitation_code" class="form-control" required />
+                        <small>Codigo de invitación proporcionado por un administrador.<br>Formato: 123456-ABCDEF</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="username" class="form-label"><b>Usuario:</b></label>
+                        <input type="text" id="username" name="username" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label"><b>Contraseña:</b></label>
+                        <input type="password" id="password" name="password" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="display_name" class="form-label"><b>Nombre:</b></label>
+                        <input type="text" id="display_name" name="display_name" class="form-control" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label"><b>Correo electronico:</b></label>
+                        <input type="email" id="email" name="email" class="form-control" required />
+                    </div>
+                    <button type="submit" class="btn btn-primary">Crear cuenta</button>
+                </div>
+            </div>
+        </form>
+    </div>
 </div>

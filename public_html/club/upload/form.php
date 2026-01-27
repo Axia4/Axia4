@@ -7,30 +7,29 @@ if (strtoupper($_GET["p"]) != "ELPEPE") {
 $APP_CODE = "club";
 $APP_NAME = "La web del Club<sup>3</sup>";
 $APP_TITLE = "La web del Club";
-require_once "/var/www/_incl/pre-body.php"; ?>
-<div class="card pad">
-    <h1>Subir fotos</h1>
-    <form id="upload" encType="multipart/form-data">
-        <fieldset class="card"
-            style="border: 2px solid black; border-radius: 6.5px; padding: 5px 25px; max-width: 500px;">
-
-            <label id="uploader0">
-                <b>Elegir los archivos a subir (max 10)</b>
-                <input type="file" name="file[]" multiple="true" id="uploaderfileinp" />
-            </label>
+require_once "../../_incl/pre-body.php"; ?>
+<div class="card">
+    <div class="card-body">
+        <h1 class="card-title">Subir fotos</h1>
+        <form id="upload" encType="multipart/form-data">
+            <div class="mb-3">
+                <label for="uploaderfileinp" class="form-label"><b>Elegir los archivos a subir (max 10)</b></label>
+                <input type="file" id="uploaderfileinp" name="file[]" multiple="true" class="form-control" />
+            </div>
             <hr>
-            <span>
-                <b>Progreso:</b> <span id="alert">Por subir...</span>
-            </span>
-            <progress id="fileuploaderprog" max="100" value="0" style="width: 100%;">0%</progress>
-            <br>
-            <button type="submit" class="button">Subir fotos</button>
-        </fieldset>
-    </form>
+            <div class="mb-3">
+                <span><b>Progreso:</b> <span id="alert">Por subir...</span></span>
+                <div class="progress">
+                    <div id="fileuploaderprog" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;">0%</div>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Subir fotos</button>
+        </form>
+    </div>
+</div>
 
 
     <script src="js/plugin/jquery-3.6.0.min.js"></script>
     <script src="js/main.js"></script>
 
-</div>
-<?php require_once "/var/www/_incl/post-body.php"; ?>
+<?php require_once "../../_incl/post-body.php"; ?>

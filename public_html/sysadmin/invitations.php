@@ -37,22 +37,27 @@ switch ($_GET['action']) {
     case "new":
         ?>
         <div class="card pad">
-            <h1>Nueva invitación de usuario</h1>
-            <form method="post" action="?form=create">
-                <fieldset class="card pad" style="border: 2px solid black; border-radius: 6.5px; max-width: 500px;">
-                    <label>
-                        <b>Código de invitación:</b>
-                        <input type="text" name="invitation_code" required />
-                        <small>Formato: 123456-ABCDEF</small>
-                    </label>
-                    <label>
-                        <input type="checkbox" name="single_use" />
-                        <span class="checkable">Uso único</span>
-                    </label>
-                    <button type="submit">Crear invitación</button>
-                    <br><br>
-                </fieldset>
-            </form>
+            <div class="card-body">
+                <h1 class="card-title">Nueva invitación de usuario</h1>
+                <form method="post" action="?form=create">
+                    <div class="card pad" style="max-width: 500px;">
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="invitation_code" class="form-label"><b>Código de invitación:</b></label>
+                                <input type="text" id="invitation_code" name="invitation_code" class="form-control" required />
+                                <small>Formato: 123456-ABCDEF</small>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" name="single_use" id="single_use">
+                                <label class="form-check-label" for="single_use">
+                                    Uso único
+                                </label>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Crear invitación</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
         </div>
         <?php
         break;
@@ -60,32 +65,34 @@ switch ($_GET['action']) {
     case "index":
         ?>
         <div class="card pad">
-            <h1>Invitaciones de usuarios</h1>
-            <span>Desde aquí puedes gestionar las invitaciones de usuarios.</span>
-            <table>
-                <thead>
-                    <th>Codigo de invitación</th>
-                    <th>
-                        <a href="?action=new" class="button pseudo" style="background: white; color: black;">+ Nuevo</a>
-                    </th>
-                </thead>
-                <tbody>
-                    <?php
-                    $invitations = json_decode(file_get_contents("/DATA/Invitaciones_de_usuarios.json"), true);
-                    foreach ($invitations as $inv_key => $inv_data) {
-                        echo "<tr>";
-                        echo "<td>" . htmlspecialchars($inv_key) . "</td>";
-                        echo "<td>";
-                        echo '<form method="post" action="?form=delete" style="display:inline;">';
-                        echo '<input type="hidden" name="invitation_code" value="' . htmlspecialchars($inv_key) . '"/>';
-                        echo '<button type="submit" class="button danger" onclick="return confirm(\'¿Estás seguro de que deseas eliminar esta invitación?\');">Eliminar</button>';
-                        echo '</form>';
-                        echo "</td>";
-                        echo "</tr>";
-                    }
-                    ?>
-                </tbody>
-            </table>
+            <div class="card-body">
+                <h1>Invitaciones de usuarios</h1>
+                <span>Desde aquí puedes gestionar las invitaciones de usuarios.</span>
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <th>Codigo de invitación</th>
+                        <th>
+                            <a href="?action=new" class="btn btn-success">+ Nuevo</a>
+                        </th>
+                    </thead>
+                    <tbody>
+                        <?php
+                        $invitations = json_decode(file_get_contents("/DATA/Invitaciones_de_usuarios.json"), true);
+                        foreach ($invitations as $inv_key => $inv_data) {
+                            echo "<tr>";
+                            echo "<td>" . htmlspecialchars($inv_key) . "</td>";
+                            echo "<td>";
+                            echo '<form method="post" action="?form=delete" style="display:inline;">';
+                            echo '<input type="hidden" name="invitation_code" value="' . htmlspecialchars($inv_key) . '"/>';
+                            echo '<button type="submit" class="btn btn-danger" onclick="return confirm(\'¿Estás seguro de que deseas eliminar esta invitación?\');">Eliminar</button>';
+                            echo '</form>';
+                            echo "</td>";
+                            echo "</tr>";
+                        }
+                        ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
 <?php
         break;

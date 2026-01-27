@@ -82,27 +82,31 @@ switch ($_GET["action"]) {
         }
 ?>
 <div class="card pad">
-    <h1>Gestión de la Actividad: <?php echo htmlspecialchars($activity_name); ?></h1>
-    <span>
-        Desde esta sección puedes administrar la actividad seleccionada del panel del centro <?php echo htmlspecialchars($centro_id); ?>.
-    </span>
-    <form method="post" action="?form=edit_activity&centro=<?php echo urlencode($centro_id); ?>&activity=<?php echo urlencode($activity_name); ?>" enctype="multipart/form-data">
-        <label>
-            Nombre de la actividad:<br>
-            <input required type="text" name="nombre" value="<?php echo htmlspecialchars($activity_name); ?>">
-        </label><br><br>
-        Foto (pulsa para cambiarla):<br>
-        <div style="width: 200px;">
-            <label class="dropimage" style="background-image: url('<?php
-                $image_path = "$activity_path/photo.jpg";
-                $image_fetchpath = file_exists($image_path) ? "/entreaulas/_filefetch.php?type=panel_actividades&centro=" . urlencode($centro_id) . "&activity=" . urlencode($activity_name) : '/static/logo-entreaulas.png';
-                echo htmlspecialchars($image_fetchpath);
-            ?>');">
-                <input title="Drop image or click me" type="file" name="file" accept="image/*">
-            </label>
-        </div>
-        <button type="submit">Guardar Cambios</button>
-    </form>
+    <div class="card-body">
+        <h1 class="card-title">Gestión de la Actividad: <?php echo htmlspecialchars($activity_name); ?></h1>
+        <span>
+            Desde esta sección puedes administrar la actividad seleccionada del panel del centro <?php echo htmlspecialchars($centro_id); ?>.
+        </span>
+        <form method="post" action="?form=edit_activity&centro=<?php echo urlencode($centro_id); ?>&activity=<?php echo urlencode($activity_name); ?>" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label for="nombre" class="form-label">Nombre de la actividad:</label>
+                <input required type="text" id="nombre" name="nombre" class="form-control" value="<?php echo htmlspecialchars($activity_name); ?>">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Foto (pulsa para cambiarla):</label><br>
+                <div style="width: 200px;">
+                    <label class="dropimage" style="background-image: url('<?php
+                        $image_path = "$activity_path/photo.jpg";
+                        $image_fetchpath = file_exists($image_path) ? "/entreaulas/_filefetch.php?type=panel_actividades&centro=" . urlencode($centro_id) . "&activity=" . urlencode($activity_name) : '/static/logo-entreaulas.png';
+                        echo htmlspecialchars($image_fetchpath);
+                    ?>');">
+                        <input title="Drop image or click me" type="file" name="file" accept="image/*">
+                    </label>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+        </form>
+    </div>
 </div>
 <?php
         break;
@@ -114,38 +118,42 @@ switch ($_GET["action"]) {
         }
 ?>
 <div class="card pad">
-    <h1>Nueva Actividad del Panel</h1>
-    <span>
-        Aquí puedes crear una nueva actividad para el panel del centro <?php echo htmlspecialchars($centro_id); ?>.
-    </span>
-    <form method="post" action="?form=create_activity&centro=<?php echo urlencode($centro_id); ?>" enctype="multipart/form-data">
-        <label>
-            Nombre de la actividad:<br>
-            <input required type="text" name="name" placeholder="Ej: Biblioteca">
-        </label><br><br>
-        <label>
-            Foto:<br>
-            <input required type="file" name="photo" accept="image/*">
-        </label><br><br>
-        <button type="submit">Crear Actividad</button>
-    </form>
+    <div class="card-body">
+        <h1 class="card-title">Nueva Actividad del Panel</h1>
+        <span>
+            Aquí puedes crear una nueva actividad para el panel del centro <?php echo htmlspecialchars($centro_id); ?>.
+        </span>
+        <form method="post" action="?form=create_activity&centro=<?php echo urlencode($centro_id); ?>" enctype="multipart/form-data">
+            <div class="mb-3">
+                <label for="name" class="form-label">Nombre de la actividad:</label>
+                <input required type="text" id="name" name="name" class="form-control" placeholder="Ej: Biblioteca">
+            </div>
+            <div class="mb-3">
+                <label for="photo" class="form-label">Foto:</label>
+                <input required type="file" id="photo" name="photo" class="form-control" accept="image/*">
+            </div>
+            <button type="submit" class="btn btn-primary">Crear Actividad</button>
+        </form>
+    </div>
 </div>
 <?php
         break;
     case "new":
         ?>
 <div class="card pad">
-    <h1>Nuevo Centro</h1>
-    <span>
-        Aquí puedes crear un nuevo centro para el sistema.
-    </span>
-    <form method="post" action="?form=create">
-        <label>
-            ID del centro:<br>
-            <input required type="text" name="name" placeholder="Ej: Centro-Principal-001">
-        </label><br><br>
-        <button type="submit">Crear Centro</button>
-    </form>
+    <div class="card-body">
+        <h1 class="card-title">Nuevo Centro</h1>
+        <span>
+            Aquí puedes crear un nuevo centro para el sistema.
+        </span>
+        <form method="post" action="?form=create">
+            <div class="mb-3">
+                <label for="name" class="form-label">ID del centro:</label>
+                <input required type="text" id="name" name="name" class="form-control" placeholder="Ej: Centro-Principal-001">
+            </div>
+            <button type="submit" class="btn btn-primary">Crear Centro</button>
+        </form>
+    </div>
 </div>
 
 <?php
@@ -158,66 +166,72 @@ switch ($_GET["action"]) {
         }
 ?>
 <div class="card pad">
-    <h1>Gestión del Centro: <?php echo htmlspecialchars($centro_id); ?></h1>
-    <span>
-        Desde esta sección puedes administrar el centro seleccionado.
-    </span>
+    <div class="card-body">
+        <h1 class="card-title">Gestión del Centro: <?php echo htmlspecialchars($centro_id); ?></h1>
+        <span>
+            Desde esta sección puedes administrar el centro seleccionado.
+        </span>
+    </div>
 </div>
 <div class="card pad">
-    <h2>Aularios</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Icono</th>
-                <th>Nombre</th>
-                <th>
-                    <a href="/sysadmin/aularios.php?action=new&centro=<?php echo urlencode($centro_id); ?>" class="button pseudo" style="background: white; color: black;">+ Nuevo</a>
-                </th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php
-            $aulas_filelist = glob("/DATA/entreaulas/Centros/$centro_id/Aularios/*.json");
-            foreach ($aulas_filelist as $aula_file) {
-                $aula_data = json_decode(file_get_contents($aula_file), true);
-                echo '<tr>';
-                echo '<td><img src="' . htmlspecialchars($aula_data['icon'] ?? '/static/logo-entreaulas.png') . '" alt="Icono" style="height: 50px;"></td>';
-                echo '<td>' . htmlspecialchars($aula_data['name'] ?? 'Sin Nombre') . '</td>';
-                echo '<td><a href="/sysadmin/aularios.php?action=edit&aulario=' . urlencode(basename($aula_file, ".json")) . '&centro=' . urlencode($centro_id) . '" class="button">Gestionar</a></td>';
-                echo '</tr>';
-            }
-            ?>
-        </tbody>
-    </table>
+    <div class="card-body">
+        <h2>Aularios</h2>
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Icono</th>
+                    <th>Nombre</th>
+                    <th>
+                        <a href="/sysadmin/aularios.php?action=new&centro=<?php echo urlencode($centro_id); ?>" class="btn btn-success">+ Nuevo</a>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                $aulas_filelist = glob("/DATA/entreaulas/Centros/$centro_id/Aularios/*.json");
+                foreach ($aulas_filelist as $aula_file) {
+                    $aula_data = json_decode(file_get_contents($aula_file), true);
+                    echo '<tr>';
+                    echo '<td><img src="' . htmlspecialchars($aula_data['icon'] ?? '/static/logo-entreaulas.png') . '" alt="Icono" style="height: 50px;"></td>';
+                    echo '<td>' . htmlspecialchars($aula_data['name'] ?? 'Sin Nombre') . '</td>';
+                    echo '<td><a href="/sysadmin/aularios.php?action=edit&aulario=' . urlencode(basename($aula_file, ".json")) . '&centro=' . urlencode($centro_id) . '" class="btn btn-primary">Gestionar</a></td>';
+                    echo '</tr>';
+                }
+                ?>
+            </tbody>
+        </table>
+    </div>
 </div>
 <div class="card pad">
-    <h2>Actividades del panel</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Foto</th>
-                <th>Nombre</th>
-                <th>
-                    <a href="?action=new_activity&centro=<?php echo urlencode($centro_id); ?>" class="button pseudo" style="background: white; color: black;">+ Nuevo</a>
-                </th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php
-            $activities = glob("/DATA/entreaulas/Centros/$centro_id/Panel/Actividades/*", GLOB_ONLYDIR);
-            foreach ($activities as $activity_path) {
-                $activity_name = basename($activity_path);
-                $image_path = "/DATA/entreaulas/Centros/$centro_id/Panel/Actividades/" . basename($activity_name) . "/photo.jpg";
-                $image_fetchpath = file_exists($image_path) ? "/entreaulas/_filefetch.php?type=panel_actividades&centro=" . urlencode($centro_id) . "&activity=" . urlencode(basename($activity_name)) : '/static/logo-entreaulas.png';
-                echo '<tr>';
-                echo '<td><img src="' . htmlspecialchars($image_fetchpath) . '" alt="Foto" style="height: 50px;"></td>';
-                echo '<td>' . htmlspecialchars($activity_name) . '</td>';
-                echo '<td><a href="?action=edit_activity&centro=' . urlencode($centro_id) . '&activity=' . urlencode($activity_name) . '" class="button">Gestionar</a></td>';
-                echo '</tr>';
-            }
-            ?>
-        </tbody>
-    </table>
+    <div class="card-body">
+        <h2>Actividades del panel</h2>
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Foto</th>
+                    <th>Nombre</th>
+                    <th>
+                        <a href="?action=new_activity&centro=<?php echo urlencode($centro_id); ?>" class="btn btn-success">+ Nuevo</a>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                $activities = glob("/DATA/entreaulas/Centros/$centro_id/Panel/Actividades/*", GLOB_ONLYDIR);
+                foreach ($activities as $activity_path) {
+                    $activity_name = basename($activity_path);
+                    $image_path = "/DATA/entreaulas/Centros/$centro_id/Panel/Actividades/" . basename($activity_name) . "/photo.jpg";
+                    $image_fetchpath = file_exists($image_path) ? "/entreaulas/_filefetch.php?type=panel_actividades&centro=" . urlencode($centro_id) . "&activity=" . urlencode(basename($activity_name)) : '/static/logo-entreaulas.png';
+                    echo '<tr>';
+                    echo '<td><img src="' . htmlspecialchars($image_fetchpath) . '" alt="Foto" style="height: 50px;"></td>';
+                    echo '<td>' . htmlspecialchars($activity_name) . '</td>';
+                    echo '<td><a href="?action=edit_activity&centro=' . urlencode($centro_id) . '&activity=' . urlencode($activity_name) . '" class="btn btn-primary">Gestionar</a></td>';
+                    echo '</tr>';
+                }
+                ?>
+            </tbody>
+        </table>
+    </div>
 </div>
 
     <?php
@@ -226,33 +240,35 @@ switch ($_GET["action"]) {
     default:
 ?>
 <div class="card pad">
-    <h1>Gestión de Centros</h1>
-    <span>
-        Desde esta sección puedes administrar los centros asociados al sistema.
-    </span>
-    <table>
-        <thead>
-            <tr>
-                <th>Nombre</th>
-                <th>
-                    <a href="?action=new" class="button pseudo" style="background: white; color: black;">+ Nuevo</a>
-                </th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php
-            $user_data = $_SESSION["auth_data"];
-            $centros_filelist = glob("/DATA/entreaulas/Centros/*");
-            foreach ($centros_filelist as $centro_folder) {
-                $centro_id = basename($centro_folder);
-                echo '<tr>';
-                echo '<td>' . htmlspecialchars($centro_id) . '</td>';
-                echo '<td><a href="?action=edit&centro=' . urlencode($centro_id) . '" class="button">Gestionar</a></td>';
-                echo '</tr>';
-            }
-            ?>
-        </tbody>
-    </table>
+    <div class="card-body">
+        <h1 class="card-title">Gestión de Centros</h1>
+        <span>
+            Desde esta sección puedes administrar los centros asociados al sistema.
+        </span>
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Nombre</th>
+                    <th>
+                        <a href="?action=new" class="btn btn-success">+ Nuevo</a>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php
+                $user_data = $_SESSION["auth_data"];
+                $centros_filelist = glob("/DATA/entreaulas/Centros/*");
+                foreach ($centros_filelist as $centro_folder) {
+                    $centro_id = basename($centro_folder);
+                    echo '<tr>';
+                    echo '<td>' . htmlspecialchars($centro_id) . '</td>';
+                    echo '<td><a href="?action=edit&centro=' . urlencode($centro_id) . '" class="btn btn-primary">Gestionar</a></td>';
+                    echo '</tr>';
+                }
+                ?>
+            </tbody>
+        </table>
+    </div>
 </div>
 <?php 
         break;

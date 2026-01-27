@@ -42,7 +42,7 @@ switch ($_GET["action"]) {
     </span>
     <form method="get" action="">
         <input type="hidden" name="action" value="generate_thumbs">
-        <button type="submit">Generar Miniaturas</button>
+        <button type="submit" class="btn btn-primary">Generar Miniaturas</button>
     </form>
 </div>
 <?php 

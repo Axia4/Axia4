@@ -9,19 +9,19 @@ require_once "_incl/pre-body.php"; ?>
     <div class="card grid-item">
         <img src="/static/logo-entreaulas.png" alt="Logo EntreAulas">
         <b>EntreAulas</b>
-        <a href="/sysadmin/centros.php" class="button">Gestionar Centros</a>
-        <a href="/sysadmin/aularios.php" class="button">Gestionar Aularios</a>
+        <a href="/sysadmin/centros.php" class="btn btn-primary">Gestionar Centros</a>
+        <a href="/sysadmin/aularios.php" class="btn btn-primary">Gestionar Aularios</a>
     </div>
     <div class="card grid-item">
         <img src="/static/logo-account.png" alt="Logo Mi Cuenta">
         <b>Mi Cuenta</b>
-        <a href="/sysadmin/users.php" class="button">Gestionar Usuarios</a>
-        <a href="/sysadmin/invitations.php" class="button">Gestionar Invitaciones</a>
+        <a href="/sysadmin/users.php" class="btn btn-primary">Gestionar Usuarios</a>
+        <a href="/sysadmin/invitations.php" class="btn btn-primary">Gestionar Invitaciones</a>
     </div>
     <div class="card grid-item">
         <img src="/static/logo-club.png" alt="Logo Club">
         <b>La web del Club</b>
-        <a href="/sysadmin/club_mkthumb.php" class="button">Generar Miniaturas</a>
+        <a href="/sysadmin/club_mkthumb.php" class="btn btn-primary">Generar Miniaturas</a>
     </div>
 </div>
 <style>

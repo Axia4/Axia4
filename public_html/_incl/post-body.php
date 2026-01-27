@@ -1,4 +1,5 @@
     </main>
+    <script src="/static/bootstrap.bundle.min.js"></script>
     <script>
       document.addEventListener("DOMContentLoaded", function() {
         console.log("post-body loaded");
