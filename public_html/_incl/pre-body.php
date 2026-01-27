@@ -166,11 +166,7 @@ if (!isset($APP_CODE)) {
             </button>
             <div class="collapse navbar-collapse" id="navbarColor01">
               <ul class="navbar-nav me-auto">
-                <li class="nav-item">
-                  <a class="nav-link active" href="<?php echo $APP_ROOT ?? ""; ?>">Inicio
-                    <span class="visually-hidden">(current)</span>
-                  </a>
-                </li>
+                <a class="btn btn-secondary" href="/<?= $APP_CODE ?>/">Inicio</a>
                 <?php if (file_exists("../$APP_CODE/__menu.php")) { ?>
                   <?php require_once "../$APP_CODE/__menu.php"; ?>
                 <?php } ?>
