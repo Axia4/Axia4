@@ -80,7 +80,7 @@ switch ($_GET["action"]) {
             </div>
             <div class="mb-3">
                 <label for="icon" class="form-label">Icono del Aulario (URL):</label>
-                <input type="text" id="icon" name="icon" class="form-control" value="<?php echo htmlspecialchars($aulario_data['icon'] ?? '/static/logo-entreaulas.png'); ?>">
+                <input type="text" id="icon" name="icon" class="form-control" value="<?php echo htmlspecialchars($aulario_data['icon'] ?? '/static/iconexperience/blackboard.png'); ?>">
             </div>
             <input type="hidden" name="aulario_id" value="<?php echo htmlspecialchars($aulario_id); ?>">
             <input type="hidden" name="centro_id" value="<?php echo htmlspecialchars($centro_id); ?>">

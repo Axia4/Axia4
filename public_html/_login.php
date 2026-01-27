@@ -9,6 +9,14 @@ if ($_GET["reload_user"] == "1") {
     die();
 }
 if ($_GET["logout"] == "1") {
+    $redir = $_GET["redir"] ?? "/";
+    unset($_COOKIE["auth_user"]);
+    unset($_COOKIE["auth_pass_b64"]);
+    session_destroy();
+    header("Location: $redir");
+    die();
+}
+if ($_GET["clear_session"] == "1") {
     session_destroy();
     $redir = $_GET["redir"] ?? "/";
     header("Location: $redir");
@@ -28,6 +36,8 @@ if (isset($_POST["user"])) {
         $_SESSION['auth_user'] = $user;
         $_SESSION['auth_data'] = $userdata;
         $_SESSION['auth_ok'] = true;
+        setcookie("auth_user", $user, time() + (86400 * 30), "/");
+        setcookie("auth_pass_b64", base64_encode($password), time() + (86400 * 30), "/");
         $redir = $_GET["redir"] ?? "/";
         header("Location: $redir");
         die();

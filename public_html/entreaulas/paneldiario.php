@@ -52,19 +52,19 @@ switch ($_GET["action"]) {
     <div id="grid">
       <!-- Calendario -->
       <a onclick="document.getElementById('click-sound').play()" href="?action=calendar&aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>" class="btn btn-primary grid-item">
-        <img src="/static/arasaac/calendario.png" height="125">
+        <img src="/static/arasaac/calendario.png" height="125" class="bg-white">
         <br>
         Calendario
       </a>
       <!-- Actividades -->
       <a onclick="document.getElementById('click-sound').play()" href="?action=actividades&aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>" class="btn btn-primary grid-item">
-        <span class="iconify" style="font-size: 125px" data-icon="mdi-school"></span>
+        <img src="/static/arasaac/actividad.png" height="125" class="bg-white">
         <br>
         Actividades
       </a>
       <!-- Menú del comedor -->
       <a onclick="document.getElementById('click-sound').play()" href="?action=menu&aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>" class="btn btn-primary grid-item">
-        <span class="iconify" style="font-size: 125px" data-icon="mdi-silverware-fork-knife"></span>
+        <img src="/static/arasaac/comedor.png" height="125" class="bg-white">
         <br>
         Menú del Comedor
       </a>
