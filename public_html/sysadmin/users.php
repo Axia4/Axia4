@@ -28,7 +28,43 @@ switch ($_GET['form'] ?? '') {
 
 switch ($_GET['action'] ?? '') {
   case 'add':
-    $pageTitle = "Agregar Usuario";
+    require_once "_incl/pre-body.php";
+?>
+<form method="post" action="?form=save_edit">
+  <div class="card pad">
+    <h1>Agregar Nuevo Usuario</h1>
+    <label>
+      Nombre de usuario:<br>
+      <input type="text" name="username" required>
+    </label><br><br>
+    <label>
+      Nombre para mostrar:<br>
+      <input type="text" name="display_name" required>
+    </label><br><br>
+    <label>
+      Correo electrónico:<br>
+      <input type="email" name="email" required>
+    </label><br><br>
+    <b>Permisos:</b>
+    <details open>
+      <summary>Administración del sistema</summary>
+      <label style="padding: 5px; border: 1.5px solid #000; display: inline-block; margin-bottom: 5px; border-radius: 5px;">
+        <input type="checkbox" name="permissions[]" value="sysadmin:access">
+        <span class="checkable">Acceso</span>
+      </label>
+    </details>
+    <details open>
+      <summary>EntreAulas</summary>
+      <label style="padding: 5px; border: 1.5px solid #000; display: inline-block; margin-bottom: 5px; border-radius: 5px;">
+        <input type="checkbox" name="permissions[]" value="entreaulas:access">
+        <span class="checkable">Acceso</span>
+      </label>
+    </details>
+    <button type="submit">Crear Usuario</button>
+  </div>
+</form>
+<?php
+    require_once "_incl/post-body.php";
     break;
   case 'edit':
     require_once "_incl/pre-body.php";
