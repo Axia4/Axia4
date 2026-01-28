@@ -37,11 +37,11 @@ switch ($_GET['action']) {
     case "new":
         ?>
         <div class="card pad">
-            <div class="card-body">
+            <div>
                 <h1 class="card-title">Nueva invitación de usuario</h1>
                 <form method="post" action="?form=create">
                     <div class="card pad" style="max-width: 500px;">
-                        <div class="card-body">
+                        <div>
                             <div class="mb-3">
                                 <label for="invitation_code" class="form-label"><b>Código de invitación:</b></label>
                                 <input type="text" id="invitation_code" name="invitation_code" class="form-control" required />
@@ -65,7 +65,7 @@ switch ($_GET['action']) {
     case "index":
         ?>
         <div class="card pad">
-            <div class="card-body">
+            <div>
                 <h1>Invitaciones de usuarios</h1>
                 <span>Desde aquí puedes gestionar las invitaciones de usuarios.</span>
                 <table class="table table-striped table-hover">

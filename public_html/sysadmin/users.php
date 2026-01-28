@@ -32,7 +32,7 @@ switch ($_GET['action'] ?? '') {
 ?>
 <form method="post" action="?form=save_edit">
   <div class="card pad">
-    <div class="card-body">
+    <div>
       <h1 class="card-title">Agregar Nuevo Usuario</h1>
       <div class="mb-3">
         <label for="username" class="form-label">Nombre de usuario:</label>
@@ -97,7 +97,7 @@ switch ($_GET['action'] ?? '') {
 ?>
 <form method="post" action="?form=save_edit">
   <div class="card pad">
-    <div class="card-body">
+    <div>
       <h1>Editar Usuario: <?php echo htmlspecialchars($username); ?></h1>
       <div class="mb-3">
         <label for="display_name" class="form-label">Nombre para mostrar:</label>
@@ -149,7 +149,7 @@ switch ($_GET['action'] ?? '') {
     </div>
   </div>
   <div class="card pad">
-    <div class="card-body">
+    <div>
       <h2>EntreAulas: Configuración</h2>
       <div class="mb-3">
         <label for="centro" class="form-label">Centro asociado:</label>
@@ -194,7 +194,7 @@ switch ($_GET['action'] ?? '') {
     </div>
   </div>
   <div class="card pad">
-    <div class="card-body">
+    <div>
       <h2>Cambiar contraseña</h2>
       <p>Para cambiar la contraseña de este usuario, utiliza la herramienta de restablecimiento de contraseñas disponible en el siguiente enlace:</p>
       <a href="/sysadmin/reset_password.php?user=<?php echo urlencode($username); ?>" class="btn btn-secondary">Restablecer Contraseña</a>
@@ -209,7 +209,7 @@ switch ($_GET['action'] ?? '') {
     require_once "_incl/pre-body.php";
   ?>
     <div class="card pad">
-      <div class="card-body">
+      <div>
         <h1>Gestión de Usuarios</h1>
         <p>Desde esta sección puedes gestionar los usuarios del sistema. Puedes agregar, editar o eliminar usuarios según sea necesario.</p>
         <table class="table table-striped table-hover">

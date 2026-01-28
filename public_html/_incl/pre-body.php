@@ -141,6 +141,14 @@ if (!isset($APP_CODE)) {
     .bg-custom {
       background-color: #9013FE;
     }
+
+    :root {
+      --bs-btn-font-family: Arial, Helvetica, sans-serif;
+      --bs-body-font-family: Arial, Helvetica, sans-serif;
+      --bs-font-sans-serif: Arial, Helvetica, sans-serif;
+      --bs-font-family-base: Arial, Helvetica, sans-serif;
+      --bs-heading-font-family: Arial, Helvetica, sans-serif;
+    }
   </style>
 
   <script src="/static/masonry.pkgd.min.js"></script>
@@ -167,7 +175,7 @@ if (!isset($APP_CODE)) {
             </button>
             <div class="collapse navbar-collapse" id="navbarColor01">
               <ul class="navbar-nav me-auto">
-                <a class="btn btn-secondary" href="/<?= $APP_CODE ?>/">Inicio</a>
+                <a class="btn btn-secondary" href="<?= $APP_ROOT ?>">Inicio</a>
                 <?php if (file_exists("../$APP_CODE/__menu.php")) { ?>
                   <?php require_once "../$APP_CODE/__menu.php"; ?>
                 <?php } ?>

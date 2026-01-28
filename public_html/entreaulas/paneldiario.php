@@ -14,7 +14,7 @@ switch ($_GET["form"]) {
     header("Refresh: 10; URL=/entreaulas/paneldiario.php?aulario=" . urlencode($_GET['aulario'] ?? ''));
     ?>
     <div class="card pad">
-        <div class="card-body">
+        <div>
             <h1 class="card-title">Menú Seleccionado</h1>
             <span>
                 Has seleccionado el siguiente menú para el día <?php echo htmlspecialchars($selected_date); ?>:
@@ -42,11 +42,8 @@ switch ($_GET["action"]) {
   case "index":
     ?>
     <div class="card pad">
-        <div class="card-body">
-            <h1 class="card-title">Panel diario</h1>
-            <span>
-                Desde este panel puedes apuntar las actividades diarias del aulario.
-            </span>
+        <div>
+            <h1 class="card-title">Panel Diario</h1>
         </div>
     </div>
     <div id="grid">
@@ -54,19 +51,19 @@ switch ($_GET["action"]) {
       <a onclick="document.getElementById('click-sound').play()" href="?action=calendar&aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>" class="btn btn-primary grid-item">
         <img src="/static/arasaac/calendario.png" height="125" class="bg-white">
         <br>
-        Calendario
+        ¿Que dia es?
       </a>
       <!-- Actividades -->
       <a onclick="document.getElementById('click-sound').play()" href="?action=actividades&aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>" class="btn btn-primary grid-item">
         <img src="/static/arasaac/actividad.png" height="125" class="bg-white">
         <br>
-        Actividades
+        ¿Que vamos a hacer?
       </a>
       <!-- Menú del comedor -->
       <a onclick="document.getElementById('click-sound').play()" href="?action=menu&aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>" class="btn btn-primary grid-item">
         <img src="/static/arasaac/comedor.png" height="125" class="bg-white">
         <br>
-        Menú del Comedor
+        ¿Que vamos a comer?
       </a>
     </div>
 
@@ -100,34 +97,28 @@ switch ($_GET["action"]) {
     <?php
     break;
   case "actividades":
-    // Actividades, establecidas en /DATA/entreaulas/Centros/$centro/Panel/Actividades/<nombre>/photo.jpg
-    $aulario_id = $_GET['aulario'] ?? '';
-    $centro_id = $_SESSION["auth_data"]["entreaulas"]["centro"];
-    $actividades_paths = glob("/DATA/entreaulas/Centros/$centro_id/Panel/Actividades/*/photo.jpg");
+    $actividades = glob("/DATA/entreaulas/Centros/" . $_SESSION["auth_data"]["entreaulas"]["centro"] . "/Panel/Actividades/*", GLOB_ONLYDIR);
     ?>
-    <div class="card pad">
-        <div class="card-body">
-            <h1 class="card-title">Actividades</h1>
-            <span>
-                Aquí podrás ver y seleccionar las actividades del día para el aulario.
-            </span>
+    <script>
+      function seleccionarActividad(element, actividad) {
+        element.style.backgroundColor = "#9cff9f"; // Verde
+        document.getElementById('win-sound').play();
+        setTimeout(() => {
+          window.location.href = "/entreaulas/paneldiario.php?aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>";
+        }, 2000);
+      }
+    </script>
+      <div class="card pad">
+        <div>
+            <h1 class="card-title">¿Que vamos a hacer?</h1>
         </div>
     </div>
     <div id="grid">
-      <script>
-        function seleccionarActividad(element, actividad) {
-          element.style.backgroundColor = "#9cff9f"; // Verde
-          document.getElementById('win-sound').play();
-          setTimeout(() => {
-            location.href = "?aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>";
-          }, 2000);
-        }
-      </script>
-      <?php foreach ($actividades_paths as $actividad_path) { 
-        $actividad_name = basename(dirname($actividad_path));
-        ?>
-        <a class="card grid-item" onclick="seleccionarActividad(this, '<?php echo htmlspecialchars($actividad_name); ?>')">
-          <img src="_filefetch.php?type=panel_actividades&centro=<?= urlencode($centro_id) ?>&activity=<?= urlencode($actividad_name) ?>" height="150">
+      <?php foreach ($actividades as $actividad_path) {
+        $actividad_name = basename($actividad_path);
+      ?>
+        <a class="card grid-item" style="color: black;" onclick="seleccionarActividad(this, '<?php echo htmlspecialchars($actividad_name); ?>');">
+          <img src="_filefetch.php?type=panel_actividades&activity=<?php echo urlencode($actividad_name); ?>&centro=<?php echo urlencode($_SESSION["auth_data"]["entreaulas"]["centro"]); ?>" height="125" class="bg-white">
           <br>
           <?php echo htmlspecialchars($actividad_name); ?>
         </a>
@@ -266,7 +257,7 @@ switch ($_GET["action"]) {
       }
     </script>
     <div class="card pad">
-      <h1>Menú del Comedor</h1>
+      <h1>¿Que vamos a comer?</h1>
     </div>
     <div class="grid">
       <?php for ($d = 1; $d <= 31; $d++) {
@@ -300,6 +291,7 @@ switch ($_GET["action"]) {
         padding: 15px;
         width: 250px;
         text-align: center;
+        text-decoration: none;
       }
 
       .grid-item img {
@@ -328,10 +320,7 @@ switch ($_GET["action"]) {
     $ds_correcto = date('N'); // 1 (Lunes) a 7 (Domingo)
     ?>
     <div class="card pad">
-      <h1>Calendario</h1>
-      <span>
-        Aquí podrás ver y gestionar el calendario de actividades del aulario.
-      </span>
+      <h1>¿Que dia es?</h1>
     </div>
     <div class="grid">
       <script>
@@ -403,10 +392,7 @@ switch ($_GET["action"]) {
     $dia_de_la_semana = date('N'); // 1 (Lunes) a 7 (Domingo)
     ?>
     <div class="card pad">
-      <h1>Calendario - Día de la Semana</h1>
-      <span>
-        Has seleccionado el día correcto. ¡Ahora pon el dia de la semana!
-      </span>
+      <h1>¿Que día de la semana es?</h1>
     </div>
     <div class="grid">
       <script>
@@ -513,10 +499,7 @@ switch ($_GET["action"]) {
     ];
     ?>
     <div class="card pad">
-      <h1>Calendario - Mes</h1>
-      <span>
-        Has seleccionado el día y el día de la semana correctos. ¡Ahora pon el mes!
-      </span>
+      <h1>¿Que mes es?</h1>
     </div>
     <div class="grid">
       <script>

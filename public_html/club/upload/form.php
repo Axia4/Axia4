@@ -9,7 +9,7 @@ $APP_NAME = "La web del Club<sup>3</sup>";
 $APP_TITLE = "La web del Club";
 require_once "../../_incl/pre-body.php"; ?>
 <div class="card">
-    <div class="card-body">
+    <div>
         <h1 class="card-title">Subir fotos</h1>
         <form id="upload" encType="multipart/form-data">
             <div class="mb-3">

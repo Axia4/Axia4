@@ -37,11 +37,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 }
 ?>
 <div class="card pad">
-    <div class="card-body">
+    <div>
         <h1 class="card-title">¡Crea una cuenta!</h1>
         <form method="post">
             <div class="card pad" style="max-width: 500px;">
-                <div class="card-body">
+                <div>
                     <div class="mb-3">
                         <label for="invitation_code" class="form-label"><b>Codigo de invitación:</b></label>
                         <input type="text" id="invitation_code" name="invitation_code" class="form-control" required />

@@ -82,7 +82,7 @@ switch ($_GET["action"]) {
         }
 ?>
 <div class="card pad">
-    <div class="card-body">
+    <div>
         <h1 class="card-title">Gestión de la Actividad: <?php echo htmlspecialchars($activity_name); ?></h1>
         <span>
             Desde esta sección puedes administrar la actividad seleccionada del panel del centro <?php echo htmlspecialchars($centro_id); ?>.
@@ -118,7 +118,7 @@ switch ($_GET["action"]) {
         }
 ?>
 <div class="card pad">
-    <div class="card-body">
+    <div>
         <h1 class="card-title">Nueva Actividad del Panel</h1>
         <span>
             Aquí puedes crear una nueva actividad para el panel del centro <?php echo htmlspecialchars($centro_id); ?>.
@@ -141,7 +141,7 @@ switch ($_GET["action"]) {
     case "new":
         ?>
 <div class="card pad">
-    <div class="card-body">
+    <div>
         <h1 class="card-title">Nuevo Centro</h1>
         <span>
             Aquí puedes crear un nuevo centro para el sistema.
@@ -166,7 +166,7 @@ switch ($_GET["action"]) {
         }
 ?>
 <div class="card pad">
-    <div class="card-body">
+    <div>
         <h1 class="card-title">Gestión del Centro: <?php echo htmlspecialchars($centro_id); ?></h1>
         <span>
             Desde esta sección puedes administrar el centro seleccionado.
@@ -174,7 +174,7 @@ switch ($_GET["action"]) {
     </div>
 </div>
 <div class="card pad">
-    <div class="card-body">
+    <div>
         <h2>Aularios</h2>
         <table class="table table-striped table-hover">
             <thead class="table-dark">
@@ -203,7 +203,7 @@ switch ($_GET["action"]) {
     </div>
 </div>
 <div class="card pad">
-    <div class="card-body">
+    <div>
         <h2>Actividades del panel</h2>
         <table class="table table-striped table-hover">
             <thead class="table-dark">
@@ -240,7 +240,7 @@ switch ($_GET["action"]) {
     default:
 ?>
 <div class="card pad">
-    <div class="card-body">
+    <div>
         <h1 class="card-title">Gestión de Centros</h1>
         <span>
             Desde esta sección puedes administrar los centros asociados al sistema.

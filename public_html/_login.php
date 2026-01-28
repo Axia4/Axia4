@@ -10,8 +10,8 @@ if ($_GET["reload_user"] == "1") {
 }
 if ($_GET["logout"] == "1") {
     $redir = $_GET["redir"] ?? "/";
-    unset($_COOKIE["auth_user"]);
-    unset($_COOKIE["auth_pass_b64"]);
+    setcookie("auth_user", "", time() - 3600, "/");
+    setcookie("auth_pass_b64", "", time() - 3600, "/");
     session_destroy();
     header("Location: $redir");
     die();
@@ -52,12 +52,12 @@ if (!file_exists("/DATA/SISTEMA_INSTALADO.txt")) {
 }
 require_once "_incl/pre-body.php"; ?>
 <div class="card pad">
-    <div class="card-body">
+    <div>
         <h1 class="card-title">Iniciar sesión en Axia4</h1>
         
         <form method="post">
             <div class="card pad" style="max-width: 500px;">
-                <div class="card-body">
+                <div>
                     <div class="mb-3">
                         <label for="user" class="form-label"><b>Usuario:</b></label>
                         <input required type="text" id="user" name="user" class="form-control" placeholder="Ej: PepitoFlores3">

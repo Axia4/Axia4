@@ -2,7 +2,7 @@
 require_once "_incl/auth_redir.php";
 require_once "_incl/pre-body.php";?>
 <div class="card pad">
-    <div class="card-body">
+    <div>
         <h1 class="card-title">¡Hola, <?php echo $_SESSION["auth_data"]["display_name"];?>!</h1>
         <span>
             Bienvenidx a la plataforma de gestión de aularios conectados. Desde aquí podrás administrar los aularios asociados a tu cuenta.

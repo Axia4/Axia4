@@ -27,7 +27,7 @@ switch ($_GET["action"]) {
     case "new":
         ?>
 <div class="card pad">
-    <div class="card-body">
+    <div>
         <h1 class="card-title">Nuevo Aulario</h1>
         <span>
             Aquí puedes crear un nuevo aulario para el centro que administras.
@@ -71,7 +71,7 @@ switch ($_GET["action"]) {
         $aulario_data = json_decode(file_get_contents($aulario_file), true);
 ?>
 <div class="card pad">
-    <div class="card-body">
+    <div>
         <h1 class="card-title">Editar Aulario: <?php echo htmlspecialchars($aulario_data['name'] ?? 'Sin Nombre'); ?></h1>
         <form method="post" action="?form=save_edit">
             <div class="mb-3">
@@ -94,7 +94,7 @@ switch ($_GET["action"]) {
     default:
 ?>
 <div class="card pad">
-    <div class="card-body">
+    <div>
         <h1 class="card-title">Gestión de Aularios</h1>
         <span>
             Desde esta sección puedes administrar los aularios asociados al centro que estás administrando.

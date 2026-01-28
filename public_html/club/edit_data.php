@@ -23,12 +23,12 @@ $APP_NAME = "La web del Club<sup>3</sup>";
 $APP_TITLE = "La web del Club";
 require_once "../_incl/pre-body.php"; ?>
 <div class="card">
-    <div class="card-body">
+    <div>
         <h1 class="card-title">Editar datos</h1>
         
         <form method="post">
             <div class="card" style="max-width: 500px;">
-                <div class="card-body">
+                <div>
                     <div class="mb-3">
                         <label for="adminpw" class="form-label"><b>Contraseña de administración:</b></label>
                         <input required type="text" id="adminpw" name="adminpw" class="form-control" placeholder="Contraseña admin">

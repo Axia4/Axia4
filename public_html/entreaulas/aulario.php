@@ -6,7 +6,7 @@ $centro_id = $_SESSION["auth_data"]["entreaulas"]["centro"];
 $aulario = json_decode(file_get_contents("/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json"), true);
 ?>
 <div class="card pad">
-    <div class="card-body">
+    <div>
         <h1 class="card-title">Aulario: <?= htmlspecialchars($aulario["name"]) ?></h1>
         <span>
             Bienvenidx al aulario <?= htmlspecialchars($aulario["name"]) ?>. Aquí podrás gestionar las funcionalidades específicas de este aulario.
