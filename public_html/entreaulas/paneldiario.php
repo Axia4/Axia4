@@ -100,9 +100,10 @@ switch ($_GET["action"]) {
     <?php
     break;
   case "actividades":
-    // Actividades, establecidas en /DATA/entreaulas/Centros/$centro/Panel/Actividades.json
-    // Formato: {"NOMBRE_ACTIVIDAD": {"Foto": "url"}}
-    $actividades = json_decode(file_get_contents("/DATA/entreaulas/Centros/" . $_SESSION["auth_data"]["entreaulas"]["centro"] . "/Panel/Actividades.json"), true);
+    // Actividades, establecidas en /DATA/entreaulas/Centros/$centro/Panel/Actividades/<nombre>/photo.jpg
+    $aulario_id = $_GET['aulario'] ?? '';
+    $centro_id = $_SESSION["auth_data"]["entreaulas"]["centro"];
+    $actividades_paths = glob("/DATA/entreaulas/Centros/$centro_id/Panel/Actividades/*/photo.jpg");
     ?>
     <div class="card pad">
         <div class="card-body">
@@ -113,9 +114,20 @@ switch ($_GET["action"]) {
         </div>
     </div>
     <div id="grid">
-      <?php foreach ($actividades as $actividad_name => $actividad_data) { ?>
-        <a class="btn btn-primary grid-item">
-          <img src="<?php echo htmlspecialchars($actividad_data["Foto"]); ?>" height="125">
+      <script>
+        function seleccionarActividad(element, actividad) {
+          element.style.backgroundColor = "#9cff9f"; // Verde
+          document.getElementById('win-sound').play();
+          setTimeout(() => {
+            location.href = "?aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>";
+          }, 2000);
+        }
+      </script>
+      <?php foreach ($actividades_paths as $actividad_path) { 
+        $actividad_name = basename(dirname($actividad_path));
+        ?>
+        <a class="card grid-item" onclick="seleccionarActividad(this, '<?php echo htmlspecialchars($actividad_name); ?>')">
+          <img src="_filefetch.php?type=panel_actividades&centro=<?= urlencode($centro_id) ?>&activity=<?= urlencode($actividad_name) ?>" height="150">
           <br>
           <?php echo htmlspecialchars($actividad_name); ?>
         </a>
@@ -127,11 +139,12 @@ switch ($_GET["action"]) {
         padding: 15px;
         width: 250px;
         text-align: center;
+        text-decoration: none;
       }
 
       .grid-item img {
         margin: 0 auto;
-        height: 125px;
+        height: 150px;
       }
     </style>
     <script>
