@@ -27,7 +27,7 @@ for ($i = 0; $i < $file_count; $i++) {
     $folder = $_GET["folder"];
     $location = "/DATA/club$folder" . $file_name;
     if (!is_dir("/DATA/club$folder")) {
-        mkdir("/DATA/club$folder", recursive: true);
+        mkdir("/DATA/club$folder", 777, recursive: true);
     }
     if (move_uploaded_file($_FILES["file"]["tmp_name"][$i], $location)) {
         // Generate thumbnail

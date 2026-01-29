@@ -16,7 +16,7 @@ $aulario = json_decode(file_get_contents("/DATA/entreaulas/Centros/$centro_id/Au
 
 <div id="grid">
     <a href="/entreaulas/paneldiario.php?aulario=<?= urlencode($aulario_id) ?>" class="btn btn-primary grid-item">
-        <img src="/static/iconexperience/calendar_preferences.png" height="125">
+        <img src="/static/arasaac/pdi.png" height="125">
         </br>
         Panel Diario
     </a>
@@ -24,9 +24,15 @@ $aulario = json_decode(file_get_contents("/DATA/entreaulas/Centros/$centro_id/Au
     <a href="/sysadmin/aularios.php?action=edit&aulario=<?= urlencode($aulario_id) ?>" class="btn btn-secondary grid-item">
         <img src="/static/iconexperience/gear_edit.png" height="125">
         <br>
-        Administración del Aulario
+        Cambiar Ajustes
     </a>
     <?php endif; ?>
+    <!-- Menú del comedor -->
+    <a href="/entreaulas/comedor.php?aulario=<?= urlencode($aulario_id) ?>" class="btn btn-success grid-item">
+        <img src="/static/arasaac/comedor.png" height="125" style="background: white; padding: 5px; border-radius: 10px;">
+        <br>
+        Menú del Comedor
+    </a>
 </div>
 <style>
     .grid-item {

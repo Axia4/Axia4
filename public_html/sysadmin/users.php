@@ -79,6 +79,12 @@ switch ($_GET['action'] ?? '') {
                   Acceso
                 </label>
               </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="permissions[]" value="entreaulas:docente" id="entreaulas-docente">
+                <label class="form-check-label" for="entreaulas-docente">
+                  Docente
+                </label>
+              </div>
             </div>
           </div>
         </div>
@@ -138,6 +144,12 @@ switch ($_GET['action'] ?? '') {
                 <input class="form-check-input" type="checkbox" name="permissions[]" value="entreaulas:access" id="entreaulas-access" <?php if (in_array('entreaulas:access', $userdata['permissions'] ?? [])) echo 'checked'; ?>>
                 <label class="form-check-label" for="entreaulas-access">
                   Acceso
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="permissions[]" value="entreaulas:docente" id="entreaulas-docente" <?php if (in_array('entreaulas:docente', $userdata['permissions'] ?? [])) echo 'checked'; ?>>
+                <label class="form-check-label" for="entreaulas-docente">
+                  Docente
                 </label>
               </div>
             </div>

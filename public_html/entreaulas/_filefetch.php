@@ -11,6 +11,19 @@ switch ($_GET["type"]) {
         $activity = str_replace('..', '_', $_GET["activity"] ?? '');
         $relpath = "entreaulas/Centros/$centro/Panel/Actividades/$activity/photo.jpg";
         break;
+    case "comedor_image":
+        $centro = str_replace('..', '_', $_GET["centro"] ?? '');
+        $aulario = str_replace('..', '_', $_GET["aulario"] ?? '');
+        $date = preg_replace('/[^0-9-]/', '', $_GET["date"] ?? '');
+        $file = basename($_GET["file"] ?? '');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            header("HTTP/1.1 400 Bad Request");
+            die("Invalid date");
+        }
+        $ym = substr($date, 0, 7);
+        $day = substr($date, 8, 2);
+        $relpath = "entreaulas/Centros/$centro/Aularios/$aulario/Comedor/$ym/$day/$file";
+        break;
 }
 $path = "/DATA/$relpath";
 $uripath = "/$relpath";

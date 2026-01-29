@@ -182,7 +182,7 @@ if (!isset($APP_CODE)) {
                 
               </ul>
               <?php if ($APP_CODE != "ax4") { ?>
-                <a href="/" class="btn btn-secondary pseudo" style="background: #9013FE; color: white;">Salir a Axia4</a>
+                <a href="/" class="btn btn-dark pseudo" style="background: #9013FE; color: white;">Salir a Axia4</a>
               <?php } ?>
             </div>
           </div>

@@ -152,165 +152,197 @@ switch ($_GET["action"]) {
     <?php
     break;
   case "menu":
-    // Menú del comedor
+    // Menú del comedor (nuevo sistema, vista simplificada)
+    $aulario_id = $_GET["aulario"] ?? "";
+    $centro_id = $_SESSION["auth_data"]["entreaulas"]["centro"] ?? "";
 
-    $months = [
-      1 => "Enero",
-      2 => "Febrero",
-      3 => "Marzo",
-      4 => "Abril",
-      5 => "Mayo",
-      6 => "Junio",
-      7 => "Julio",
-      8 => "Agosto",
-      9 => "Septiembre",
-      10 => "Octubre",
-      11 => "Noviembre",
-      12 => "Diciembre"
+    $dateParam = $_GET["date"] ?? date("Y-m-d");
+    $dateObj = DateTime::createFromFormat("Y-m-d", $dateParam) ?: new DateTime();
+    $date = $dateObj->format("Y-m-d");
+
+    $menuTypesPath = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id/Comedor-MenuTypes.json";
+    $defaultMenuTypes = [
+      ["id" => "basal", "label" => "Menú basal", "color" => "#0d6efd"],
+      ["id" => "vegetariano", "label" => "Menú vegetariano", "color" => "#198754"],
+      ["id" => "alergias", "label" => "Menú alergias", "color" => "#dc3545"],
     ];
-
-    $dow = [
-      1 => "Lunes",
-      2 => "Martes",
-      3 => "Miércoles",
-      4 => "Jueves",
-      5 => "Viernes",
-      6 => "Sábado",
-      7 => "Domingo"
-    ];
-
-    $month = $_GET['month'] ?? date('n');
-    $year = $_GET['year'] ?? date('Y');
-    $MENUTY = $_GET['menu'] ?? "basal";
-
-    $parsedTable = null;
-    function getMenuForDay(string $pageText, string $day)
-    {
-      global $parsedTable;
-
-      // ---------------------------------------------
-      // 1. Parse table only once
-      // ---------------------------------------------
-      if ($parsedTable === null) {
-
-        $lines = preg_split("/\R/", $pageText);
-        $rows = [];
-
-        foreach ($lines as $line) {
-          $trim = trim($line);
-
-          // Only lines that start with "|" and are table rows
-          if (strpos($trim, "|") === 0 && substr($trim, -1) === "|") {
-
-            // Remove leading and trailing |, then split
-            $cols = explode("|", trim($trim, "|"));
-            $cols = array_map("trim", $cols);
-
-            if (count($cols) >= 4) {
-              $rows[] = [
-                "fecha" => $cols[0],
-                "plato1" => $cols[1],
-                "plato2" => $cols[2],
-                "postre" => $cols[3]
-              ];
-            }
-          }
-        }
-
-        $parsedTable = $rows; // store result (parsed only once)
-      }
-
-      // ---------------------------------------------
-      // 2. Look for the requested date
-      // ---------------------------------------------
-      foreach ($parsedTable as $row) {
-        if ($row["fecha"] === $day) {
-          return $row;
-        }
-      }
-
-      return null; // not found
+    $menuTypes = json_decode(@file_get_contents($menuTypesPath), true);
+    if (!is_array($menuTypes) || count($menuTypes) === 0) {
+      $menuTypes = $defaultMenuTypes;
     }
 
-    $MENUDATA = file_get_contents("https://aularios.tech.eus/aldamiz_ortuella/menu_comedor/tabla/$MENUTY?do=export_raw");
-    // Solo semana actual, botones. cuando se pulse el botón del dia actual, se enviara un POST ?form=menu con los valores del menu
-    $weeknow = date('W');
+    $menuTypeIds = [];
+    foreach ($menuTypes as $t) {
+      if (!empty($t["id"])) {
+        $menuTypeIds[] = $t["id"];
+      }
+    }
+    $menuTypeId = $_GET["menu"] ?? ($menuTypeIds[0] ?? "basal");
+    if (!in_array($menuTypeId, $menuTypeIds, true)) {
+      $menuTypeId = $menuTypeIds[0] ?? "basal";
+    }
+
+    $ym = $dateObj->format("Y-m");
+    $day = $dateObj->format("d");
+    $dataPath = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id/Comedor/$ym/$day/_datos.json";
+
+    $menuData = [
+      "date" => $date,
+      "menus" => []
+    ];
+    if (file_exists($dataPath)) {
+      $existing = json_decode(file_get_contents($dataPath), true);
+      if (is_array($existing)) {
+        $menuData = array_merge($menuData, $existing);
+      }
+    }
+    $menuForType = $menuData["menus"][$menuTypeId] ?? null;
+
+    function image_src_simple($value, $centro_id, $aulario_id, $date)
+    {
+      if (!$value) {
+        return "";
+      }
+      return "/entreaulas/_filefetch.php?type=comedor_image&centro=" . urlencode($centro_id) . "&aulario=" . urlencode($aulario_id) . "&date=" . urlencode($date) . "&file=" . urlencode($value);
+    }
     ?>
     <script>
-      function seleccionarMenuDia(element, dia) {
-        // Si es dia correcto
-        var today = new Date();
-        var currentDay = today.getDate();
-        if (dia == currentDay) {
+      function seleccionarMenuTipo(element, hasData) {
+        if (hasData) {
           element.style.backgroundColor = "#9cff9f"; // Verde
           document.getElementById('win-sound').play();
           setTimeout(() => {
-            location.href = "?aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>";
+            window.location.href = "/entreaulas/paneldiario.php?aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>";
           }, 2000);
         } else {
           element.style.backgroundColor = "#ff9088"; // Rojo
           document.getElementById('lose-sound').play();
           setTimeout(() => {
-            element.style.backgroundColor = ""; // Volver al color anterior
+            element.style.backgroundColor = "";
           }, 2000);
         }
       }
     </script>
     <div class="card pad">
-      <h1>¿Que vamos a comer?</h1>
+      <h1>¿Qué vamos a comer?</h1>
+      <div class="text-muted"><?= htmlspecialchars($date) ?></div>
     </div>
-    <div class="grid">
-      <?php for ($d = 1; $d <= 31; $d++) {
-        $dateStr = sprintf("%04d-%02d-%02d", $year, $month, $d);
-        $dayOfWeek = date('N', strtotime($dateStr));
-        $weekofmonth = date('W', strtotime($dateStr));
-        if ($dayOfWeek > 5) {
-          continue; // Skip weekends
-        }
-        if ($weekofmonth != $weeknow) {
-          continue; // Only current week
-        }
-        $menuForDay = getMenuForDay($MENUDATA, $dateStr);
-        if ($menuForDay === null) {
-          continue; // No menu for this day
+
+    <div class="menu-grid">
+      <?php
+      $plates = [
+        "primero" => "Primer plato",
+        "segundo" => "Segundo plato",
+        "postre" => "Postre"
+      ];
+      foreach ($menuTypes as $type):
+        $typeId = $type["id"] ?? "";
+        $typeLabel = $type["label"] ?? $typeId;
+        $typeColor = $type["color"] ?? "#0d6efd";
+        $menuItem = $menuData["menus"][$typeId] ?? null;
+        $hasData = false;
+        if (is_array($menuItem)) {
+          foreach ($plates as $plateKey => $plateLabel) {
+            $plate = $menuItem["plates"][$plateKey] ?? [];
+            if (!empty($plate["name"]) || !empty($plate["pictogram"]) || !empty($plate["photo"])) {
+              $hasData = true;
+              break;
+            }
+          }
         }
         ?>
-        <a class="card grid-item" style="width: 250px; height: 250px; color: black;" onclick="seleccionarMenuDia(this, <?php echo $d; ?>);">
-          <h3><?php echo $dow[$dayOfWeek] . " " . $d ?></h3>
-          <ol style="text-align: left; padding-left: 15px;">
-            <li><?php echo htmlspecialchars($menuForDay["plato1"]); ?></li>
-            <li><?php echo htmlspecialchars($menuForDay["plato2"]); ?></li>
-            <li><?php echo htmlspecialchars($menuForDay["postre"]); ?></li>
-          </ol>
-        </a>
-      <?php } ?>
+        <div class="card pad menu-card" onclick="seleccionarMenuTipo(this, <?php echo $hasData ? 'true' : 'false'; ?>);" style="cursor: pointer; border: 4px solid <?= htmlspecialchars($typeColor) ?>;">
+          <h3 class="menu-title" style="color: <?= htmlspecialchars($typeColor) ?>;">
+            <?= htmlspecialchars($typeLabel) ?>
+          </h3>
+          <?php if (!$hasData): ?>
+            <div class="menu-placeholder">Menú no disponible</div>
+          <?php else: ?>
+            <div class="menu-lines">
+              <?php foreach ($plates as $plateKey => $plateLabel):
+                $plate = $menuItem["plates"][$plateKey] ?? ["name" => "", "pictogram" => "", "photo" => ""];
+                $pictSrc = image_src_simple($plate["pictogram"] ?? "", $centro_id, $aulario_id, $date);
+                ?>
+                <div class="menu-line">
+                  <?php if ($pictSrc !== ""): ?>
+                    <img class="menu-line-img" src="<?= htmlspecialchars($pictSrc) ?>" alt="<?= htmlspecialchars($plateLabel) ?>">
+                  <?php else: ?>
+                    <div class="menu-line-img placeholder">—</div>
+                  <?php endif; ?>
+                  <div class="menu-line-name">
+                    <?= $plate["name"] !== "" ? htmlspecialchars($plate["name"]) : "Sin nombre" ?>
+                  </div>
+                </div>
+              <?php endforeach; ?>
+            </div>
+          <?php endif; ?>
+        </div>
+      <?php endforeach; ?>
     </div>
-    <style>
-      .grid-item {
-        margin-bottom: 10px !important;
-        padding: 15px;
-        width: 250px;
-        text-align: center;
-        text-decoration: none;
-      }
 
-      .grid-item img {
-        margin: 0 auto;
-        height: 125px;
+    <style>
+      .menu-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 12px;
+      }
+      .menu-card {
+        min-height: 260px;
+      }
+      .menu-title {
+        font-size: 1.6rem;
+        margin-bottom: 10px;
+      }
+      .menu-lines {
+        display: grid;
+        gap: 8px;
+      }
+      .menu-line {
+        display: grid;
+        grid-template-columns: 100px 2fr;
+        align-items: center;
+        gap: 8px;
+        background: #fff;
+        border-radius: 10px;
+        padding: 6px 8px;
+        border: 2px solid #eee;
+      }
+      .menu-line-title {
+        font-weight: bold;
+      }
+      .menu-line-img {
+        width: 100px;
+        height: 100px;
+        object-fit: contain;
+        background: #fff;
+        border-radius: 8px;
+        border: 2px solid #ddd;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+      }
+      .menu-line-img.placeholder {
+        background: #f1f1f1;
+        border-style: dashed;
+        color: #777;
+      }
+      .menu-line-name {
+        font-size: 1.1rem;
+        font-weight: bold;
+      }
+      .menu-placeholder {
+        height: 160px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f1f1f1;
+        border-radius: 12px;
+        border: 2px dashed #aaa;
+        color: #666;
+        font-weight: bold;
       }
     </style>
-    <script>
-      var msnry = new Masonry('.grid', {
-        "columnWidth": 250,
-        "itemSelector": ".grid-item",
-        "gutter": 10,
-        "transitionDuration": 0
-      });
-      setTimeout(() => {
-        msnry.layout()
-      }, 250); window.onresize = () => {msnry.layout()}
-    </script>
-
     <?php
     break;
   case "calendar":

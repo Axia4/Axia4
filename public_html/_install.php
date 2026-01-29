@@ -19,7 +19,7 @@ switch ($_GET['form'] ?? '') {
             'password_hash' => $password_hash
         ];
         if (!is_dir("/DATA/Usuarios")) {
-            mkdir("/DATA/Usuarios", 0755, true);
+            mkdir("/DATA/Usuarios", 0777, true);
         }
         file_put_contents("/DATA/Usuarios/$admin_user.json", json_encode($admin_userdata, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
         file_put_contents("/DATA/SISTEMA_INSTALADO.txt", "Sistema instalado el ".date("Y-m-d H:i:s")."\n");
