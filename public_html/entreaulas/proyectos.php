@@ -252,105 +252,228 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 		$item_url = trim($_POST["item_url"] ?? "");
 		$source_aulario_param = $_POST["source_aulario"] ?? "";
 		
-		// Determine which directory to use based on whether this is a linked project
+		// Determine which directory to use and permission level
 		$working_dir = $proyectos_dir;
+		$needs_approval = false;
+		$source_aulario_id_for_save = "";
+		
 		if (!empty($source_aulario_param)) {
 			// Validate the link
 			$linked_projects = $aulario["linked_projects"] ?? [];
 			foreach ($linked_projects as $link) {
 				if (($link["source_aulario"] ?? "") === $source_aulario_param && 
-				    ($link["project_id"] ?? "") === $project_id &&
-				    (($link["permission"] ?? "read_only") === "full_edit" || ($link["permission"] ?? "read_only") === "request_edit")) {
-					$working_dir = "/DATA/entreaulas/Centros/$centro_id/Aularios/$source_aulario_param/Proyectos";
+				    ($link["project_id"] ?? "") === $project_id) {
+					$permission = $link["permission"] ?? "read_only";
+					if ($permission === "full_edit") {
+						$working_dir = "/DATA/entreaulas/Centros/$centro_id/Aularios/$source_aulario_param/Proyectos";
+					} elseif ($permission === "request_edit") {
+						// Changes need approval - save as pending
+						$needs_approval = true;
+						$source_aulario_id_for_save = $source_aulario_param;
+					}
 					break;
 				}
 			}
 		}
 		
 		if ($project_id !== "" && $item_name !== "") {
-			$project = load_project($working_dir, $project_id);
-			if ($project) {
-				$item_id = generate_id($item_name);
-				$item = [
-					"id" => $item_id,
-					"name" => $item_name,
-					"type" => $item_type,
-					"created_at" => time()
+			if ($needs_approval) {
+				// Create pending change request
+				$pending_dir = "/DATA/entreaulas/Centros/$centro_id/Aularios/$source_aulario_id_for_save/Proyectos/$project_id/pending_changes";
+				if (!is_dir($pending_dir)) {
+					mkdir($pending_dir, 0755, true);
+				}
+				
+				$change_id = uniqid("change_");
+				$change_data = [
+					"id" => $change_id,
+					"type" => "add_item",
+					"requested_by_aulario" => $aulario_id,
+					"requested_at" => time(),
+					"status" => "pending",
+					"item_type" => $item_type,
+					"item_name" => $item_name,
+					"item_url" => $item_url
 				];
 				
-				$can_add_item = true;
-				
-				if ($item_type === "link" && $item_url !== "") {
-					$item["url"] = $item_url;
-				} elseif ($item_type === "file" && isset($_FILES["item_file"]) && $_FILES["item_file"]["error"] === UPLOAD_ERR_OK) {
-					// Handle file upload with validation
-					$project_dir = "$working_dir/$project_id";
-					if (!is_dir($project_dir)) {
-						mkdir($project_dir, 0755, true);
-					}
+				// Handle file upload for pending changes
+				if ($item_type === "file" && isset($_FILES["item_file"]) && $_FILES["item_file"]["error"] === UPLOAD_ERR_OK) {
+					$ext = strtolower(pathinfo($_FILES["item_file"]["name"], PATHINFO_EXTENSION));
+					$allowed_extensions = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "jpg", "jpeg", "png", "gif", "webp", "txt", "zip", "mp4", "mp3"];
 					
-					// Validate file size (max 500MB as configured in PHP)
-					$max_size = 500 * 1024 * 1024; // 500MB
-					if ($_FILES["item_file"]["size"] > $max_size) {
-						$error = "El archivo es demasiado grande. Tamaño máximo: 500MB.";
-						$can_add_item = false;
-					}
-					
-					// Validate file type
-					if ($can_add_item) {
-						$original_name = $_FILES["item_file"]["name"];
-						$ext = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
-						$allowed_extensions = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "jpg", "jpeg", "png", "gif", "webp", "txt", "zip", "mp4", "mp3"];
+					if (in_array($ext, $allowed_extensions, true)) {
+						$safe_name = safe_filename($_FILES["item_file"]["name"]);
+						$temp_file_path = "$pending_dir/{$change_id}_$safe_name";
 						
-						if (!in_array($ext, $allowed_extensions, true)) {
-							$error = "Tipo de archivo no permitido. Extensiones permitidas: " . implode(", ", $allowed_extensions);
-							$can_add_item = false;
-						}
-					}
-					
-					if ($can_add_item) {
-						$safe_name = safe_filename($original_name);
-						$target_path = "$project_dir/$safe_name";
-						
-						// Make filename unique if exists
-						$counter = 1;
-						$basename = pathinfo($safe_name, PATHINFO_FILENAME);
-						while (file_exists($target_path)) {
-							$safe_name = safe_filename($basename . "_" . $counter . "." . $ext);
-							$target_path = "$project_dir/$safe_name";
-							$counter++;
-						}
-						
-						if (move_uploaded_file($_FILES["item_file"]["tmp_name"], $target_path)) {
-							$item["filename"] = $safe_name;
-							$item["original_name"] = $original_name;
-						} else {
-							$error = "No se pudo subir el archivo.";
-							$can_add_item = false;
+						if (move_uploaded_file($_FILES["item_file"]["tmp_name"], $temp_file_path)) {
+							$change_data["pending_filename"] = basename($temp_file_path);
+							$change_data["original_filename"] = $_FILES["item_file"]["name"];
 						}
 					}
 				}
 				
-				if ($can_add_item) {
-					if (!isset($project["items"])) {
-						$project["items"] = [];
-					}
-					$project["items"][] = $item;
-					$project["updated_at"] = time();
+				$change_file = "$pending_dir/$change_id.json";
+				file_put_contents($change_file, json_encode($change_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+				
+				$message = "Solicitud de cambio enviada. El aulario origen debe aprobarla.";
+				$redirect_params = "aulario=" . urlencode($aulario_id) . "&project=" . urlencode($project_id);
+				if (!empty($source_aulario_param)) {
+					$redirect_params .= "&source=" . urlencode($source_aulario_param);
+				}
+				// Don't exit yet, let the view render with the message
+			} else {
+				// Direct edit (full_edit permission or local project)
+				$project = load_project($working_dir, $project_id);
+				if ($project) {
+					$item_id = generate_id($item_name);
+					$item = [
+						"id" => $item_id,
+						"name" => $item_name,
+						"type" => $item_type,
+						"created_at" => time()
+					];
 					
-					save_project($working_dir, $project_id, $project);
+					$can_add_item = true;
 					
-					$redirect_params = "aulario=" . urlencode($aulario_id) . "&project=" . urlencode($project_id);
-					if (!empty($source_aulario_param)) {
-						$redirect_params .= "&source=" . urlencode($source_aulario_param);
+					if ($item_type === "link" && $item_url !== "") {
+						$item["url"] = $item_url;
+					} elseif ($item_type === "file" && isset($_FILES["item_file"]) && $_FILES["item_file"]["error"] === UPLOAD_ERR_OK) {
+						// Handle file upload with validation
+						$project_dir = "$working_dir/$project_id";
+						if (!is_dir($project_dir)) {
+							mkdir($project_dir, 0755, true);
+						}
+						
+						// Validate file size (max 500MB as configured in PHP)
+						$max_size = 500 * 1024 * 1024; // 500MB
+						if ($_FILES["item_file"]["size"] > $max_size) {
+							$error = "El archivo es demasiado grande. Tamaño máximo: 500MB.";
+							$can_add_item = false;
+						}
+						
+						// Validate file type
+						if ($can_add_item) {
+							$original_name = $_FILES["item_file"]["name"];
+							$ext = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
+							$allowed_extensions = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "jpg", "jpeg", "png", "gif", "webp", "txt", "zip", "mp4", "mp3"];
+							
+							if (!in_array($ext, $allowed_extensions, true)) {
+								$error = "Tipo de archivo no permitido. Extensiones permitidas: " . implode(", ", $allowed_extensions);
+								$can_add_item = false;
+							}
+						}
+						
+						if ($can_add_item) {
+							$safe_name = safe_filename($original_name);
+							$target_path = "$project_dir/$safe_name";
+							
+							// Make filename unique if exists
+							$counter = 1;
+							$basename = pathinfo($safe_name, PATHINFO_FILENAME);
+							while (file_exists($target_path)) {
+								$safe_name = safe_filename($basename . "_" . $counter . "." . $ext);
+								$target_path = "$project_dir/$safe_name";
+								$counter++;
+							}
+							
+							if (move_uploaded_file($_FILES["item_file"]["tmp_name"], $target_path)) {
+								$item["filename"] = $safe_name;
+								$item["original_name"] = $original_name;
+							} else {
+								$error = "No se pudo subir el archivo.";
+								$can_add_item = false;
+							}
+						}
 					}
-					header("Location: /entreaulas/proyectos.php?" . $redirect_params);
-					exit;
+					
+					if ($can_add_item) {
+						if (!isset($project["items"])) {
+							$project["items"] = [];
+						}
+						$project["items"][] = $item;
+						$project["updated_at"] = time();
+						
+						save_project($working_dir, $project_id, $project);
+						
+						$redirect_params = "aulario=" . urlencode($aulario_id) . "&project=" . urlencode($project_id);
+						if (!empty($source_aulario_param)) {
+							$redirect_params .= "&source=" . urlencode($source_aulario_param);
+						}
+						header("Location: /entreaulas/proyectos.php?" . $redirect_params);
+						exit;
+					}
 				}
 			}
 		}
 	}
-	
+
+	if ($action === "approve_change" || $action === "reject_change") {
+		$change_id = $_POST["change_id"] ?? "";
+		$project_id = $_POST["project_id"] ?? "";
+		
+		if (!empty($change_id) && !empty($project_id)) {
+			$pending_dir = "$proyectos_dir/$project_id/pending_changes";
+			$change_file = "$pending_dir/$change_id.json";
+			
+			if (file_exists($change_file)) {
+				$change_data = json_decode(file_get_contents($change_file), true);
+				
+				if ($action === "approve_change") {
+					// Apply the change
+					$project = load_project($proyectos_dir, $project_id);
+					if ($project) {
+						$item_id = generate_id($change_data["item_name"]);
+						$item = [
+							"id" => $item_id,
+							"name" => $change_data["item_name"],
+							"type" => $change_data["item_type"],
+							"created_at" => time()
+						];
+						
+						if ($change_data["item_type"] === "link") {
+							$item["url"] = $change_data["item_url"];
+						} elseif ($change_data["item_type"] === "file" && !empty($change_data["pending_filename"])) {
+							// Move file from pending to project directory
+							$pending_file = "$pending_dir/" . $change_data["pending_filename"];
+							$project_dir = "$proyectos_dir/$project_id";
+							$target_file = "$project_dir/" . $change_data["pending_filename"];
+							
+							if (file_exists($pending_file)) {
+								if (!is_dir($project_dir)) {
+									mkdir($project_dir, 0755, true);
+								}
+								rename($pending_file, $target_file);
+								$item["filename"] = $change_data["pending_filename"];
+								$item["original_name"] = $change_data["original_filename"] ?? $change_data["pending_filename"];
+							}
+						}
+						
+						if (!isset($project["items"])) {
+							$project["items"] = [];
+						}
+						$project["items"][] = $item;
+						$project["updated_at"] = time();
+						save_project($proyectos_dir, $project_id, $project);
+						
+						$message = "Cambio aprobado y aplicado.";
+					}
+				} else {
+					// Reject - just delete pending file if exists
+					if (!empty($change_data["pending_filename"])) {
+						$pending_file = "$pending_dir/" . $change_data["pending_filename"];
+						if (file_exists($pending_file)) {
+							unlink($pending_file);
+						}
+					}
+					$message = "Cambio rechazado.";
+				}
+				
+				// Delete the change request file
+				unlink($change_file);
+			}
+		}
+	}
+
 	if ($action === "delete_item") {
 		$project_id = $_POST["project_id"] ?? "";
 		$item_id = $_POST["item_id"] ?? "";
@@ -795,6 +918,82 @@ $view = $current_project ? "project" : "list";
 		<p>Este proyecto aún no tiene elementos. ¡Añade tu primer enlace o archivo!</p>
 	</div>
 	<?php endif; ?>
+	
+	<!-- Pending Changes Section (only for local projects with pending changes) -->
+	<?php
+	if (!$is_linked_project) {
+		$pending_dir = "$proyectos_dir/$current_project/pending_changes";
+		$pending_changes = [];
+		if (is_dir($pending_dir)) {
+			$pending_files = glob("$pending_dir/*.json");
+			foreach ($pending_files as $file) {
+				$change = json_decode(file_get_contents($file), true);
+				if ($change && ($change["status"] ?? "") === "pending") {
+					$pending_changes[] = $change;
+				}
+			}
+		}
+		
+		if (count($pending_changes) > 0):
+	?>
+	<div class="card pad" style="background: #fff3cd;">
+		<h3 style="color: #856404;">
+			⏳ Cambios Pendientes de Aprobación (<?= count($pending_changes) ?>)
+		</h3>
+		<p style="color: #856404;">Los siguientes cambios fueron solicitados por otros aularios y requieren tu aprobación:</p>
+	</div>
+	<div id="grid">
+		<?php foreach ($pending_changes as $change): 
+			$requesting_aulario = $change["requested_by_aulario"] ?? "Desconocido";
+			// Get requesting aulario name
+			$req_aul_path = "/DATA/entreaulas/Centros/$centro_id/Aularios/$requesting_aulario.json";
+			$req_aul_data = file_exists($req_aul_path) ? json_decode(file_get_contents($req_aul_path), true) : null;
+			$req_aul_name = $req_aul_data["name"] ?? $requesting_aulario;
+		?>
+		<div class="card grid-item" style="width: 300px; border: 2px solid #ffc107;">
+			<div class="card-body">
+				<h5 class="card-title">
+					<?php if ($change["item_type"] === "link"): ?>
+						<img src="/static/arasaac/actividad.png" height="30" style="vertical-align: middle; background: white; padding: 3px; border-radius: 5px;">
+					<?php else: ?>
+						<img src="/static/arasaac/documento.png" height="30" style="vertical-align: middle; background: white; padding: 3px; border-radius: 5px;">
+					<?php endif; ?>
+					<?= htmlspecialchars($change["item_name"]) ?>
+					<span class="badge bg-warning text-dark">Pendiente</span>
+				</h5>
+				<p class="card-text">
+					<small class="text-muted">
+						Tipo: <?= $change["item_type"] === "link" ? "Enlace" : "Archivo" ?><br>
+						Solicitado por: <strong><?= htmlspecialchars($req_aul_name) ?></strong><br>
+						Fecha: <?= date("d/m/Y H:i", $change["requested_at"]) ?>
+					</small>
+				</p>
+				<div class="d-flex gap-2 flex-wrap">
+					<form method="post" style="display: inline;">
+						<input type="hidden" name="action" value="approve_change">
+						<input type="hidden" name="change_id" value="<?= htmlspecialchars($change["id"]) ?>">
+						<input type="hidden" name="project_id" value="<?= htmlspecialchars($current_project) ?>">
+						<button type="submit" class="btn btn-success">
+							✓ Aprobar
+						</button>
+					</form>
+					<form method="post" style="display: inline;">
+						<input type="hidden" name="action" value="reject_change">
+						<input type="hidden" name="change_id" value="<?= htmlspecialchars($change["id"]) ?>">
+						<input type="hidden" name="project_id" value="<?= htmlspecialchars($current_project) ?>">
+						<button type="submit" class="btn btn-danger">
+							✗ Rechazar
+						</button>
+					</form>
+				</div>
+			</div>
+		</div>
+		<?php endforeach; ?>
+	</div>
+	<?php
+		endif;
+	}
+	?>
 	
 	<!-- Add Item Modal -->
 	<div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
