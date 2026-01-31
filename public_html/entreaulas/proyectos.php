@@ -25,7 +25,7 @@ $aulario = file_exists($aulario_path) ? json_decode(file_get_contents($aulario_p
 
 $proyectos_dir = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id/Proyectos";
 if (!is_dir($proyectos_dir)) {
-	mkdir($proyectos_dir, 0777, true);
+	mkdir($proyectos_dir, 0755, true);
 }
 
 // Helper functions
@@ -48,7 +48,11 @@ function load_project($proyectos_dir, $project_id) {
 
 function save_project($proyectos_dir, $project_id, $data) {
 	$project_file = "$proyectos_dir/$project_id.json";
-	return file_put_contents($project_file, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+	$result = file_put_contents($project_file, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+	if ($result === false) {
+		error_log("Failed to save project file: $project_file");
+	}
+	return $result;
 }
 
 function list_projects($proyectos_dir) {
@@ -61,6 +65,8 @@ function list_projects($proyectos_dir) {
 		$data = json_decode(file_get_contents($file), true);
 		if ($data) {
 			$projects[] = $data;
+		} else {
+			error_log("Failed to decode JSON from file: $file");
 		}
 	}
 	// Sort by creation date (newest first)
@@ -97,7 +103,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 			// Create project directory
 			$project_dir = "$proyectos_dir/$project_id";
 			if (!is_dir($project_dir)) {
-				mkdir($project_dir, 0777, true);
+				mkdir($project_dir, 0755, true);
 			}
 			
 			header("Location: /entreaulas/proyectos.php?aulario=" . urlencode($aulario_id) . "&project=" . urlencode($project_id));
@@ -150,22 +156,37 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 				if ($item_type === "link" && $item_url !== "") {
 					$item["url"] = $item_url;
 				} elseif ($item_type === "file" && isset($_FILES["item_file"]) && $_FILES["item_file"]["error"] === UPLOAD_ERR_OK) {
-					// Handle file upload
+					// Handle file upload with validation
 					$project_dir = "$proyectos_dir/$project_id";
 					if (!is_dir($project_dir)) {
-						mkdir($project_dir, 0777, true);
+						mkdir($project_dir, 0755, true);
 					}
 					
+					// Validate file size (max 500MB as configured in PHP)
+					$max_size = 500 * 1024 * 1024; // 500MB
+					if ($_FILES["item_file"]["size"] > $max_size) {
+						$error = "El archivo es demasiado grande. Tamaño máximo: 500MB.";
+						continue;
+					}
+					
+					// Validate file type
 					$original_name = $_FILES["item_file"]["name"];
 					$ext = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
+					$allowed_extensions = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "jpg", "jpeg", "png", "gif", "webp", "txt", "zip", "mp4", "mp3"];
+					
+					if (!in_array($ext, $allowed_extensions, true)) {
+						$error = "Tipo de archivo no permitido. Extensiones permitidas: " . implode(", ", $allowed_extensions);
+						continue;
+					}
+					
 					$safe_name = safe_filename($original_name);
 					$target_path = "$project_dir/$safe_name";
 					
 					// Make filename unique if exists
 					$counter = 1;
+					$basename = pathinfo($safe_name, PATHINFO_FILENAME);
 					while (file_exists($target_path)) {
-						$safe_name = pathinfo($original_name, PATHINFO_FILENAME) . "_" . $counter . "." . $ext;
-						$safe_name = safe_filename($safe_name);
+						$safe_name = safe_filename($basename . "_" . $counter . "." . $ext);
 						$target_path = "$project_dir/$safe_name";
 						$counter++;
 					}
@@ -404,7 +425,7 @@ $view = $current_project ? "project" : "list";
 							Abrir Enlace
 						</a>
 					<?php else: ?>
-						<a href="/entreaulas/_filefetch.php?aulario=<?= urlencode($aulario_id) ?>&path=Proyectos/<?= urlencode($current_project) ?>/<?= urlencode($item["filename"]) ?>" target="_blank" class="btn btn-primary btn-lg">
+						<a href="/entreaulas/_filefetch.php?type=proyecto_file&centro=<?= urlencode($centro_id) ?>&aulario=<?= urlencode($aulario_id) ?>&project=<?= urlencode($current_project) ?>&file=<?= urlencode($item["filename"]) ?>" target="_blank" class="btn btn-primary btn-lg">
 							<img src="/static/iconexperience/find.png" height="25" style="vertical-align: middle;">
 							Abrir Archivo
 						</a>
