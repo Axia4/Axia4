@@ -4,12 +4,13 @@ if (in_array("entreaulas:docente", $_SESSION["auth_data"]["permissions"] ?? []) 
     header("HTTP/1.1 403 Forbidden");
     die("Access denied");
 }
-require_once "_incl/pre-body.php";
+
 
 $aulario_id = $_GET["aulario"] ?? "";
 $centro_id = $_SESSION["auth_data"]["entreaulas"]["centro"] ?? "";
 
 if ($aulario_id === "" || $centro_id === "") {
+	require_once "_incl/pre-body.php";
 	?>
 	<div class="card pad">
 		<h1>Proyectos</h1>
@@ -325,7 +326,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 		}
 	}
 }
-
+require_once "_incl/pre-body.php";
 // Determine current view
 $current_project = $_GET["project"] ?? null;
 $view = $current_project ? "project" : "list";
