@@ -695,8 +695,6 @@ $view = $current_project ? "project" : "list";
 	$can_edit_linked = false;
 	if ($is_linked_project) {
 		if ($linked_permission === "full_edit" || $linked_permission === "request_edit") {
-			// For now, treat both full_edit and request_edit as allowing edits
-			// In the future, request_edit could implement an approval workflow
 			$can_edit_linked = true;
 		}
 	}
@@ -742,8 +740,10 @@ $view = $current_project ? "project" : "list";
 	
 	<?php if ($is_linked_project): ?>
 		<div class="card pad" style="background: <?= $can_edit_linked ? '#d1e7dd' : '#cfe2ff' ?>; color: <?= $can_edit_linked ? '#0f5132' : '#084298' ?>;">
-			<?php if ($can_edit_linked): ?>
-				<strong>✏️ Proyecto compartido con permisos de edición:</strong> Este es un proyecto compartido desde otro aulario. Puedes ver y editar su contenido. Los cambios se guardarán en el aulario origen.
+			<?php if ($linked_permission === "full_edit"): ?>
+				<strong>✏️ Proyecto compartido con permisos de edición:</strong> Este es un proyecto compartido desde otro aulario. Puedes ver y editar su contenido. Los cambios se guardarán directamente en el aulario origen.
+			<?php elseif ($linked_permission === "request_edit"): ?>
+				<strong>✏️ Proyecto compartido con permisos de solicitud:</strong> Este es un proyecto compartido desde otro aulario. Puedes ver y proponer cambios. Los cambios requerirán aprobación del aulario origen antes de aplicarse.
 			<?php else: ?>
 				<strong>ℹ️ Proyecto compartido (solo lectura):</strong> Este es un proyecto compartido desde otro aulario. Solo puedes ver su contenido, pero no editarlo.
 			<?php endif; ?>

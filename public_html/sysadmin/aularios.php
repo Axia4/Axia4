@@ -185,7 +185,7 @@ switch ($_GET["action"]) {
             
             <hr>
             <h3>Proyectos Enlazados</h3>
-            <p class="text-muted">Selecciona proyectos raíz específicos de otros aularios para mostrarlos en este aulario. Los proyectos enlazados se mostrarán como solo lectura.</p>
+            <p class="text-muted">Selecciona proyectos raíz específicos de otros aularios para mostrarlos en este aulario. Puedes configurar el nivel de permisos: Solo lectura, Solicitar permiso para cambiar, o Cambiar sin solicitar.</p>
             
             <div id="linked-projects-container">
                 <?php
