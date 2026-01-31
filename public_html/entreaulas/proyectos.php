@@ -263,7 +263,7 @@ $view = $current_project ? "project" : "list";
 	<!-- Project List View -->
 	<div class="card pad">
 		<h1 class="card-title">
-			<img src="/static/iconexperience/shelf.png" height="40" style="vertical-align: middle;">
+			<img src="/static/arasaac/carpeta.png" height="40" style="vertical-align: middle; background: white; padding: 5px; border-radius: 10px;">
 			Proyectos
 		</h1>
 		<p>Gestiona proyectos con enlaces y archivos para tu aulario.</p>
@@ -287,7 +287,7 @@ $view = $current_project ? "project" : "list";
 		<div class="card grid-item" style="width: 300px;">
 			<div class="card-body">
 				<h5 class="card-title">
-					<img src="/static/iconexperience/shelf.png" height="30" style="vertical-align: middle;">
+					<img src="/static/arasaac/carpeta.png" height="30" style="vertical-align: middle; background: white; padding: 3px; border-radius: 5px;">
 					<?= htmlspecialchars($project["name"]) ?>
 				</h5>
 				<?php if (!empty($project["description"])): ?>
@@ -372,7 +372,7 @@ $view = $current_project ? "project" : "list";
 		<div class="d-flex justify-content-between align-items-start">
 			<div>
 				<h1 class="card-title">
-					<img src="/static/iconexperience/shelf.png" height="40" style="vertical-align: middle;">
+					<img src="/static/arasaac/carpeta.png" height="40" style="vertical-align: middle; background: white; padding: 5px; border-radius: 10px;">
 					<?= htmlspecialchars($project["name"]) ?>
 				</h1>
 				<?php if (!empty($project["description"])): ?>
@@ -406,7 +406,7 @@ $view = $current_project ? "project" : "list";
 					<?php if ($item["type"] === "link"): ?>
 						<img src="/static/arasaac/actividad.png" height="30" style="vertical-align: middle; background: white; padding: 3px; border-radius: 5px;">
 					<?php else: ?>
-						<img src="/static/iconexperience/contract.png" height="30" style="vertical-align: middle;">
+						<img src="/static/arasaac/documento.png" height="30" style="vertical-align: middle; background: white; padding: 3px; border-radius: 5px;">
 					<?php endif; ?>
 					<?= htmlspecialchars($item["name"]) ?>
 				</h5>

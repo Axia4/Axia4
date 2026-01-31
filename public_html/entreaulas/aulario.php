@@ -35,7 +35,7 @@ $aulario = json_decode(file_get_contents("/DATA/entreaulas/Centros/$centro_id/Au
     </a>
     <!-- Proyectos -->
     <a href="/entreaulas/proyectos.php?aulario=<?= urlencode($aulario_id) ?>" class="btn btn-info grid-item">
-        <img src="/static/iconexperience/shelf.png" height="125">
+        <img src="/static/arasaac/carpeta.png" height="125" style="background: white; padding: 5px; border-radius: 10px;">
         <br>
         Proyectos
     </a>
