@@ -20,6 +20,30 @@ switch ($_GET["form"]) {
         header("Location: ?action=index");
         exit();
         break;
+    case "save_edit":
+        $aulario_id = $_POST["aulario_id"];
+        $centro_id = $_POST["centro_id"];
+        $aulario_file = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json";
+        if (!file_exists($aulario_file)) {
+            die("Aulario no encontrado.");
+        }
+        $aulario_data = json_decode(file_get_contents($aulario_file), true);
+        $aulario_data["name"] = $_POST["name"];
+        $aulario_data["icon"] = $_POST["icon"];
+        
+        // Handle shared comedor configuration
+        $share_comedor_from = $_POST["share_comedor_from"] ?? "";
+        
+        if (!empty($share_comedor_from) && $share_comedor_from !== "none") {
+            $aulario_data["shared_comedor_from"] = $share_comedor_from;
+        } else {
+            unset($aulario_data["shared_comedor_from"]);
+        }
+        
+        file_put_contents($aulario_file, json_encode($aulario_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        header("Location: ?action=edit&aulario=" . urlencode($aulario_id) . "&centro=" . urlencode($centro_id) . "&saved=1");
+        exit();
+        break;
 }
 
 require_once "_incl/pre-body.php"; 
@@ -69,7 +93,21 @@ switch ($_GET["action"]) {
             die("Aulario no encontrado.");
         }
         $aulario_data = json_decode(file_get_contents($aulario_file), true);
+        
+        // Get all aularios from the same centro for sharing options
+        $available_aularios = [];
+        $aularios_files = glob("/DATA/entreaulas/Centros/$centro_id/Aularios/*.json");
+        foreach ($aularios_files as $aul_file) {
+            $aul_id = basename($aul_file, ".json");
+            if ($aul_id !== $aulario_id) { // Don't allow sharing from itself
+                $aul_data = json_decode(file_get_contents($aul_file), true);
+                $available_aularios[$aul_id] = $aul_data['name'] ?? $aul_id;
+            }
+        }
 ?>
+<?php if (isset($_GET['saved'])): ?>
+<div class="alert alert-success">Cambios guardados correctamente.</div>
+<?php endif; ?>
 <div class="card pad">
     <div>
         <h1 class="card-title">Editar Aulario: <?php echo htmlspecialchars($aulario_data['name'] ?? 'Sin Nombre'); ?></h1>
@@ -82,6 +120,24 @@ switch ($_GET["action"]) {
                 <label for="icon" class="form-label">Icono del Aulario (URL):</label>
                 <input type="text" id="icon" name="icon" class="form-control" value="<?php echo htmlspecialchars($aulario_data['icon'] ?? '/static/iconexperience/blackboard.png'); ?>">
             </div>
+            
+            <hr>
+            <h3>Compartir Menú Comedor</h3>
+            <p class="text-muted">Configura desde qué aulario compartir los datos del menú comedor. Si se selecciona un aulario origen, este aulario mostrará los menús del aulario seleccionado en lugar de los propios.</p>
+            
+            <div class="mb-3">
+                <label for="share_comedor_from" class="form-label">Menú Comedor - Compartir desde:</label>
+                <select id="share_comedor_from" name="share_comedor_from" class="form-select">
+                    <option value="none">No compartir (usar datos propios)</option>
+                    <?php foreach ($available_aularios as $aul_id => $aul_name): ?>
+                        <option value="<?php echo htmlspecialchars($aul_id); ?>" 
+                            <?php echo ($aulario_data['shared_comedor_from'] ?? '') === $aul_id ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($aul_name); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            
             <input type="hidden" name="aulario_id" value="<?php echo htmlspecialchars($aulario_id); ?>">
             <input type="hidden" name="centro_id" value="<?php echo htmlspecialchars($centro_id); ?>">
             <button type="submit" class="btn btn-primary">Guardar Cambios</button>

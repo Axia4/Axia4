@@ -23,7 +23,19 @@ if ($aulario_id === "" || $centro_id === "") {
 $aulario_path = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json";
 $aulario = file_exists($aulario_path) ? json_decode(file_get_contents($aulario_path), true) : null;
 
-$menuTypesPath = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id/Comedor-MenuTypes.json";
+// Check if this aulario shares comedor data from another aulario
+$source_aulario_id = $aulario_id; // Default to current aulario
+$is_shared = false;
+if ($aulario && !empty($aulario["shared_comedor_from"])) {
+	$shared_from = $aulario["shared_comedor_from"];
+	$shared_aulario_path = "/DATA/entreaulas/Centros/$centro_id/Aularios/$shared_from.json";
+	if (file_exists($shared_aulario_path)) {
+		$source_aulario_id = $shared_from;
+		$is_shared = true;
+	}
+}
+
+$menuTypesPath = "/DATA/entreaulas/Centros/$centro_id/Aularios/$source_aulario_id/Comedor-MenuTypes.json";
 $defaultMenuTypes = [
 	["id" => "basal", "label" => "Menú basal", "color" => "#0d6efd"],
 	["id" => "vegetariano", "label" => "Menú vegetariano", "color" => "#198754"],
@@ -58,7 +70,7 @@ if (!in_array($menuTypeId, $menuTypeIds, true)) {
 
 $ym = $dateObj->format("Y-m");
 $day = $dateObj->format("d");
-$baseDir = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id/Comedor/$ym/$day";
+$baseDir = "/DATA/entreaulas/Centros/$centro_id/Aularios/$source_aulario_id/Comedor/$ym/$day";
 $dataPath = "$baseDir/_datos.json";
 
 function blank_menu()
@@ -86,7 +98,7 @@ if (!isset($menuData["menus"][$menuTypeId])) {
 	$menuData["menus"][$menuTypeId] = blank_menu();
 }
 
-$canEdit = in_array("sysadmin:access", $_SESSION["auth_data"]["permissions"] ?? []);
+$canEdit = in_array("sysadmin:access", $_SESSION["auth_data"]["permissions"] ?? []) && !$is_shared;
 $saveNotice = "";
 $uploadErrors = [];
 
@@ -171,7 +183,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $canEdit) {
 }
 
 $menuForType = $menuData["menus"][$menuTypeId] ?? blank_menu();
-function image_src($value, $centro_id, $aulario_id, $date)
+function image_src($value, $centro_id, $source_aulario_id, $date)
 {
 	if (!$value) {
 		return "";
@@ -179,7 +191,7 @@ function image_src($value, $centro_id, $aulario_id, $date)
 	if (filter_var($value, FILTER_VALIDATE_URL)) {
 		return $value;
 	}
-	return "/entreaulas/_filefetch.php?type=comedor_image&centro=" . urlencode($centro_id) . "&aulario=" . urlencode($aulario_id) . "&date=" . urlencode($date) . "&file=" . urlencode($value);
+	return "/entreaulas/_filefetch.php?type=comedor_image&centro=" . urlencode($centro_id) . "&aulario=" . urlencode($source_aulario_id) . "&date=" . urlencode($date) . "&file=" . urlencode($value);
 }
 
 $prevDate = (clone $dateObj)->modify("-1 day")->format("Y-m-d");
@@ -198,6 +210,12 @@ foreach ($userAulas as $aulaId) {
 ?>
 
 
+
+<?php if ($is_shared): ?>
+	<div class="card pad" style="background: #cfe2ff; color: #084298;">
+		<strong>ℹ️ Datos compartidos:</strong> Este aulario está mostrando los menús del aulario origen. Para editar, debes acceder al aulario origen o desactivar el compartir en la configuración.
+	</div>
+<?php endif; ?>
 
 <?php if ($saveNotice !== ""): ?>
 	<div class="card pad" style="background: #d1e7dd; color: #0f5132;">
@@ -260,7 +278,7 @@ foreach ($userAulas as $aulaId) {
 	];
 	foreach ($plates as $plateKey => $plateLabel):
 		$plate = $menuForType["plates"][$plateKey] ?? ["name" => "", "pictogram" => ""];
-		$pictSrc = image_src($plate["pictogram"] ?? "", $centro_id, $aulario_id, $date);
+		$pictSrc = image_src($plate["pictogram"] ?? "", $centro_id, $source_aulario_id, $date);
 		?>
 		<div class="card pad menu-card">
 			<h3 class="menu-title"><?= htmlspecialchars($plateLabel) ?></h3>
