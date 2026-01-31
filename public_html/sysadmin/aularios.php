@@ -44,12 +44,14 @@ switch ($_GET["form"]) {
         $linked_projects = [];
         $linked_aularios = $_POST["linked_aulario"] ?? [];
         $linked_project_ids = $_POST["linked_project_id"] ?? [];
+        $linked_permissions = $_POST["linked_permission"] ?? [];
         
         for ($i = 0; $i < count($linked_aularios); $i++) {
             if (!empty($linked_aularios[$i]) && !empty($linked_project_ids[$i])) {
                 $linked_projects[] = [
                     "source_aulario" => $linked_aularios[$i],
-                    "project_id" => $linked_project_ids[$i]
+                    "project_id" => $linked_project_ids[$i],
+                    "permission" => $linked_permissions[$i] ?? "read_only"
                 ];
             }
         }
@@ -190,14 +192,15 @@ switch ($_GET["action"]) {
                 $existing_links = $aulario_data['linked_projects'] ?? [];
                 if (count($existing_links) === 0) {
                     // Show one empty row
-                    $existing_links = [["source_aulario" => "", "project_id" => ""]];
+                    $existing_links = [["source_aulario" => "", "project_id" => "", "permission" => "read_only"]];
                 }
                 foreach ($existing_links as $idx => $link):
                     $source_aul = $link['source_aulario'] ?? '';
                     $proj_id = $link['project_id'] ?? '';
+                    $permission = $link['permission'] ?? 'read_only';
                 ?>
                 <div class="row mb-2 linked-project-row">
-                    <div class="col-md-5">
+                    <div class="col-md-4">
                         <select name="linked_aulario[]" class="form-select linked-aulario-select" data-row="<?php echo $idx; ?>">
                             <option value="">-- Seleccionar aulario origen --</option>
                             <?php foreach ($available_aularios as $aul_id => $aul_name): ?>
@@ -208,7 +211,7 @@ switch ($_GET["action"]) {
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-md-5">
+                    <div class="col-md-3">
                         <select name="linked_project_id[]" class="form-select linked-project-select" data-row="<?php echo $idx; ?>">
                             <option value="">-- Seleccionar proyecto --</option>
                             <?php if (!empty($source_aul) && isset($available_projects_by_aulario[$source_aul])): ?>
@@ -219,6 +222,13 @@ switch ($_GET["action"]) {
                                     </option>
                                 <?php endforeach; ?>
                             <?php endif; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select name="linked_permission[]" class="form-select">
+                            <option value="read_only" <?php echo $permission === 'read_only' ? 'selected' : ''; ?>>Solo lectura</option>
+                            <option value="request_edit" <?php echo $permission === 'request_edit' ? 'selected' : ''; ?>>Solicitar permiso para cambiar</option>
+                            <option value="full_edit" <?php echo $permission === 'full_edit' ? 'selected' : ''; ?>>Cambiar sin solicitar</option>
                         </select>
                     </div>
                     <div class="col-md-2">
@@ -240,7 +250,7 @@ switch ($_GET["action"]) {
                     const newRow = document.createElement('div');
                     newRow.className = 'row mb-2 linked-project-row';
                     newRow.innerHTML = `
-                        <div class="col-md-5">
+                        <div class="col-md-4">
                             <select name="linked_aulario[]" class="form-select linked-aulario-select" data-row="${rowCounter}">
                                 <option value="">-- Seleccionar aulario origen --</option>
                                 <?php foreach ($available_aularios as $aul_id => $aul_name): ?>
@@ -250,9 +260,16 @@ switch ($_GET["action"]) {
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="col-md-5">
+                        <div class="col-md-3">
                             <select name="linked_project_id[]" class="form-select linked-project-select" data-row="${rowCounter}">
                                 <option value="">-- Seleccionar proyecto --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select name="linked_permission[]" class="form-select">
+                                <option value="read_only">Solo lectura</option>
+                                <option value="request_edit">Solicitar permiso para cambiar</option>
+                                <option value="full_edit">Cambiar sin solicitar</option>
                             </select>
                         </div>
                         <div class="col-md-2">

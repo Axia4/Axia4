@@ -100,7 +100,13 @@ function list_projects($proyectos_dir, $parent_id = null) {
 	return $projects;
 }
 
-// Function to get linked projects from other aularios
+/**
+ * Get linked projects from other aularios based on aulario configuration
+ * 
+ * @param array $aulario The aulario configuration containing linked_projects array
+ * @param string $centro_id The centro ID for constructing file paths
+ * @return array Array of project data arrays with is_linked and source_aulario fields added
+ */
 function get_linked_projects($aulario, $centro_id) {
 	$linked = [];
 	$linked_projects = $aulario["linked_projects"] ?? [];
@@ -244,9 +250,25 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 		$item_type = $_POST["item_type"] ?? "link";
 		$item_name = trim($_POST["item_name"] ?? "");
 		$item_url = trim($_POST["item_url"] ?? "");
+		$source_aulario_param = $_POST["source_aulario"] ?? "";
+		
+		// Determine which directory to use based on whether this is a linked project
+		$working_dir = $proyectos_dir;
+		if (!empty($source_aulario_param)) {
+			// Validate the link
+			$linked_projects = $aulario["linked_projects"] ?? [];
+			foreach ($linked_projects as $link) {
+				if (($link["source_aulario"] ?? "") === $source_aulario_param && 
+				    ($link["project_id"] ?? "") === $project_id &&
+				    (($link["permission"] ?? "read_only") === "full_edit" || ($link["permission"] ?? "read_only") === "request_edit")) {
+					$working_dir = "/DATA/entreaulas/Centros/$centro_id/Aularios/$source_aulario_param/Proyectos";
+					break;
+				}
+			}
+		}
 		
 		if ($project_id !== "" && $item_name !== "") {
-			$project = load_project($proyectos_dir, $project_id);
+			$project = load_project($working_dir, $project_id);
 			if ($project) {
 				$item_id = generate_id($item_name);
 				$item = [
@@ -262,7 +284,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 					$item["url"] = $item_url;
 				} elseif ($item_type === "file" && isset($_FILES["item_file"]) && $_FILES["item_file"]["error"] === UPLOAD_ERR_OK) {
 					// Handle file upload with validation
-					$project_dir = "$proyectos_dir/$project_id";
+					$project_dir = "$working_dir/$project_id";
 					if (!is_dir($project_dir)) {
 						mkdir($project_dir, 0755, true);
 					}
@@ -316,9 +338,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 					$project["items"][] = $item;
 					$project["updated_at"] = time();
 					
-					save_project($proyectos_dir, $project_id, $project);
+					save_project($working_dir, $project_id, $project);
 					
-					header("Location: /entreaulas/proyectos.php?aulario=" . urlencode($aulario_id) . "&project=" . urlencode($project_id));
+					$redirect_params = "aulario=" . urlencode($aulario_id) . "&project=" . urlencode($project_id);
+					if (!empty($source_aulario_param)) {
+						$redirect_params .= "&source=" . urlencode($source_aulario_param);
+					}
+					header("Location: /entreaulas/proyectos.php?" . $redirect_params);
 					exit;
 				}
 			}
@@ -328,9 +354,25 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 	if ($action === "delete_item") {
 		$project_id = $_POST["project_id"] ?? "";
 		$item_id = $_POST["item_id"] ?? "";
+		$source_aulario_param = $_POST["source_aulario"] ?? "";
+		
+		// Determine which directory to use based on whether this is a linked project
+		$working_dir = $proyectos_dir;
+		if (!empty($source_aulario_param)) {
+			// Validate the link
+			$linked_projects = $aulario["linked_projects"] ?? [];
+			foreach ($linked_projects as $link) {
+				if (($link["source_aulario"] ?? "") === $source_aulario_param && 
+				    ($link["project_id"] ?? "") === $project_id &&
+				    (($link["permission"] ?? "read_only") === "full_edit" || ($link["permission"] ?? "read_only") === "request_edit")) {
+					$working_dir = "/DATA/entreaulas/Centros/$centro_id/Aularios/$source_aulario_param/Proyectos";
+					break;
+				}
+			}
+		}
 		
 		if ($project_id !== "" && $item_id !== "") {
-			$project = load_project($proyectos_dir, $project_id);
+			$project = load_project($working_dir, $project_id);
 			if ($project && isset($project["items"])) {
 				$new_items = [];
 				foreach ($project["items"] as $item) {
@@ -339,7 +381,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 					} else {
 						// Delete file if it's a file type
 						if ($item["type"] === "file" && isset($item["filename"])) {
-							$file_path = "$proyectos_dir/$project_id/" . $item["filename"];
+							$file_path = "$working_dir/$project_id/" . $item["filename"];
 							if (file_exists($file_path)) {
 								unlink($file_path);
 							}
@@ -348,9 +390,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 				}
 				$project["items"] = $new_items;
 				$project["updated_at"] = time();
-				save_project($proyectos_dir, $project_id, $project);
+				save_project($working_dir, $project_id, $project);
 				
-				header("Location: /entreaulas/proyectos.php?aulario=" . urlencode($aulario_id) . "&project=" . urlencode($project_id));
+				$redirect_params = "aulario=" . urlencode($aulario_id) . "&project=" . urlencode($project_id);
+				if (!empty($source_aulario_param)) {
+					$redirect_params .= "&source=" . urlencode($source_aulario_param);
+				}
+				header("Location: /entreaulas/proyectos.php?" . $redirect_params);
 				exit;
 			}
 		}
@@ -493,15 +539,43 @@ $view = $current_project ? "project" : "list";
 	<?php
 	// Check if this is a linked project from another aulario
 	$source_aulario_for_project = $_GET["source"] ?? "";
-	$is_linked_project = !empty($source_aulario_for_project);
+	$is_linked_project = false;
+	$linked_permission = "read_only";
 	
-	if ($is_linked_project) {
-		// Load from source aulario
-		$project_source_dir = "/DATA/entreaulas/Centros/$centro_id/Aularios/$source_aulario_for_project/Proyectos";
-		$project = load_project($project_source_dir, $current_project);
+	if (!empty($source_aulario_for_project)) {
+		// Validate that this project is actually linked in the configuration
+		$linked_projects = $aulario["linked_projects"] ?? [];
+		$valid_link = false;
+		foreach ($linked_projects as $link) {
+			if (($link["source_aulario"] ?? "") === $source_aulario_for_project && 
+			    ($link["project_id"] ?? "") === $current_project) {
+				$valid_link = true;
+				$linked_permission = $link["permission"] ?? "read_only";
+				break;
+			}
+		}
+		
+		if ($valid_link) {
+			$is_linked_project = true;
+			$project_source_dir = "/DATA/entreaulas/Centros/$centro_id/Aularios/$source_aulario_for_project/Proyectos";
+			$project = load_project($project_source_dir, $current_project);
+		} else {
+			// Invalid link configuration, treat as local project
+			$project = load_project($proyectos_dir, $current_project);
+		}
 	} else {
 		// Load from local aulario
 		$project = load_project($proyectos_dir, $current_project);
+	}
+	
+	// Determine if editing is allowed
+	$can_edit_linked = false;
+	if ($is_linked_project) {
+		if ($linked_permission === "full_edit" || $linked_permission === "request_edit") {
+			// For now, treat both full_edit and request_edit as allowing edits
+			// In the future, request_edit could implement an approval workflow
+			$can_edit_linked = true;
+		}
 	}
 	
 	if (!$project):
@@ -544,8 +618,12 @@ $view = $current_project ? "project" : "list";
 	</nav>
 	
 	<?php if ($is_linked_project): ?>
-		<div class="card pad" style="background: #cfe2ff; color: #084298;">
-			<strong>ℹ️ Proyecto compartido:</strong> Este es un proyecto compartido desde otro aulario. Solo puedes ver su contenido, pero no editarlo ni eliminarlo.
+		<div class="card pad" style="background: <?= $can_edit_linked ? '#d1e7dd' : '#cfe2ff' ?>; color: <?= $can_edit_linked ? '#0f5132' : '#084298' ?>;">
+			<?php if ($can_edit_linked): ?>
+				<strong>✏️ Proyecto compartido con permisos de edición:</strong> Este es un proyecto compartido desde otro aulario. Puedes ver y editar su contenido. Los cambios se guardarán en el aulario origen.
+			<?php else: ?>
+				<strong>ℹ️ Proyecto compartido (solo lectura):</strong> Este es un proyecto compartido desde otro aulario. Solo puedes ver su contenido, pero no editarlo.
+			<?php endif; ?>
 		</div>
 	<?php endif; ?>
 	
@@ -577,7 +655,7 @@ $view = $current_project ? "project" : "list";
 	</div>
 	
 	<!-- Action Buttons -->
-	<?php if (!$is_linked_project): ?>
+	<?php if (!$is_linked_project || $can_edit_linked): ?>
 	<div class="card pad">
 		<div class="d-flex gap-2 flex-wrap">
 			<button type="button" class="btn btn-success btn-lg" data-bs-toggle="modal" data-bs-target="#addItemModal">
@@ -694,11 +772,14 @@ $view = $current_project ? "project" : "list";
 							Abrir Archivo
 						</a>
 					<?php endif; ?>
-					<?php if (!$is_linked_project): ?>
+					<?php if (!$is_linked_project || $can_edit_linked): ?>
 					<form method="post" style="display: inline;" onsubmit="return confirm('¿Estás seguro de que quieres eliminar este elemento?');">
 						<input type="hidden" name="action" value="delete_item">
 						<input type="hidden" name="project_id" value="<?= htmlspecialchars($current_project) ?>">
 						<input type="hidden" name="item_id" value="<?= htmlspecialchars($item["id"]) ?>">
+						<?php if ($is_linked_project && $can_edit_linked): ?>
+						<input type="hidden" name="source_aulario" value="<?= htmlspecialchars($source_aulario_for_project) ?>">
+						<?php endif; ?>
 						<button type="submit" class="btn btn-danger">
 							<img src="/static/iconexperience/garbage.png" height="20" style="vertical-align: middle;">
 						</button>
@@ -727,6 +808,9 @@ $view = $current_project ? "project" : "list";
 					<div class="modal-body">
 						<input type="hidden" name="action" value="add_item">
 						<input type="hidden" name="project_id" value="<?= htmlspecialchars($current_project) ?>">
+						<?php if ($is_linked_project && $can_edit_linked): ?>
+						<input type="hidden" name="source_aulario" value="<?= htmlspecialchars($source_aulario_for_project) ?>">
+						<?php endif; ?>
 						
 						<div class="mb-3">
 							<label for="item_type" class="form-label">Tipo de Elemento *</label>
