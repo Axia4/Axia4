@@ -40,6 +40,26 @@ switch ($_GET["form"]) {
             unset($aulario_data["shared_comedor_from"]);
         }
         
+        // Handle linked projects configuration
+        $linked_projects = [];
+        $linked_aularios = $_POST["linked_aulario"] ?? [];
+        $linked_project_ids = $_POST["linked_project_id"] ?? [];
+        
+        for ($i = 0; $i < count($linked_aularios); $i++) {
+            if (!empty($linked_aularios[$i]) && !empty($linked_project_ids[$i])) {
+                $linked_projects[] = [
+                    "source_aulario" => $linked_aularios[$i],
+                    "project_id" => $linked_project_ids[$i]
+                ];
+            }
+        }
+        
+        if (count($linked_projects) > 0) {
+            $aulario_data["linked_projects"] = $linked_projects;
+        } else {
+            unset($aulario_data["linked_projects"]);
+        }
+        
         file_put_contents($aulario_file, json_encode($aulario_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
         header("Location: ?action=edit&aulario=" . urlencode($aulario_id) . "&centro=" . urlencode($centro_id) . "&saved=1");
         exit();
@@ -104,6 +124,29 @@ switch ($_GET["action"]) {
                 $available_aularios[$aul_id] = $aul_data['name'] ?? $aul_id;
             }
         }
+        
+        // Get available projects from other aularios
+        $available_projects_by_aulario = [];
+        foreach ($available_aularios as $aul_id => $aul_name) {
+            $proj_dir = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aul_id/Proyectos";
+            if (is_dir($proj_dir)) {
+                $projects = [];
+                $files = glob("$proj_dir/*.json");
+                foreach ($files as $file) {
+                    $proj_data = json_decode(file_get_contents($file), true);
+                    // Only include root projects (no parent)
+                    if ($proj_data && ($proj_data["parent_id"] ?? null) === null) {
+                        $projects[] = [
+                            "id" => $proj_data["id"] ?? basename($file, ".json"),
+                            "name" => $proj_data["name"] ?? "Sin nombre"
+                        ];
+                    }
+                }
+                if (count($projects) > 0) {
+                    $available_projects_by_aulario[$aul_id] = $projects;
+                }
+            }
+        }
 ?>
 <?php if (isset($_GET['saved'])): ?>
 <div class="alert alert-success">Cambios guardados correctamente.</div>
@@ -137,6 +180,125 @@ switch ($_GET["action"]) {
                     <?php endforeach; ?>
                 </select>
             </div>
+            
+            <hr>
+            <h3>Proyectos Enlazados</h3>
+            <p class="text-muted">Selecciona proyectos raíz específicos de otros aularios para mostrarlos en este aulario. Los proyectos enlazados se mostrarán como solo lectura.</p>
+            
+            <div id="linked-projects-container">
+                <?php
+                $existing_links = $aulario_data['linked_projects'] ?? [];
+                if (count($existing_links) === 0) {
+                    // Show one empty row
+                    $existing_links = [["source_aulario" => "", "project_id" => ""]];
+                }
+                foreach ($existing_links as $idx => $link):
+                    $source_aul = $link['source_aulario'] ?? '';
+                    $proj_id = $link['project_id'] ?? '';
+                ?>
+                <div class="row mb-2 linked-project-row">
+                    <div class="col-md-5">
+                        <select name="linked_aulario[]" class="form-select linked-aulario-select" data-row="<?php echo $idx; ?>">
+                            <option value="">-- Seleccionar aulario origen --</option>
+                            <?php foreach ($available_aularios as $aul_id => $aul_name): ?>
+                                <option value="<?php echo htmlspecialchars($aul_id); ?>" 
+                                    <?php echo $source_aul === $aul_id ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($aul_name); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-5">
+                        <select name="linked_project_id[]" class="form-select linked-project-select" data-row="<?php echo $idx; ?>">
+                            <option value="">-- Seleccionar proyecto --</option>
+                            <?php if (!empty($source_aul) && isset($available_projects_by_aulario[$source_aul])): ?>
+                                <?php foreach ($available_projects_by_aulario[$source_aul] as $proj): ?>
+                                    <option value="<?php echo htmlspecialchars($proj['id']); ?>"
+                                        <?php echo $proj_id === $proj['id'] ? 'selected' : ''; ?>>
+                                        <?php echo htmlspecialchars($proj['name']); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-danger remove-link-btn" onclick="removeLinkedProject(this)">Eliminar</button>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            
+            <button type="button" class="btn btn-secondary mb-3" onclick="addLinkedProject()">+ Añadir Proyecto Enlazado</button>
+            
+            <script>
+                // Store available projects data
+                const availableProjects = <?php echo json_encode($available_projects_by_aulario); ?>;
+                let rowCounter = <?php echo count($existing_links); ?>;
+                
+                function addLinkedProject() {
+                    const container = document.getElementById('linked-projects-container');
+                    const newRow = document.createElement('div');
+                    newRow.className = 'row mb-2 linked-project-row';
+                    newRow.innerHTML = `
+                        <div class="col-md-5">
+                            <select name="linked_aulario[]" class="form-select linked-aulario-select" data-row="${rowCounter}">
+                                <option value="">-- Seleccionar aulario origen --</option>
+                                <?php foreach ($available_aularios as $aul_id => $aul_name): ?>
+                                    <option value="<?php echo htmlspecialchars($aul_id); ?>">
+                                        <?php echo htmlspecialchars($aul_name); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-5">
+                            <select name="linked_project_id[]" class="form-select linked-project-select" data-row="${rowCounter}">
+                                <option value="">-- Seleccionar proyecto --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-danger remove-link-btn" onclick="removeLinkedProject(this)">Eliminar</button>
+                        </div>
+                    `;
+                    container.appendChild(newRow);
+                    
+                    // Attach change event to new aulario select
+                    const newAularioSelect = newRow.querySelector('.linked-aulario-select');
+                    newAularioSelect.addEventListener('change', updateProjectOptions);
+                    
+                    rowCounter++;
+                }
+                
+                function removeLinkedProject(btn) {
+                    btn.closest('.linked-project-row').remove();
+                }
+                
+                function updateProjectOptions(event) {
+                    const aularioSelect = event.target;
+                    const rowId = aularioSelect.dataset.row;
+                    const projectSelect = document.querySelector(`.linked-project-select[data-row="${rowId}"]`);
+                    const selectedAulario = aularioSelect.value;
+                    
+                    // Clear project options
+                    projectSelect.innerHTML = '<option value="">-- Seleccionar proyecto --</option>';
+                    
+                    // Add new options
+                    if (selectedAulario && availableProjects[selectedAulario]) {
+                        availableProjects[selectedAulario].forEach(proj => {
+                            const option = document.createElement('option');
+                            option.value = proj.id;
+                            option.textContent = proj.name;
+                            projectSelect.appendChild(option);
+                        });
+                    }
+                }
+                
+                // Attach event listeners to existing selects
+                document.addEventListener('DOMContentLoaded', function() {
+                    document.querySelectorAll('.linked-aulario-select').forEach(select => {
+                        select.addEventListener('change', updateProjectOptions);
+                    });
+                });
+            </script>
             
             <input type="hidden" name="aulario_id" value="<?php echo htmlspecialchars($aulario_id); ?>">
             <input type="hidden" name="centro_id" value="<?php echo htmlspecialchars($centro_id); ?>">

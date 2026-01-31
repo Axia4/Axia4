@@ -100,6 +100,36 @@ function list_projects($proyectos_dir, $parent_id = null) {
 	return $projects;
 }
 
+// Function to get linked projects from other aularios
+function get_linked_projects($aulario, $centro_id) {
+	$linked = [];
+	$linked_projects = $aulario["linked_projects"] ?? [];
+	
+	foreach ($linked_projects as $link) {
+		$source_aulario = $link["source_aulario"] ?? "";
+		$project_id = $link["project_id"] ?? "";
+		
+		if (empty($source_aulario) || empty($project_id)) {
+			continue;
+		}
+		
+		$source_dir = "/DATA/entreaulas/Centros/$centro_id/Aularios/$source_aulario/Proyectos";
+		$project_file = "$source_dir/$project_id.json";
+		
+		if (file_exists($project_file)) {
+			$project = json_decode(file_get_contents($project_file), true);
+			if ($project && ($project["parent_id"] ?? null) === null) {
+				// Mark as linked and add source info
+				$project["is_linked"] = true;
+				$project["source_aulario"] = $source_aulario;
+				$linked[] = $project;
+			}
+		}
+	}
+	
+	return $linked;
+}
+
 // Handle actions
 $message = "";
 $error = "";
@@ -361,16 +391,31 @@ $view = $current_project ? "project" : "list";
 	
 	<!-- Project List -->
 	<?php
-	$projects = list_projects($proyectos_dir);
+	// Get local projects and linked projects
+	$local_projects = list_projects($proyectos_dir);
+	$linked_projects = get_linked_projects($aulario, $centro_id);
+	$projects = array_merge($local_projects, $linked_projects);
+	
+	// Sort by creation date
+	usort($projects, function($a, $b) {
+		return ($b["created_at"] ?? 0) <=> ($a["created_at"] ?? 0);
+	});
+	
 	if (count($projects) > 0):
 	?>
 	<div id="grid">
-		<?php foreach ($projects as $project): ?>
+		<?php foreach ($projects as $project): 
+			$is_linked = $project["is_linked"] ?? false;
+			$source_aulario = $project["source_aulario"] ?? "";
+		?>
 		<div class="card grid-item" style="width: 300px;">
 			<div class="card-body">
 				<h5 class="card-title">
 					<img src="/static/arasaac/carpeta.png" height="30" style="vertical-align: middle; background: white; padding: 3px; border-radius: 5px;">
 					<?= htmlspecialchars($project["name"]) ?>
+					<?php if ($is_linked): ?>
+						<span class="badge bg-info" style="font-size: 0.7rem;">Compartido</span>
+					<?php endif; ?>
 				</h5>
 				<?php if (!empty($project["description"])): ?>
 				<p class="card-text"><?= htmlspecialchars($project["description"]) ?></p>
@@ -384,18 +429,25 @@ $view = $current_project ? "project" : "list";
 					</small>
 				</p>
 				<div class="d-flex gap-2">
-					<a href="/entreaulas/proyectos.php?aulario=<?= urlencode($aulario_id) ?>&project=<?= urlencode($project["id"]) ?>" class="btn btn-primary">
-						<img src="/static/iconexperience/find.png" height="20" style="vertical-align: middle;">
-						Abrir
-					</a>
-					<form method="post" style="display: inline;" onsubmit="return confirm('¿Estás seguro de que quieres eliminar este proyecto?');">
-						<input type="hidden" name="action" value="delete_project">
-						<input type="hidden" name="project_id" value="<?= htmlspecialchars($project["id"]) ?>">
-						<button type="submit" class="btn btn-danger">
-							<img src="/static/iconexperience/garbage.png" height="20" style="vertical-align: middle;">
-							Eliminar
-						</button>
-					</form>
+					<?php if ($is_linked): ?>
+						<a href="/entreaulas/proyectos.php?aulario=<?= urlencode($aulario_id) ?>&project=<?= urlencode($project["id"]) ?>&source=<?= urlencode($source_aulario) ?>" class="btn btn-primary">
+							<img src="/static/iconexperience/find.png" height="20" style="vertical-align: middle;">
+							Abrir
+						</a>
+					<?php else: ?>
+						<a href="/entreaulas/proyectos.php?aulario=<?= urlencode($aulario_id) ?>&project=<?= urlencode($project["id"]) ?>" class="btn btn-primary">
+							<img src="/static/iconexperience/find.png" height="20" style="vertical-align: middle;">
+							Abrir
+						</a>
+						<form method="post" style="display: inline;" onsubmit="return confirm('¿Estás seguro de que quieres eliminar este proyecto?');">
+							<input type="hidden" name="action" value="delete_project">
+							<input type="hidden" name="project_id" value="<?= htmlspecialchars($project["id"]) ?>">
+							<button type="submit" class="btn btn-danger">
+								<img src="/static/iconexperience/garbage.png" height="20" style="vertical-align: middle;">
+								Eliminar
+							</button>
+						</form>
+					<?php endif; ?>
 				</div>
 			</div>
 		</div>
@@ -439,7 +491,19 @@ $view = $current_project ? "project" : "list";
 <?php elseif ($view === "project"): ?>
 	<!-- Project Detail View -->
 	<?php
-	$project = load_project($proyectos_dir, $current_project);
+	// Check if this is a linked project from another aulario
+	$source_aulario_for_project = $_GET["source"] ?? "";
+	$is_linked_project = !empty($source_aulario_for_project);
+	
+	if ($is_linked_project) {
+		// Load from source aulario
+		$project_source_dir = "/DATA/entreaulas/Centros/$centro_id/Aularios/$source_aulario_for_project/Proyectos";
+		$project = load_project($project_source_dir, $current_project);
+	} else {
+		// Load from local aulario
+		$project = load_project($proyectos_dir, $current_project);
+	}
+	
 	if (!$project):
 	?>
 	<div class="card pad">
@@ -479,6 +543,12 @@ $view = $current_project ? "project" : "list";
 		</ol>
 	</nav>
 	
+	<?php if ($is_linked_project): ?>
+		<div class="card pad" style="background: #cfe2ff; color: #084298;">
+			<strong>ℹ️ Proyecto compartido:</strong> Este es un proyecto compartido desde otro aulario. Solo puedes ver su contenido, pero no editarlo ni eliminarlo.
+		</div>
+	<?php endif; ?>
+	
 	<div class="card pad">
 		<div class="d-flex justify-content-between align-items-start">
 			<div>
@@ -486,6 +556,9 @@ $view = $current_project ? "project" : "list";
 					<img src="/static/arasaac/carpeta.png" height="40" style="vertical-align: middle; background: white; padding: 5px; border-radius: 10px;">
 					<?= htmlspecialchars($project["name"]) ?>
 					<span class="badge bg-secondary">Nivel <?= $project_level ?></span>
+					<?php if ($is_linked_project): ?>
+						<span class="badge bg-info">Compartido</span>
+					<?php endif; ?>
 				</h1>
 				<?php if (!empty($project["description"])): ?>
 				<p><?= htmlspecialchars($project["description"]) ?></p>
@@ -504,6 +577,7 @@ $view = $current_project ? "project" : "list";
 	</div>
 	
 	<!-- Action Buttons -->
+	<?php if (!$is_linked_project): ?>
 	<div class="card pad">
 		<div class="d-flex gap-2 flex-wrap">
 			<button type="button" class="btn btn-success btn-lg" data-bs-toggle="modal" data-bs-target="#addItemModal">
@@ -518,6 +592,7 @@ $view = $current_project ? "project" : "list";
 			<?php endif; ?>
 		</div>
 	</div>
+	<?php endif; ?>
 	
 	<!-- Sub-Projects Section -->
 	<?php
@@ -610,11 +685,16 @@ $view = $current_project ? "project" : "list";
 							Abrir Enlace
 						</a>
 					<?php else: ?>
-						<a href="/entreaulas/_filefetch.php?type=proyecto_file&centro=<?= urlencode($centro_id) ?>&aulario=<?= urlencode($aulario_id) ?>&project=<?= urlencode($current_project) ?>&file=<?= urlencode($item["filename"]) ?>" target="_blank" class="btn btn-primary btn-lg">
+						<?php
+						// Use source aulario for file fetch if linked project
+						$fetch_aulario = $is_linked_project ? $source_aulario_for_project : $aulario_id;
+						?>
+						<a href="/entreaulas/_filefetch.php?type=proyecto_file&centro=<?= urlencode($centro_id) ?>&aulario=<?= urlencode($fetch_aulario) ?>&project=<?= urlencode($current_project) ?>&file=<?= urlencode($item["filename"]) ?>" target="_blank" class="btn btn-primary btn-lg">
 							<img src="/static/iconexperience/find.png" height="25" style="vertical-align: middle;">
 							Abrir Archivo
 						</a>
 					<?php endif; ?>
+					<?php if (!$is_linked_project): ?>
 					<form method="post" style="display: inline;" onsubmit="return confirm('¿Estás seguro de que quieres eliminar este elemento?');">
 						<input type="hidden" name="action" value="delete_item">
 						<input type="hidden" name="project_id" value="<?= htmlspecialchars($current_project) ?>">
@@ -623,6 +703,7 @@ $view = $current_project ? "project" : "list";
 							<img src="/static/iconexperience/garbage.png" height="20" style="vertical-align: middle;">
 						</button>
 					</form>
+					<?php endif; ?>
 				</div>
 			</div>
 		</div>
