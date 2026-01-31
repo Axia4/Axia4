@@ -33,6 +33,12 @@ $aulario = json_decode(file_get_contents("/DATA/entreaulas/Centros/$centro_id/Au
         <br>
         Menú del Comedor
     </a>
+    <!-- Proyectos -->
+    <a href="/entreaulas/proyectos.php?aulario=<?= urlencode($aulario_id) ?>" class="btn btn-info grid-item">
+        <img src="/static/iconexperience/shelf.png" height="125">
+        <br>
+        Proyectos
+    </a>
 </div>
 <style>
     .grid-item {
