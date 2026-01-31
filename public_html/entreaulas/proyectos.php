@@ -55,7 +55,22 @@ function save_project($proyectos_dir, $project_id, $data) {
 	return $result;
 }
 
-function list_projects($proyectos_dir) {
+function get_project_breadcrumb($proyectos_dir, $project_id) {
+	$breadcrumb = [];
+	$current_id = $project_id;
+	
+	while ($current_id) {
+		$project = load_project($proyectos_dir, $current_id);
+		if (!$project) break;
+		
+		array_unshift($breadcrumb, $project);
+		$current_id = $project["parent_id"] ?? null;
+	}
+	
+	return $breadcrumb;
+}
+
+function list_projects($proyectos_dir, $parent_id = null) {
 	$projects = [];
 	if (!is_dir($proyectos_dir)) {
 		return $projects;
@@ -64,7 +79,15 @@ function list_projects($proyectos_dir) {
 	foreach ($files as $file) {
 		$data = json_decode(file_get_contents($file), true);
 		if ($data) {
-			$projects[] = $data;
+			// Filter by parent_id
+			$project_parent = $data["parent_id"] ?? null;
+			if ($parent_id === null && $project_parent === null) {
+				// Root level projects (no parent)
+				$projects[] = $data;
+			} elseif ($parent_id !== null && $project_parent === $parent_id) {
+				// Sub-projects of specified parent
+				$projects[] = $data;
+			}
 		} else {
 			error_log("Failed to decode JSON from file: $file");
 		}
@@ -86,28 +109,62 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 	if ($action === "create_project") {
 		$name = trim($_POST["name"] ?? "");
 		$description = trim($_POST["description"] ?? "");
+		$parent_id = trim($_POST["parent_id"] ?? "");
 		
 		if ($name !== "") {
-			$project_id = generate_id($name);
-			$project_data = [
-				"id" => $project_id,
-				"name" => $name,
-				"description" => $description,
-				"created_at" => time(),
-				"updated_at" => time(),
-				"items" => []
-			];
-			
-			save_project($proyectos_dir, $project_id, $project_data);
-			
-			// Create project directory
-			$project_dir = "$proyectos_dir/$project_id";
-			if (!is_dir($project_dir)) {
-				mkdir($project_dir, 0755, true);
+			// Determine level based on parent
+			$level = 1;
+			if ($parent_id !== "") {
+				$parent = load_project($proyectos_dir, $parent_id);
+				if ($parent) {
+					$level = ($parent["level"] ?? 1) + 1;
+					// Enforce max 3 levels
+					if ($level > 3) {
+						$error = "No se pueden crear más de 3 niveles de sub-proyectos.";
+					}
+				} else {
+					$error = "Proyecto padre no encontrado.";
+				}
 			}
 			
-			header("Location: /entreaulas/proyectos.php?aulario=" . urlencode($aulario_id) . "&project=" . urlencode($project_id));
-			exit;
+			if (empty($error)) {
+				$project_id = generate_id($name);
+				$project_data = [
+					"id" => $project_id,
+					"name" => $name,
+					"description" => $description,
+					"created_at" => time(),
+					"updated_at" => time(),
+					"items" => [],
+					"subprojects" => [],
+					"parent_id" => $parent_id !== "" ? $parent_id : null,
+					"level" => $level
+				];
+				
+				save_project($proyectos_dir, $project_id, $project_data);
+				
+				// Create project directory
+				$project_dir = "$proyectos_dir/$project_id";
+				if (!is_dir($project_dir)) {
+					mkdir($project_dir, 0755, true);
+				}
+				
+				// Update parent's subprojects list
+				if ($parent_id !== "") {
+					$parent = load_project($proyectos_dir, $parent_id);
+					if ($parent) {
+						if (!isset($parent["subprojects"])) {
+							$parent["subprojects"] = [];
+						}
+						$parent["subprojects"][] = $project_id;
+						$parent["updated_at"] = time();
+						save_project($proyectos_dir, $parent_id, $parent);
+					}
+				}
+				
+				header("Location: /entreaulas/proyectos.php?aulario=" . urlencode($aulario_id) . "&project=" . urlencode($project_id));
+				exit;
+			}
 		} else {
 			$error = "El nombre del proyecto es obligatorio.";
 		}
@@ -118,6 +175,21 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 		if ($project_id !== "") {
 			$project_file = "$proyectos_dir/$project_id.json";
 			if (file_exists($project_file)) {
+				// Load project to get parent_id
+				$project = load_project($proyectos_dir, $project_id);
+				
+				// Remove from parent's subprojects list
+				if ($project && !empty($project["parent_id"])) {
+					$parent = load_project($proyectos_dir, $project["parent_id"]);
+					if ($parent && isset($parent["subprojects"])) {
+						$parent["subprojects"] = array_values(array_filter($parent["subprojects"], function($id) use ($project_id) {
+							return $id !== $project_id;
+						}));
+						$parent["updated_at"] = time();
+						save_project($proyectos_dir, $project["parent_id"], $parent);
+					}
+				}
+				
 				unlink($project_file);
 				// Also delete project directory
 				$project_dir = "$proyectos_dir/$project_id";
@@ -305,6 +377,9 @@ $view = $current_project ? "project" : "list";
 				<p class="card-text">
 					<small class="text-muted">
 						<?= count($project["items"] ?? []) ?> elementos
+						<?php if (!empty($project["subprojects"])): ?>
+							· <?= count($project["subprojects"]) ?> sub-proyectos
+						<?php endif; ?>
 					</small>
 				</p>
 				<div class="d-flex gap-2">
@@ -375,7 +450,33 @@ $view = $current_project ? "project" : "list";
 	require_once "_incl/post-body.php";
 	exit;
 	endif;
+	
+	// Get breadcrumb path
+	$breadcrumb = get_project_breadcrumb($proyectos_dir, $current_project);
+	$project_level = $project["level"] ?? 1;
 	?>
+	
+	<!-- Breadcrumb Navigation -->
+	<nav aria-label="breadcrumb">
+		<ol class="breadcrumb">
+			<li class="breadcrumb-item">
+				<a href="/entreaulas/proyectos.php?aulario=<?= urlencode($aulario_id) ?>">Proyectos</a>
+			</li>
+			<?php foreach ($breadcrumb as $idx => $crumb): ?>
+				<?php if ($idx < count($breadcrumb) - 1): ?>
+					<li class="breadcrumb-item">
+						<a href="/entreaulas/proyectos.php?aulario=<?= urlencode($aulario_id) ?>&project=<?= urlencode($crumb["id"]) ?>">
+							<?= htmlspecialchars($crumb["name"]) ?>
+						</a>
+					</li>
+				<?php else: ?>
+					<li class="breadcrumb-item active" aria-current="page">
+						<?= htmlspecialchars($crumb["name"]) ?>
+					</li>
+				<?php endif; ?>
+			<?php endforeach; ?>
+		</ol>
+	</nav>
 	
 	<div class="card pad">
 		<div class="d-flex justify-content-between align-items-start">
@@ -383,26 +484,100 @@ $view = $current_project ? "project" : "list";
 				<h1 class="card-title">
 					<img src="/static/arasaac/carpeta.png" height="40" style="vertical-align: middle; background: white; padding: 5px; border-radius: 10px;">
 					<?= htmlspecialchars($project["name"]) ?>
+					<span class="badge bg-secondary">Nivel <?= $project_level ?></span>
 				</h1>
 				<?php if (!empty($project["description"])): ?>
 				<p><?= htmlspecialchars($project["description"]) ?></p>
 				<?php endif; ?>
 			</div>
-			<a href="/entreaulas/proyectos.php?aulario=<?= urlencode($aulario_id) ?>" class="btn btn-secondary">
-				← Volver a Proyectos
-			</a>
+			<?php if (!empty($project["parent_id"])): ?>
+				<a href="/entreaulas/proyectos.php?aulario=<?= urlencode($aulario_id) ?>&project=<?= urlencode($project["parent_id"]) ?>" class="btn btn-secondary">
+					← Volver al Proyecto Padre
+				</a>
+			<?php else: ?>
+				<a href="/entreaulas/proyectos.php?aulario=<?= urlencode($aulario_id) ?>" class="btn btn-secondary">
+					← Volver a Proyectos
+				</a>
+			<?php endif; ?>
 		</div>
 	</div>
 	
-	<!-- Add Item Button -->
+	<!-- Action Buttons -->
 	<div class="card pad">
-		<button type="button" class="btn btn-success btn-lg" data-bs-toggle="modal" data-bs-target="#addItemModal">
-			<img src="/static/iconexperience/add.png" height="30" style="vertical-align: middle;">
-			Añadir Enlace o Archivo
-		</button>
+		<div class="d-flex gap-2 flex-wrap">
+			<button type="button" class="btn btn-success btn-lg" data-bs-toggle="modal" data-bs-target="#addItemModal">
+				<img src="/static/iconexperience/add.png" height="30" style="vertical-align: middle;">
+				Añadir Enlace o Archivo
+			</button>
+			<?php if ($project_level < 3): ?>
+				<button type="button" class="btn btn-info btn-lg" data-bs-toggle="modal" data-bs-target="#createSubProjectModal">
+					<img src="/static/iconexperience/add.png" height="30" style="vertical-align: middle;">
+					Crear Sub-Proyecto
+				</button>
+			<?php endif; ?>
+		</div>
 	</div>
 	
+	<!-- Sub-Projects Section -->
+	<?php
+	$subprojects = list_projects($proyectos_dir, $current_project);
+	if (count($subprojects) > 0):
+	?>
+	<div class="card pad">
+		<h3>
+			<img src="/static/arasaac/carpeta.png" height="25" style="vertical-align: middle; background: white; padding: 3px; border-radius: 5px;">
+			Sub-Proyectos
+		</h3>
+	</div>
+	<div id="grid-subprojects">
+		<?php foreach ($subprojects as $subproject): ?>
+		<div class="card grid-item" style="width: 300px;">
+			<div class="card-body">
+				<h5 class="card-title">
+					<img src="/static/arasaac/carpeta.png" height="25" style="vertical-align: middle; background: white; padding: 3px; border-radius: 5px;">
+					<?= htmlspecialchars($subproject["name"]) ?>
+					<span class="badge bg-info">Nivel <?= $subproject["level"] ?? 2 ?></span>
+				</h5>
+				<?php if (!empty($subproject["description"])): ?>
+				<p class="card-text"><?= htmlspecialchars($subproject["description"]) ?></p>
+				<?php endif; ?>
+				<p class="card-text">
+					<small class="text-muted">
+						<?= count($subproject["items"] ?? []) ?> elementos
+						<?php if (!empty($subproject["subprojects"])): ?>
+							· <?= count($subproject["subprojects"]) ?> sub-proyectos
+						<?php endif; ?>
+					</small>
+				</p>
+				<div class="d-flex gap-2">
+					<a href="/entreaulas/proyectos.php?aulario=<?= urlencode($aulario_id) ?>&project=<?= urlencode($subproject["id"]) ?>" class="btn btn-primary">
+						<img src="/static/iconexperience/find.png" height="20" style="vertical-align: middle;">
+						Abrir
+					</a>
+					<form method="post" style="display: inline;" onsubmit="return confirm('¿Estás seguro de que quieres eliminar este sub-proyecto?');">
+						<input type="hidden" name="action" value="delete_project">
+						<input type="hidden" name="project_id" value="<?= htmlspecialchars($subproject["id"]) ?>">
+						<button type="submit" class="btn btn-danger">
+							<img src="/static/iconexperience/garbage.png" height="20" style="vertical-align: middle;">
+							Eliminar
+						</button>
+					</form>
+				</div>
+			</div>
+		</div>
+		<?php endforeach; ?>
+	</div>
+	<?php endif; ?>
+	
 	<!-- Items List -->
+	<?php if (count($subprojects) > 0): ?>
+	<div class="card pad">
+		<h3>
+			<img src="/static/arasaac/documento.png" height="25" style="vertical-align: middle; background: white; padding: 3px; border-radius: 5px;">
+			Archivos y Enlaces
+		</h3>
+	</div>
+	<?php endif; ?>
 	<?php
 	$items = $project["items"] ?? [];
 	if (count($items) > 0):
@@ -509,6 +684,39 @@ $view = $current_project ? "project" : "list";
 		</div>
 	</div>
 	
+	<!-- Create Sub-Project Modal -->
+	<div class="modal fade" id="createSubProjectModal" tabindex="-1" aria-labelledby="createSubProjectModalLabel" aria-hidden="true">
+		<div class="modal-dialog modal-lg">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="createSubProjectModalLabel">Crear Sub-Proyecto</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+				<form method="post">
+					<div class="modal-body">
+						<input type="hidden" name="action" value="create_project">
+						<input type="hidden" name="parent_id" value="<?= htmlspecialchars($current_project) ?>">
+						<div class="alert alert-info">
+							Este sub-proyecto se creará dentro de <strong><?= htmlspecialchars($project["name"]) ?></strong> (Nivel <?= $project_level ?>)
+						</div>
+						<div class="mb-3">
+							<label for="subproject_name" class="form-label">Nombre del Sub-Proyecto *</label>
+							<input type="text" class="form-control form-control-lg" id="subproject_name" name="name" required>
+						</div>
+						<div class="mb-3">
+							<label for="subproject_description" class="form-label">Descripción</label>
+							<textarea class="form-control" id="subproject_description" name="description" rows="3"></textarea>
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+						<button type="submit" class="btn btn-info">Crear Sub-Proyecto</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
+	
 	<script>
 		document.getElementById('item_type').addEventListener('change', function() {
 			var type = this.value;
@@ -544,19 +752,32 @@ $view = $current_project ? "project" : "list";
 	.modal-lg {
 		max-width: 800px;
 	}
+	.breadcrumb {
+		background-color: #f8f9fa;
+		padding: 10px 15px;
+		border-radius: 5px;
+		margin-bottom: 15px;
+	}
 </style>
 
 <script>
-	var msnry = new Masonry('#grid', {
-		"columnWidth": 280,
-		"itemSelector": ".grid-item",
-		"gutter": 10,
-		"transitionDuration": 0
+	// Initialize Masonry for main grid
+	var grids = ['#grid', '#grid-subprojects'];
+	grids.forEach(function(gridId) {
+		var gridElement = document.querySelector(gridId);
+		if (gridElement) {
+			var msnry = new Masonry(gridId, {
+				"columnWidth": 280,
+				"itemSelector": ".grid-item",
+				"gutter": 10,
+				"transitionDuration": 0
+			});
+			setTimeout(() => {msnry.layout()}, 150);
+			window.addEventListener('resize', function(event) {
+				msnry.layout()
+			}, true);
+		}
 	});
-	setTimeout(() => {msnry.layout()}, 150);
-	window.addEventListener('resize', function(event) {
-		msnry.layout()
-	}, true);
 </script>
 
 <?php require_once "_incl/post-body.php"; ?>
