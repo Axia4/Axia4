@@ -153,6 +153,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 					"created_at" => time()
 				];
 				
+				$can_add_item = true;
+				
 				if ($item_type === "link" && $item_url !== "") {
 					$item["url"] = $item_url;
 				} elseif ($item_type === "file" && isset($_FILES["item_file"]) && $_FILES["item_file"]["error"] === UPLOAD_ERR_OK) {
@@ -166,49 +168,56 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 					$max_size = 500 * 1024 * 1024; // 500MB
 					if ($_FILES["item_file"]["size"] > $max_size) {
 						$error = "El archivo es demasiado grande. Tamaño máximo: 500MB.";
-						continue;
+						$can_add_item = false;
 					}
 					
 					// Validate file type
-					$original_name = $_FILES["item_file"]["name"];
-					$ext = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
-					$allowed_extensions = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "jpg", "jpeg", "png", "gif", "webp", "txt", "zip", "mp4", "mp3"];
-					
-					if (!in_array($ext, $allowed_extensions, true)) {
-						$error = "Tipo de archivo no permitido. Extensiones permitidas: " . implode(", ", $allowed_extensions);
-						continue;
+					if ($can_add_item) {
+						$original_name = $_FILES["item_file"]["name"];
+						$ext = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
+						$allowed_extensions = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "jpg", "jpeg", "png", "gif", "webp", "txt", "zip", "mp4", "mp3"];
+						
+						if (!in_array($ext, $allowed_extensions, true)) {
+							$error = "Tipo de archivo no permitido. Extensiones permitidas: " . implode(", ", $allowed_extensions);
+							$can_add_item = false;
+						}
 					}
 					
-					$safe_name = safe_filename($original_name);
-					$target_path = "$project_dir/$safe_name";
-					
-					// Make filename unique if exists
-					$counter = 1;
-					$basename = pathinfo($safe_name, PATHINFO_FILENAME);
-					while (file_exists($target_path)) {
-						$safe_name = safe_filename($basename . "_" . $counter . "." . $ext);
+					if ($can_add_item) {
+						$safe_name = safe_filename($original_name);
 						$target_path = "$project_dir/$safe_name";
-						$counter++;
+						
+						// Make filename unique if exists
+						$counter = 1;
+						$basename = pathinfo($safe_name, PATHINFO_FILENAME);
+						while (file_exists($target_path)) {
+							$safe_name = safe_filename($basename . "_" . $counter . "." . $ext);
+							$target_path = "$project_dir/$safe_name";
+							$counter++;
+						}
+						
+						if (move_uploaded_file($_FILES["item_file"]["tmp_name"], $target_path)) {
+							$item["filename"] = $safe_name;
+							$item["original_name"] = $original_name;
+						} else {
+							$error = "No se pudo subir el archivo.";
+							$can_add_item = false;
+						}
 					}
+				}
+				
+				if ($can_add_item) {
+					if (!isset($project["items"])) {
+						$project["items"] = [];
+					}
+					$project["items"][] = $item;
+					$project["updated_at"] = time();
 					
-					if (move_uploaded_file($_FILES["item_file"]["tmp_name"], $target_path)) {
-						$item["filename"] = $safe_name;
-						$item["original_name"] = $original_name;
-					} else {
-						$error = "No se pudo subir el archivo.";
-					}
+					save_project($proyectos_dir, $project_id, $project);
+					
+					header("Location: /entreaulas/proyectos.php?aulario=" . urlencode($aulario_id) . "&project=" . urlencode($project_id));
+					exit;
 				}
-				
-				if (!isset($project["items"])) {
-					$project["items"] = [];
-				}
-				$project["items"][] = $item;
-				$project["updated_at"] = time();
-				
-				save_project($proyectos_dir, $project_id, $project);
-				
-				header("Location: /entreaulas/proyectos.php?aulario=" . urlencode($aulario_id) . "&project=" . urlencode($project_id));
-				exit;
 			}
 		}
 	}
