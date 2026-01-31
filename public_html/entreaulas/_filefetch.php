@@ -24,6 +24,18 @@ switch ($_GET["type"]) {
         $day = substr($date, 8, 2);
         $relpath = "entreaulas/Centros/$centro/Aularios/$aulario/Comedor/$ym/$day/$file";
         break;
+    case "proyecto_file":
+        $centro = str_replace('..', '_', $_GET["centro"] ?? '');
+        $aulario = str_replace('..', '_', $_GET["aulario"] ?? '');
+        $project = str_replace('..', '_', $_GET["project"] ?? '');
+        $file = basename($_GET["file"] ?? '');
+        // Ensure no directory traversal
+        if (strpos($file, '..') !== false || strpos($file, '/') !== false || strpos($file, '\\') !== false) {
+            header("HTTP/1.1 400 Bad Request");
+            die("Invalid file name");
+        }
+        $relpath = "entreaulas/Centros/$centro/Aularios/$aulario/Proyectos/$project/$file";
+        break;
 }
 $path = "/DATA/$relpath";
 $uripath = "/$relpath";
