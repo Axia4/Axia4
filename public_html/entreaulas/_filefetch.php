@@ -26,7 +26,6 @@ switch ($_GET["type"]) {
         break;
     case "proyecto_file":
         $centro = str_replace('..', '_', $_GET["centro"] ?? '');
-        $aulario = str_replace('..', '_', $_GET["aulario"] ?? '');
         $project = str_replace('..', '_', $_GET["project"] ?? '');
         $file = basename($_GET["file"] ?? '');
         // Ensure no directory traversal
@@ -34,11 +33,42 @@ switch ($_GET["type"]) {
             header("HTTP/1.1 400 Bad Request");
             die("Invalid file name");
         }
-        $relpath = "entreaulas/Centros/$centro/Aularios/$aulario/Proyectos/$project/$file";
+        $projects_base = "/DATA/entreaulas/Centros/$centro/Proyectos";
+        $project_dir = null;
+        if (is_dir($projects_base)) {
+            $iterator = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($projects_base, FilesystemIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::SELF_FIRST
+            );
+            foreach ($iterator as $fileinfo) {
+                if (!$fileinfo->isDir()) {
+                    continue;
+                }
+                $meta = $fileinfo->getPathname() . "/_data_.eadat";
+                if (!file_exists($meta)) {
+                    continue;
+                }
+                $data = json_decode(file_get_contents($meta), true);
+                if (($data["id"] ?? "") === $project) {
+                    $project_dir = $fileinfo->getPathname();
+                    break;
+                }
+            }
+        }
+        if (!$project_dir) {
+            header("HTTP/1.1 404 Not Found");
+            die("Project not found");
+        }
+        $path = $project_dir . "/" . $file;
+        $uripath = str_replace("/DATA", "", $path);
         break;
 }
-$path = "/DATA/$relpath";
-$uripath = "/$relpath";
+if (!isset($path)) {
+    $path = "/DATA/$relpath";
+}
+if (!isset($uripath)) {
+    $uripath = "/$relpath";
+}
 if (!file_exists($path) || !is_file($path)) {
     header("HTTP/1.1 404 Not Found");
     die("File not found");

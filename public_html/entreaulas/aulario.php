@@ -1,6 +1,6 @@
 <?php
 require_once "_incl/auth_redir.php";
-require_once "_incl/pre-body.php"; 
+require_once "_incl/pre-body.php";
 $aulario_id = $_GET["id"];
 $centro_id = $_SESSION["auth_data"]["entreaulas"]["centro"];
 $aulario = json_decode(file_get_contents("/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json"), true);
@@ -21,11 +21,11 @@ $aulario = json_decode(file_get_contents("/DATA/entreaulas/Centros/$centro_id/Au
         Panel Diario
     </a>
     <?php if (in_array("sysadmin:access", $_SESSION["auth_data"]["permissions"] ?? [])): ?>
-    <a href="/sysadmin/aularios.php?action=edit&aulario=<?= urlencode($aulario_id) ?>" class="btn btn-secondary grid-item">
-        <img src="/static/iconexperience/gear_edit.png" height="125">
-        <br>
-        Cambiar Ajustes
-    </a>
+        <a href="/sysadmin/aularios.php?action=edit&aulario=<?= urlencode($aulario_id) ?>" class="btn btn-secondary grid-item">
+            <img src="/static/iconexperience/gear_edit.png" height="125">
+            <br>
+            Cambiar Ajustes
+        </a>
     <?php endif; ?>
     <!-- Menú del comedor -->
     <a href="/entreaulas/comedor.php?aulario=<?= urlencode($aulario_id) ?>" class="btn btn-success grid-item">
@@ -34,8 +34,11 @@ $aulario = json_decode(file_get_contents("/DATA/entreaulas/Centros/$centro_id/Au
         Menú del Comedor
     </a>
     <!-- Proyectos -->
-    <a href="/entreaulas/proyectos.php?aulario=<?= urlencode($aulario_id) ?>" class="btn btn-info grid-item">
-        <img src="/static/arasaac/carpeta.png" height="125" style="background: white; padding: 5px; border-radius: 10px;">
+    <a href="/entreaulas/proyectos.php?aulario=<?= urlencode($aulario_id) ?>" class="btn btn-warning grid-item">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" height="125" fill="currentColor">
+            <title>folder-multiple</title>
+            <path d="M22,4H14L12,2H6A2,2 0 0,0 4,4V16A2,2 0 0,0 6,18H22A2,2 0 0,0 24,16V6A2,2 0 0,0 22,4M2,6H0V11H0V20A2,2 0 0,0 2,22H20V20H2V6Z" />
+        </svg>
         <br>
         Proyectos
     </a>
@@ -60,12 +63,13 @@ $aulario = json_decode(file_get_contents("/DATA/entreaulas/Centros/$centro_id/Au
         "gutter": 10,
         "transitionDuration": 0
     });
-    setTimeout(() => {msnry.layout()}, 150)
-//    setInterval(() => {msnry.layout()}, 10000);
-window.addEventListener('resize', function(event) {
-    msnry.layout()
-}, true);
-
+    setTimeout(() => {
+        msnry.layout()
+    }, 150)
+    //    setInterval(() => {msnry.layout()}, 10000);
+    window.addEventListener('resize', function(event) {
+        msnry.layout()
+    }, true);
 </script>
 
 <?php require_once "_incl/post-body.php"; ?>
