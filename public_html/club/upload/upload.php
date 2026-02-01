@@ -20,7 +20,16 @@ foreach ($error_files as $file) {
     unset($_FILES["file"]["error"][$key]);
     unset($_FILES["file"]["size"][$key]);
 }
+// Reindex arrays to avoid gaps after unsetting
+$_FILES["file"]["name"] = array_values($_FILES["file"]["name"]);
+$_FILES["file"]["type"] = array_values($_FILES["file"]["type"]);
+$_FILES["file"]["tmp_name"] = array_values($_FILES["file"]["tmp_name"]);
+$_FILES["file"]["error"] = array_values($_FILES["file"]["error"]);
+$_FILES["file"]["size"] = array_values($_FILES["file"]["size"]);
+
 $file_count = sizeof($_FILES["file"]["name"]);
+
+$all_ok = true;
 
 for ($i = 0; $i < $file_count; $i++) {
     $file_name = $_FILES["file"]["name"][$i];
@@ -36,8 +45,13 @@ for ($i = 0; $i < $file_count; $i++) {
         #if (!file_exists($thumbnail_path)) {
         #    generatethumbnail($location, $thumbnail_path, 240, 0);
         #}
-        header("HTTP/1.1 200 OK");
     } else {
-        header("HTTP/1.1 500 Internal Server Error");
+        $all_ok = false;
     }
+}
+
+if ($all_ok) {
+    header("HTTP/1.1 200 OK");
+} else {
+    header("HTTP/1.1 500 Internal Server Error");
 }
