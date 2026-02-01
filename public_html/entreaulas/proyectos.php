@@ -1604,9 +1604,8 @@ $view = $current_project ? "project" : "list";
                 <li>
                   <form method="post" style="display: inline;">
                     <input type="hidden" name="action" value="share_project">
-                    <input type="hidden" name="project_id" value="<?= htmlspecialchars($current_project) ?>">
-                    <input type="hidden" name="target_aulario" value="<?= htmlspecialchars($other_aulario["id"]) ?>">
-                    <button type="submit" class="dropdown-item" style="color: black;">
+                    <input type="hidden" name="project_id" value="<?= htmlspecialchars($current_project, ENT_QUOTES) ?>">
+                    <button type="submit" class="dropdown-item" style="color: black;" name="target_aulario" value="<?= htmlspecialchars($other_aulario["id"], ENT_QUOTES) ?>">
                       <?php // Is Shared checkbox
                       $is_shared = false;
                       $linked_projects = $other_aulario["linked_projects"] ?? [];
