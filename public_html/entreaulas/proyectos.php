@@ -64,6 +64,36 @@ function sanitize_html($html)
   return $clean;
 }
 
+function build_videocall_url($platform, $room, $custom_url, &$error)
+{
+  $platform = strtolower(trim((string)$platform));
+  if ($platform === "jitsi") {
+    $room = trim((string)$room);
+    if ($room === "") {
+      $error = "El nombre de la sala es obligatorio para la videollamada.";
+      return ["", ""];
+    }
+    $safe_room = preg_replace("/[^a-zA-Z0-9_-]/", "-", $room);
+    return ["https://meet.jit.si/" . $safe_room, $safe_room];
+  }
+  if ($platform === "google_meet") {
+    $room = trim((string)$room);
+    if ($room === "") {
+      $error = "El código de Google Meet es obligatorio para la videollamada.";
+      return ["", ""];
+    }
+    $safe_room = preg_replace("/[^a-zA-Z0-9-]/", "", $room);
+    return ["https://meet.google.com/" . $safe_room, $safe_room];
+  }
+
+  $custom_url = trim((string)$custom_url);
+  if ($custom_url === "" || filter_var($custom_url, FILTER_VALIDATE_URL) === false) {
+    $error = "La URL de videollamada no es válida.";
+    return ["", ""];
+  }
+  return [$custom_url, ""];
+}
+
 function generate_id($name)
 {
   return strtolower(preg_replace("/[^a-zA-Z0-9]/", "_", $name)) . "_" . substr(md5(uniqid()), 0, 8);
@@ -125,6 +155,54 @@ function save_file_metadata($file_path, $data)
   file_put_contents($meta_file, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 }
 
+function parse_size_to_bytes($size)
+{
+  $size = trim((string)$size);
+  if ($size === "") {
+    return 0;
+  }
+  $last = strtolower(substr($size, -1));
+  $num = (float)$size;
+  if (in_array($last, ["g", "m", "k"], true)) {
+    $num = (float)substr($size, 0, -1);
+    switch ($last) {
+      case "g":
+        $num *= 1024;
+      case "m":
+        $num *= 1024;
+      case "k":
+        $num *= 1024;
+    }
+  }
+  return (int)$num;
+}
+
+function format_bytes($bytes)
+{
+  $bytes = (int)$bytes;
+  if ($bytes >= 1024 * 1024 * 1024) {
+    return round($bytes / (1024 * 1024 * 1024), 1) . "GB";
+  }
+  if ($bytes >= 1024 * 1024) {
+    return round($bytes / (1024 * 1024), 1) . "MB";
+  }
+  if ($bytes >= 1024) {
+    return round($bytes / 1024, 1) . "KB";
+  }
+  return $bytes . "B";
+}
+
+$app_max_upload_bytes = 500 * 1024 * 1024;
+$upload_limit = parse_size_to_bytes(ini_get("upload_max_filesize"));
+$post_limit = parse_size_to_bytes(ini_get("post_max_size"));
+$max_upload_bytes = $app_max_upload_bytes;
+foreach ([$upload_limit, $post_limit] as $limit) {
+  if ($limit > 0 && $limit < $max_upload_bytes) {
+    $max_upload_bytes = $limit;
+  }
+}
+$max_upload_label = format_bytes($max_upload_bytes);
+
 function load_project($proyectos_dir, $project_id)
 {
   $project_dir = find_project_path($proyectos_dir, $project_id);
@@ -174,7 +252,7 @@ function get_project_breadcrumb($proyectos_dir, $project_id)
   return $breadcrumb;
 }
 
-function list_projects($proyectos_dir, $parent_id = null)
+function list_projects($proyectos_dir, $parent_id = null, $owner_aulario = null)
 {
   $projects = [];
   if (!is_dir($proyectos_dir)) {
@@ -201,6 +279,11 @@ function list_projects($proyectos_dir, $parent_id = null)
     }
     $data = json_decode(file_get_contents($meta_file), true);
     if ($data) {
+      if ($parent_id === null && $owner_aulario !== null) {
+        if (($data["owner_aulario"] ?? null) !== $owner_aulario) {
+          continue;
+        }
+      }
       $projects[] = $data;
     }
   }
@@ -294,7 +377,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
           "items" => [],
           "subprojects" => [],
           "parent_id" => $parent_id !== "" ? $parent_id : null,
-          "level" => $level
+          "level" => $level,
+          "owner_aulario" => $aulario_id
         ];
 
         $project_data["_project_dir"] = $project_dir;
@@ -358,7 +442,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $target_config["linked_projects"][] = [
               "source_aulario" => $aulario_id,
               "project_id" => $project_id,
-              "permission" => "read_only"
+              "permission" => "request_edit"
             ];
             $message = "Proyecto compartido correctamente.";
           }
@@ -370,7 +454,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   }
 
   if ($action === "delete_project") {
-    if (in_array("entreaulas:proyectos:borrar", $_SESSION["auth_data"]["permissions"] ?? []) === false) {
+    if (in_array("entreaulas:proyectos:delete", $_SESSION["auth_data"]["permissions"] ?? []) === false) {
       $error = "No tienes permisos para borrar proyectos.";
     } else {
       $project_id = $_POST["project_id"] ?? "";
@@ -425,6 +509,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $item_name = trim($_POST["item_name"] ?? "");
     $item_url = trim($_POST["item_url"] ?? "");
     $item_content = sanitize_html($_POST["item_content"] ?? "");
+    $videocall_platform = $_POST["videocall_platform"] ?? "jitsi";
+    $videocall_room = trim($_POST["videocall_room"] ?? "");
+    $videocall_url = trim($_POST["videocall_url"] ?? "");
     $source_aulario_param = $_POST["source_aulario"] ?? "";
 
     // Determine which directory to use and permission level
@@ -473,19 +560,36 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
           "id" => $change_id,
           "type" => "add_item",
           "requested_by_aulario" => $aulario_id,
+          "requested_by_persona_name" => ($_SESSION["auth_data"]["display_name"] ?? "Desconocido"),
           "requested_at" => time(),
           "status" => "pending",
           "item_type" => $item_type,
           "item_name" => $item_name,
-          "item_url" => $item_url
+          "item_url" => $item_url,
+          "item_content" => $item_content
         ];
 
-        // Handle file upload for pending changes
-        if ($item_type === "file" && isset($_FILES["item_file"]) && $_FILES["item_file"]["error"] === UPLOAD_ERR_OK) {
-          $ext = strtolower(pathinfo($_FILES["item_file"]["name"], PATHINFO_EXTENSION));
-          $allowed_extensions = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "jpg", "jpeg", "png", "gif", "webp", "txt", "zip", "mp4", "mp3"];
+        if ($item_type === "videocall") {
+          $vc_error = "";
+          [$vc_url, $vc_room] = build_videocall_url($videocall_platform, $videocall_room, $videocall_url, $vc_error);
+          if ($vc_error !== "") {
+            $error = $vc_error;
+          } else {
+            $change_data["item_url"] = $vc_url;
+            $change_data["item_platform"] = $videocall_platform;
+            $change_data["item_room"] = $vc_room;
+          }
+        }
 
-          if (in_array($ext, $allowed_extensions, true)) {
+        // Handle file upload for pending changes
+        if (($item_type === "file" || $item_type === "pdf_secure") && isset($_FILES["item_file"]) && $_FILES["item_file"]["error"] === UPLOAD_ERR_OK) {
+          if ($_FILES["item_file"]["size"] > $max_upload_bytes) {
+            $error = "El archivo es demasiado grande. Tamaño máximo: $max_upload_label.";
+          }
+          $ext = strtolower(pathinfo($_FILES["item_file"]["name"], PATHINFO_EXTENSION));
+          $allowed_extensions = $item_type === "pdf_secure" ? ["pdf"] : ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "jpg", "jpeg", "png", "gif", "webp", "txt", "zip", "mp4", "mp3"];
+
+          if (empty($error) && in_array($ext, $allowed_extensions, true)) {
             $safe_name = safe_filename($_FILES["item_file"]["name"]);
             $temp_file_path = "$pending_dir/{$change_id}_$safe_name";
 
@@ -527,16 +631,26 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $item["url"] = $item_url;
           } elseif ($item_type === "notepad") {
             $item["content"] = $item_content;
-          } elseif ($item_type === "file" && isset($_FILES["item_file"]) && $_FILES["item_file"]["error"] === UPLOAD_ERR_OK) {
+          } elseif ($item_type === "videocall") {
+            $vc_error = "";
+            [$vc_url, $vc_room] = build_videocall_url($videocall_platform, $videocall_room, $videocall_url, $vc_error);
+            if ($vc_error !== "") {
+              $error = $vc_error;
+              $can_add_item = false;
+            } else {
+              $item["url"] = $vc_url;
+              $item["platform"] = $videocall_platform;
+              $item["room"] = $vc_room;
+            }
+          } elseif (($item_type === "file" || $item_type === "pdf_secure") && isset($_FILES["item_file"]) && $_FILES["item_file"]["error"] === UPLOAD_ERR_OK) {
             // Handle file upload with validation
             if (!is_dir($project_dir)) {
               mkdir($project_dir, 0755, true);
             }
 
             // Validate file size (max 500MB as configured in PHP)
-            $max_size = 500 * 1024 * 1024; // 500MB
-            if ($_FILES["item_file"]["size"] > $max_size) {
-              $error = "El archivo es demasiado grande. Tamaño máximo: 500MB.";
+            if ($_FILES["item_file"]["size"] > $max_upload_bytes) {
+              $error = "El archivo es demasiado grande. Tamaño máximo: $max_upload_label.";
               $can_add_item = false;
             }
 
@@ -544,10 +658,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             if ($can_add_item) {
               $original_name = $_FILES["item_file"]["name"];
               $ext = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
-              $allowed_extensions = ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "jpg", "jpeg", "png", "gif", "webp", "txt", "zip", "mp4", "mp3"];
+              $allowed_extensions = $item_type === "pdf_secure" ? ["pdf"] : ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "jpg", "jpeg", "png", "gif", "webp", "txt", "zip", "mp4", "mp3"];
 
               if (!in_array($ext, $allowed_extensions, true)) {
-                $error = "Tipo de archivo no permitido. Extensiones permitidas: " . implode(", ", $allowed_extensions);
+                $error = $item_type === "pdf_secure" ? "El PDF seguro solo permite archivos PDF." : "Tipo de archivo no permitido. Extensiones permitidas: " . implode(", ", $allowed_extensions);
                 $can_add_item = false;
               }
             }
@@ -582,11 +696,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $project["items"][] = $item;
             $project["updated_at"] = time();
 
-            if ($item_type === "file" && isset($item["filename"])) {
+            if (in_array($item_type, ["file", "pdf_secure"], true) && isset($item["filename"])) {
               $file_meta = [
                 "id" => $item_id,
                 "name" => $item_name,
-                "type" => "file",
+                "type" => $item_type,
                 "original_name" => $item["original_name"] ?? $item["filename"],
                 "created_at" => $item["created_at"]
               ];
@@ -636,7 +750,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                   if ($item["id"] !== $item_id) {
                     $new_items[] = $item;
                   } else {
-                    if ($item["type"] === "file" && isset($item["filename"])) {
+                    if (in_array($item["type"], ["file", "pdf_secure"], true) && isset($item["filename"])) {
                       $file_path = "$project_dir/" . $item["filename"];
                       if (file_exists($file_path)) {
                         unlink($file_path);
@@ -648,6 +762,71 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                   }
                 }
                 $project["items"] = $new_items;
+              }
+              $project["updated_at"] = time();
+              save_project($proyectos_dir, $project_id, $project);
+              $message = "Cambio aprobado y aplicado.";
+            } elseif (($change_data["type"] ?? "") === "edit_item") {
+              $item_id = $change_data["item_id"] ?? "";
+              if ($item_id !== "" && isset($project["items"])) {
+                foreach ($project["items"] as &$item) {
+                  if ($item["id"] !== $item_id) {
+                    continue;
+                  }
+
+                  $item["name"] = $change_data["item_name"] ?? $item["name"];
+                  if (($item["type"] ?? "") === "link") {
+                    $item["url"] = $change_data["item_url"] ?? $item["url"] ?? "";
+                  } elseif (($item["type"] ?? "") === "notepad") {
+                    $item["content"] = sanitize_html($change_data["item_content"] ?? "");
+                  } elseif (($item["type"] ?? "") === "videocall") {
+                    $item["url"] = $change_data["item_url"] ?? "";
+                    $item["platform"] = $change_data["item_platform"] ?? "jitsi";
+                    $item["room"] = $change_data["item_room"] ?? "";
+                  }
+
+                  if (in_array(($item["type"] ?? ""), ["file", "pdf_secure"], true) && !empty($change_data["pending_filename"])) {
+                    $pending_file = "$pending_dir/" . $change_data["pending_filename"];
+                    $target_file = "$project_dir/" . $change_data["pending_filename"];
+                    if (file_exists($pending_file)) {
+                      if (!is_dir($project_dir)) {
+                        mkdir($project_dir, 0755, true);
+                      }
+                      rename($pending_file, $target_file);
+                      if (!empty($item["filename"])) {
+                        $old_path = "$project_dir/" . $item["filename"];
+                        if (file_exists($old_path)) {
+                          unlink($old_path);
+                          if (file_exists($old_path . ".eadat")) {
+                            unlink($old_path . ".eadat");
+                          }
+                        }
+                      }
+                      $item["filename"] = $change_data["pending_filename"];
+                      $item["original_name"] = $change_data["original_filename"] ?? $change_data["pending_filename"];
+
+                      $file_meta = [
+                        "id" => $item_id,
+                        "name" => $item["name"],
+                        "type" => $item["type"],
+                        "original_name" => $item["original_name"],
+                        "created_at" => $item["created_at"] ?? time()
+                      ];
+                      save_file_metadata($target_file, $file_meta);
+                    }
+                  }
+
+                  if (in_array(($item["type"] ?? ""), ["file", "pdf_secure"], true) && !empty($item["filename"])) {
+                    $file_path = "$project_dir/" . $item["filename"];
+                    if (file_exists($file_path . ".eadat")) {
+                      $file_meta = json_decode(file_get_contents($file_path . ".eadat"), true) ?: [];
+                      $file_meta["name"] = $item["name"];
+                      save_file_metadata($file_path, $file_meta);
+                    }
+                  }
+                  break;
+                }
+                unset($item);
               }
               $project["updated_at"] = time();
               save_project($proyectos_dir, $project_id, $project);
@@ -666,7 +845,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $item["url"] = $change_data["item_url"];
               } elseif ($change_data["item_type"] === "notepad") {
                 $item["content"] = sanitize_html($change_data["item_content"] ?? "");
-              } elseif ($change_data["item_type"] === "file" && !empty($change_data["pending_filename"])) {
+              } elseif ($change_data["item_type"] === "videocall") {
+                $item["url"] = $change_data["item_url"] ?? "";
+                $item["platform"] = $change_data["item_platform"] ?? "jitsi";
+                $item["room"] = $change_data["item_room"] ?? "";
+              } elseif (in_array($change_data["item_type"], ["file", "pdf_secure"], true) && !empty($change_data["pending_filename"])) {
                 // Move file from pending to project directory
                 $pending_file = "$pending_dir/" . $change_data["pending_filename"];
                 $target_file = "$project_dir/" . $change_data["pending_filename"];
@@ -682,7 +865,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                   $file_meta = [
                     "id" => $item_id,
                     "name" => $change_data["item_name"],
-                    "type" => "file",
+                    "type" => $change_data["item_type"],
                     "original_name" => $item["original_name"],
                     "created_at" => $item["created_at"]
                   ];
@@ -774,6 +957,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
               "id" => $change_id,
               "type" => "delete_item",
               "requested_by_aulario" => $aulario_id,
+              "requested_by_persona_name" => ($_SESSION["auth_data"]["display_name"] ?? "Desconocido"),
               "requested_at" => time(),
               "status" => "pending",
               "item_id" => $item_id,
@@ -800,7 +984,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $new_items[] = $item;
           } else {
             // Delete file if it's a file type
-            if ($item["type"] === "file" && isset($item["filename"])) {
+            if (in_array($item["type"], ["file", "pdf_secure"], true) && isset($item["filename"])) {
               $file_path = $project_dir ? "$project_dir/" . $item["filename"] : null;
               if ($file_path && file_exists($file_path)) {
                 unlink($file_path);
@@ -831,17 +1015,26 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $item_name = trim($_POST["item_name"] ?? "");
     $item_url = trim($_POST["item_url"] ?? "");
     $item_content = sanitize_html($_POST["item_content"] ?? "");
+    $videocall_platform = $_POST["edit_videocall_platform"] ?? "jitsi";
+    $videocall_room = trim($_POST["edit_videocall_room"] ?? "");
+    $videocall_url = trim($_POST["edit_videocall_url"] ?? "");
     $source_aulario_param = $_POST["source_aulario"] ?? "";
 
     $working_dir = $proyectos_dir;
+    $permission = "full_edit";
+    $needs_approval = false;
     if (!empty($source_aulario_param)) {
       $linked_projects = $aulario["linked_projects"] ?? [];
       foreach ($linked_projects as $link) {
         if (($link["source_aulario"] ?? "") === $source_aulario_param &&
           ($link["project_id"] ?? "") === $project_id &&
-          (($link["permission"] ?? "read_only") === "full_edit")
+          (($link["permission"] ?? "read_only") === "full_edit" || ($link["permission"] ?? "read_only") === "request_edit")
         ) {
           $working_dir = $proyectos_dir;
+          $permission = $link["permission"] ?? "read_only";
+          if ($permission === "request_edit") {
+            $needs_approval = true;
+          }
           break;
         }
       }
@@ -851,6 +1044,92 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
       $project_dir = find_project_path($working_dir, $project_id);
       $project = load_project($working_dir, $project_id);
       if ($project && isset($project["items"])) {
+        if ($needs_approval) {
+          $project_dir = find_project_path($proyectos_dir, $project_id);
+          if (!$project_dir) {
+            $error = "Proyecto no encontrado.";
+          }
+        }
+
+        if ($needs_approval && empty($error)) {
+          $pending_dir = "$project_dir/pending_changes";
+          if (!is_dir($pending_dir)) {
+            mkdir($pending_dir, 0755, true);
+          }
+
+          $target_item = null;
+          foreach ($project["items"] as $existing_item) {
+            if ($existing_item["id"] === $item_id) {
+              $target_item = $existing_item;
+              break;
+            }
+          }
+
+          if (!$target_item) {
+            $error = "Elemento no encontrado.";
+          } else {
+            $change_id = uniqid("change_");
+            $change_data = [
+              "id" => $change_id,
+              "type" => "edit_item",
+              "requested_by_aulario" => $aulario_id,
+              "requested_by_persona_name" => ($_SESSION["auth_data"]["display_name"] ?? "Desconocido"),
+              "requested_at" => time(),
+              "status" => "pending",
+              "item_id" => $item_id,
+              "item_name" => $item_name,
+              "item_type" => $target_item["type"] ?? "",
+              "item_url" => $item_url,
+              "item_content" => $item_content
+            ];
+
+            if (($target_item["type"] ?? "") === "videocall") {
+              $vc_error = "";
+              [$vc_url, $vc_room] = build_videocall_url($videocall_platform, $videocall_room, $videocall_url, $vc_error);
+              if ($vc_error !== "") {
+                $error = $vc_error;
+              } else {
+                $change_data["item_url"] = $vc_url;
+                $change_data["item_platform"] = $videocall_platform;
+                $change_data["item_room"] = $vc_room;
+              }
+            }
+
+            if (in_array(($target_item["type"] ?? ""), ["file", "pdf_secure"], true) && isset($_FILES["edit_item_file"]) && $_FILES["edit_item_file"]["error"] === UPLOAD_ERR_OK) {
+              if ($_FILES["edit_item_file"]["size"] > $max_upload_bytes) {
+                $error = "El archivo es demasiado grande. Tamaño máximo: $max_upload_label.";
+              }
+
+              $ext = strtolower(pathinfo($_FILES["edit_item_file"]["name"], PATHINFO_EXTENSION));
+              $allowed_extensions = ($target_item["type"] ?? "") === "pdf_secure" ? ["pdf"] : ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "jpg", "jpeg", "png", "gif", "webp", "txt", "zip", "mp4", "mp3"];
+
+              if (empty($error) && in_array($ext, $allowed_extensions, true)) {
+                $safe_name = safe_filename($_FILES["edit_item_file"]["name"]);
+                $temp_file_path = "$pending_dir/{$change_id}_$safe_name";
+
+                if (move_uploaded_file($_FILES["edit_item_file"]["tmp_name"], $temp_file_path)) {
+                  $change_data["pending_filename"] = basename($temp_file_path);
+                  $change_data["original_filename"] = $_FILES["edit_item_file"]["name"];
+                }
+              }
+            }
+
+            if (empty($error)) {
+              $change_file = "$pending_dir/$change_id.json";
+              file_put_contents($change_file, json_encode($change_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+              $message = "Solicitud de cambio enviada. El aulario origen debe aprobarla.";
+              $redirect_params = "aulario=" . urlencode($aulario_id) . "&project=" . urlencode($project_id);
+              if (!empty($source_aulario_param)) {
+                $redirect_params .= "&source=" . urlencode($source_aulario_param);
+              }
+              header("Location: /entreaulas/proyectos.php?" . $redirect_params);
+              exit;
+            }
+          }
+        }
+
+        $can_save = true;
         foreach ($project["items"] as &$item) {
           if ($item["id"] === $item_id) {
             $item["name"] = $item_name;
@@ -858,8 +1137,84 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
               $item["url"] = $item_url;
             } elseif ($item["type"] === "notepad") {
               $item["content"] = $item_content;
+            } elseif ($item["type"] === "videocall") {
+              $vc_error = "";
+              [$vc_url, $vc_room] = build_videocall_url($videocall_platform, $videocall_room, $videocall_url, $vc_error);
+              if ($vc_error !== "") {
+                $error = $vc_error;
+                $can_save = false;
+                break;
+              }
+              $item["url"] = $vc_url;
+              $item["platform"] = $videocall_platform;
+              $item["room"] = $vc_room;
             }
-            if ($item["type"] === "file" && $project_dir && isset($item["filename"])) {
+            if (in_array($item["type"], ["file", "pdf_secure"], true) && isset($_FILES["edit_item_file"]) && $_FILES["edit_item_file"]["error"] === UPLOAD_ERR_OK) {
+              if (!$project_dir) {
+                $error = "No se pudo acceder al directorio del proyecto.";
+                $can_save = false;
+                break;
+              }
+
+              if ($_FILES["edit_item_file"]["size"] > $max_upload_bytes) {
+                $error = "El archivo es demasiado grande. Tamaño máximo: $max_upload_label.";
+                $can_save = false;
+                break;
+              }
+
+              $original_name = $_FILES["edit_item_file"]["name"];
+              $ext = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
+              $allowed_extensions = $item["type"] === "pdf_secure" ? ["pdf"] : ["pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "jpg", "jpeg", "png", "gif", "webp", "txt", "zip", "mp4", "mp3"];
+
+              if (!in_array($ext, $allowed_extensions, true)) {
+                $error = $item["type"] === "pdf_secure" ? "El PDF seguro solo permite archivos PDF." : "Tipo de archivo no permitido. Extensiones permitidas: " . implode(", ", $allowed_extensions);
+                $can_save = false;
+                break;
+              }
+
+              if (!is_dir($project_dir)) {
+                mkdir($project_dir, 0755, true);
+              }
+
+              $safe_name = safe_filename($original_name);
+              $target_path = "$project_dir/$safe_name";
+              $counter = 1;
+              $basename = pathinfo($safe_name, PATHINFO_FILENAME);
+              while (file_exists($target_path)) {
+                $safe_name = safe_filename($basename . "_" . $counter . "." . $ext);
+                $target_path = "$project_dir/$safe_name";
+                $counter++;
+              }
+
+              if (!move_uploaded_file($_FILES["edit_item_file"]["tmp_name"], $target_path)) {
+                $error = "No se pudo subir el archivo.";
+                $can_save = false;
+                break;
+              }
+
+              if (isset($item["filename"])) {
+                $old_path = "$project_dir/" . $item["filename"];
+                if (file_exists($old_path)) {
+                  unlink($old_path);
+                  if (file_exists($old_path . ".eadat")) {
+                    unlink($old_path . ".eadat");
+                  }
+                }
+              }
+
+              $item["filename"] = $safe_name;
+              $item["original_name"] = $original_name;
+
+              $file_meta = [
+                "id" => $item_id,
+                "name" => $item_name,
+                "type" => $item["type"],
+                "original_name" => $original_name,
+                "created_at" => $item["created_at"] ?? time()
+              ];
+              save_file_metadata($target_path, $file_meta);
+            }
+            if (in_array($item["type"], ["file", "pdf_secure"], true) && $project_dir && isset($item["filename"])) {
               $file_path = "$project_dir/" . $item["filename"];
               if (file_exists($file_path . ".eadat")) {
                 $file_meta = json_decode(file_get_contents($file_path . ".eadat"), true) ?: [];
@@ -872,8 +1227,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
           }
         }
         unset($item);
-        save_project($working_dir, $project_id, $project);
-        $message = "Elemento actualizado correctamente.";
+        if ($can_save) {
+          save_project($working_dir, $project_id, $project);
+          $message = "Elemento actualizado correctamente.";
+        }
       } else {
         $error = "Proyecto no encontrado.";
       }
@@ -922,7 +1279,7 @@ $view = $current_project ? "project" : "list";
   <!-- Project List -->
   <?php
   // Get local projects and linked projects
-  $local_projects = list_projects($proyectos_dir);
+  $local_projects = list_projects($proyectos_dir, null, $aulario_id);
   $linked_projects = get_linked_projects($aulario, $centro_id);
   $projects = array_merge($local_projects, $linked_projects);
 
@@ -1135,6 +1492,11 @@ $view = $current_project ? "project" : "list";
         <?php endif; ?>
       <?php endforeach; ?>
     </ol>
+    <?php if ($is_linked_project && $linked_permission === "request_edit"): ?>
+      <div class="alert alert-info mt-0 mb-2" style="color: black;">
+        Este proyecto está compartido con solicitud de permiso. Los cambios se registrarán y deberán ser aprobados por el propietario.
+      </div>
+    <?php endif; ?>
     <div class="d-flex justify-content-between align-items-start">
       <div>
         <h1 class="card-title">
@@ -1175,7 +1537,7 @@ $view = $current_project ? "project" : "list";
           </button>
           <ul class="dropdown-menu dropdown-menu-end">
             <li>
-              <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#addItemModal">
+              <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#addItemModal" style="color: black;">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" height="20" style="vertical-align: middle; fill: black;">
                   <title>file-plus</title>
                   <path d="M14 2H6C4.89 2 4 2.89 4 4V20C4 21.11 4.89 22 6 22H13.81C13.28 21.09 13 20.05 13 19C13 15.69 15.69 13 19 13C19.34 13 19.67 13.03 20 13.08V8L14 2M13 9V3.5L18.5 9H13M23 20H20V23H18V20H15V18H18V15H20V18H23V20Z" />
@@ -1185,7 +1547,7 @@ $view = $current_project ? "project" : "list";
             </li>
             <?php if ($project_level < 6): ?>
               <li>
-                <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#createSubProjectModal">
+                <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#createSubProjectModal" style="color: black;">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" height="20" style="vertical-align: middle; fill: black;">
                     <title>folder-plus</title>
                     <path d="M13 19C13 19.34 13.04 19.67 13.09 20H4C2.9 20 2 19.11 2 18V6C2 4.89 2.89 4 4 4H10L12 6H20C21.1 6 22 6.89 22 8V13.81C21.12 13.3 20.1 13 19 13C15.69 13 13 15.69 13 19M20 18V15H18V18H15V20H18V23H20V20H23V18H20Z" />
@@ -1349,13 +1711,23 @@ $view = $current_project ? "project" : "list";
   ?>
     <div id="grid">
       <?php foreach ($items as $item): ?>
-        <div class="card grid-item" style="width: 280px;">
+        <div class="card grid-item" style="width: 300px;">
           <div class="card-body">
             <h5 class="card-title">
               <?php if ($item["type"] === "link"): ?>
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="vertical-align: middle; fill: #5bc0de; background: white; padding: 3px; border-radius: 5px;" height="30">
                   <title>web</title>
                   <path d="M16.36,14C16.44,13.34 16.5,12.68 16.5,12C16.5,11.32 16.44,10.66 16.36,10H19.74C19.9,10.64 20,11.31 20,12C20,12.69 19.9,13.36 19.74,14M14.59,19.56C15.19,18.45 15.65,17.25 15.97,16H18.92C17.96,17.65 16.43,18.93 14.59,19.56M14.34,14H9.66C9.56,13.34 9.5,12.68 9.5,12C9.5,11.32 9.56,10.65 9.66,10H14.34C14.43,10.65 14.5,11.32 14.5,12C14.5,12.68 14.43,13.34 14.34,14M12,19.96C11.17,18.76 10.5,17.43 10.09,16H13.91C13.5,17.43 12.83,18.76 12,19.96M8,8H5.08C6.03,6.34 7.57,5.06 9.4,4.44C8.8,5.55 8.35,6.75 8,8M5.08,16H8C8.35,17.25 8.8,18.45 9.4,19.56C7.57,18.93 6.03,17.65 5.08,16M4.26,14C4.1,13.36 4,12.69 4,12C4,11.31 4.1,10.64 4.26,10H7.64C7.56,10.66 7.5,11.32 7.5,12C7.5,12.68 7.56,13.34 7.64,14M12,4.03C12.83,5.23 13.5,6.57 13.91,8H10.09C10.5,6.57 11.17,5.23 12,4.03M18.92,8H15.97C15.65,6.75 15.19,5.55 14.59,4.44C16.43,5.07 17.96,6.34 18.92,8M12,2C6.47,2 2,6.5 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z" />
+                </svg>
+              <?php elseif ($item["type"] === "pdf_secure"): ?>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="vertical-align: middle; fill: #dc3545; background: white; padding: 3px; border-radius: 5px;" height="30">
+                  <title>file-pdf</title>
+                  <path d="M14 2H6C4.89 2 4 2.89 4 4V20C4 21.11 4.89 22 6 22H18C19.11 22 20 21.11 20 20V8L14 2M13 9V3.5L18.5 9H13M8 13H10.5C11.33 13 12 13.67 12 14.5C12 15.33 11.33 16 10.5 16H9.5V18H8V13M13 13H15C16.1 13 17 13.9 17 15V16C17 17.1 16.1 18 15 18H13V13M14.5 14.5V16.5H15C15.28 16.5 15.5 16.28 15.5 16V15C15.5 14.72 15.28 14.5 15 14.5H14.5Z" />
+                </svg>
+              <?php elseif ($item["type"] === "videocall"): ?>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="vertical-align: middle; fill: #6f42c1; background: white; padding: 3px; border-radius: 5px;" height="30">
+                  <title>video</title>
+                  <path d="M17,10.5V7C17,5.89 16.11,5 15,5H5C3.89,5 3,5.89 3,7V17C3,18.11 3.89,19 5,19H15C16.11,19 17,18.11 17,17V13.5L21,17V7L17,10.5Z" />
                 </svg>
               <?php elseif ($item["type"] === "notepad"): ?>
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="vertical-align: middle; fill: #f0ad4e; background: white; padding: 3px; border-radius: 5px;" height="30">
@@ -1374,6 +1746,10 @@ $view = $current_project ? "project" : "list";
               <small class="text-muted">
                 <?php if ($item["type"] === "link"): ?>
                   Enlace
+                <?php elseif ($item["type"] === "pdf_secure"): ?>
+                  PDF Seguro
+                <?php elseif ($item["type"] === "videocall"): ?>
+                  Videollamada
                 <?php elseif ($item["type"] === "notepad"): ?>
                   Cuaderno
                 <?php else: ?>
@@ -1389,6 +1765,16 @@ $view = $current_project ? "project" : "list";
                 <a href="<?= htmlspecialchars($item["url"]) ?>" target="_blank" class="btn btn-primary">
                   Abrir
                 </a>
+              <?php elseif ($item["type"] === "pdf_secure"): ?>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#viewPdfSecureModal"
+                  data-item-name="<?= htmlspecialchars($item["name"], ENT_QUOTES) ?>"
+                  data-file-url="/entreaulas/_filefetch.php?type=proyecto_file&centro=<?= urlencode($centro_id) ?>&project=<?= urlencode($current_project) ?>&file=<?= urlencode($item["filename"]) ?>">
+                  Abrir
+                </button>
+              <?php elseif ($item["type"] === "videocall"): ?>
+                <a href="<?= htmlspecialchars($item["url"]) ?>" target="_blank" class="btn btn-primary">
+                  Abrir
+                </a>
               <?php elseif ($item["type"] === "notepad"): ?>
                 <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#viewNotepadModal"
                   data-item-name="<?= htmlspecialchars($item["name"], ENT_QUOTES) ?>"
@@ -1400,12 +1786,14 @@ $view = $current_project ? "project" : "list";
                   Abrir
                 </a>
               <?php endif; ?>
-              <?php if (!$is_linked_project || ($is_linked_project && $linked_permission === "full_edit")): ?>
+              <?php if (!$is_linked_project || ($is_linked_project && ($linked_permission === "full_edit" || $linked_permission === "request_edit"))): ?>
                 <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#editItemModal"
                   data-item-id="<?= htmlspecialchars($item["id"], ENT_QUOTES) ?>"
                   data-item-name="<?= htmlspecialchars($item["name"], ENT_QUOTES) ?>"
                   data-item-type="<?= htmlspecialchars($item["type"], ENT_QUOTES) ?>"
                   data-item-url="<?= htmlspecialchars($item["url"] ?? "", ENT_QUOTES) ?>"
+                  data-item-platform="<?= htmlspecialchars($item["platform"] ?? "", ENT_QUOTES) ?>"
+                  data-item-room="<?= htmlspecialchars($item["room"] ?? "", ENT_QUOTES) ?>"
                   data-item-content="<?= htmlspecialchars($item["content"] ?? "", ENT_QUOTES) ?>">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" height="16" style="vertical-align: middle; fill: white;">
                     <title>pencil</title>
@@ -1469,14 +1857,31 @@ $view = $current_project ? "project" : "list";
           $req_aul_path = "/DATA/entreaulas/Centros/$centro_id/Aularios/$requesting_aulario.json";
           $req_aul_data = file_exists($req_aul_path) ? json_decode(file_get_contents($req_aul_path), true) : null;
           $req_aul_name = $req_aul_data["name"] ?? $requesting_aulario;
+          $req_persona_name = $change["requested_by_persona_name"] ?? "Desconocido";
         ?>
           <div class="card grid-item" style="width: 300px; border: 2px solid #ffc107;">
             <div class="card-body">
               <h5 class="card-title">
                 <?php if ($change["item_type"] === "link"): ?>
-                  <img src="/static/arasaac/actividad.png" height="30" style="vertical-align: middle; background: white; padding: 3px; border-radius: 5px;">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" height="30" style="vertical-align: middle; background: white; padding: 3px; border-radius: 5px; fill: #5bc0de;">
+                    <title>web</title>
+                    <path d="M16.36,14C16.44,13.34 16.5,12.68 16.5,12C16.5,11.32 16.44,10.66 16.36,10H19.74C19.9,10.64 20,11.31 20,12C20,12.69 19.9,13.36 19.74,14M14.59,19.56C15.19,18.45 15.65,17.25 15.97,16H18.92C17.96,17.65 16.43,18.93 14.59,19.56M14.34,14H9.66C9.56,13.34 9.5,12.68 9.5,12C9.5,11.32 9.56,10.65 9.66,10H14.34C14.43,10.65 14.5,11.32 14.5,12C14.5,12.68 14.43,13.34 14.34,14M12,19.96C11.17,18.76 10.5,17.43 10.09,16H13.91C13.5,17.43 12.83,18.76 12,19.96M8,8H5.08C6.03,6.34 7.57,5.06 9.4,4.44C8.8,5.55 8.35,6.75 8,8M5.08,16H8C8.35,17.25 8.8,18.45 9.4,19.56C7.57,18.93 6.03,17.65 5.08,16M4.26,14C4.1,13.36 4,12.69 4,12C4,11.31 4.1,10.64 4.26,10H7.64C7.56,10.66 7.5,11.32 7.5,12C7.5,12.68 7.56,13.34 7.64,14M12,4.03C12.83,5.23 13.5,6.57 13.91,8H10.09C10.5,6.57 11.17,5.23 12,4.03M18.92,8H15.97C15.65,6.75 15.19,5.55 14.59,4.44C16.43,5.07 17.96,6.34 18.92,8M12,2C6.47,2 2,6.5 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z" />
+                  </svg>
+                <?php elseif ($change["item_type"] === "videocall"): ?>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" height="30" style="vertical-align: middle; background: white; padding: 3px; border-radius: 5px; fill: #6f42c1;">
+                    <title>video</title>
+                    <path d="M17,10.5V7C17,5.89 16.11,5 15,5H5C3.89,5 3,5.89 3,7V17C3,18.11 3.89,19 5,19H15C16.11,19 17,18.11 17,17V13.5L21,17V7L17,10.5Z" />
+                  </svg>
+                <?php elseif ($change["item_type"] === "notepad"): ?>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" height="30" style="vertical-align: middle; background: white; padding: 3px; border-radius: 5px; fill: #f0ad4e;">
+                    <title>notebook</title>
+                    <path d="M19,2A2,2 0 0,1 21,4V20A2,2 0 0,1 19,22H5A2,2 0 0,1 3,20V4A2,2 0 0,1 5,2H19M17,4H7V20H17V4M9,6H15V8H9V6M9,10H15V12H9V10M9,14H13V16H9V14Z" />
+                  </svg>
                 <?php else: ?>
-                  <img src="/static/arasaac/documento.png" height="30" style="vertical-align: middle; background: white; padding: 3px; border-radius: 5px;">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" height="30" style="vertical-align: middle; background: white; padding: 3px; border-radius: 5px; fill: #5cb85c;">
+                    <title>file</title>
+                    <path d="M13,9V3.5L18.5,9M6,2C4.89,2 4,2.89 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2H6Z" />
+                  </svg>
                 <?php endif; ?>
                 <?= htmlspecialchars($change["item_name"]) ?>
                 <span class="badge bg-warning text-dark">Pendiente</span>
@@ -1485,15 +1890,30 @@ $view = $current_project ? "project" : "list";
                 <small class="text-muted">
                   <?php if (($change["type"] ?? "") === "delete_item"): ?>
                     Solicitud: <strong>Eliminar elemento</strong><br>
-                    Tipo: <?php if (($change["item_type"] ?? "") === "link"): ?>Enlace<?php elseif (($change["item_type"] ?? "") === "notepad"): ?>Cuaderno<?php else: ?>Archivo<?php endif; ?><br>
+                    Tipo: <?php if (($change["item_type"] ?? "") === "link"): ?>Enlace<?php elseif (($change["item_type"] ?? "") === "videocall"): ?>Videollamada<?php elseif (($change["item_type"] ?? "") === "notepad"): ?>Cuaderno<?php else: ?>Archivo<?php endif; ?><br>
+                  <?php elseif (($change["type"] ?? "") === "edit_item"): ?>
+                    Solicitud: <strong>Editar elemento</strong><br>
+                    Tipo: <?php if (($change["item_type"] ?? "") === "link"): ?>Enlace<?php elseif (($change["item_type"] ?? "") === "videocall"): ?>Videollamada<?php elseif (($change["item_type"] ?? "") === "notepad"): ?>Cuaderno<?php else: ?>Archivo<?php endif; ?><br>
                   <?php else: ?>
-                    Tipo: <?php if (($change["item_type"] ?? "") === "link"): ?>Enlace<?php elseif (($change["item_type"] ?? "") === "notepad"): ?>Cuaderno<?php else: ?>Archivo<?php endif; ?><br>
+                    Tipo: <?php if (($change["item_type"] ?? "") === "link"): ?>Enlace<?php elseif (($change["item_type"] ?? "") === "videocall"): ?>Videollamada<?php elseif (($change["item_type"] ?? "") === "notepad"): ?>Cuaderno<?php else: ?>Archivo<?php endif; ?><br>
                   <?php endif; ?>
-                  Solicitado por: <strong><?= htmlspecialchars($req_aul_name) ?></strong><br>
-                  Fecha: <?= date("d/m/Y H:i", $change["requested_at"]) ?>
+                  Solicitado por: <strong><?= htmlspecialchars($req_persona_name) ?> · <?= htmlspecialchars($req_aul_name) ?></strong><br>
+                  Fecha: <?= date("d/m/Y H:i", $change["requested_at"]) ?> GMT
                 </small>
               </p>
               <div class="d-flex gap-2 flex-wrap">
+                <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#viewChangeModal"
+                  data-change-type="<?= htmlspecialchars($change["type"] ?? "", ENT_QUOTES) ?>"
+                  data-item-name="<?= htmlspecialchars($change["item_name"] ?? "", ENT_QUOTES) ?>"
+                  data-item-type="<?= htmlspecialchars($change["item_type"] ?? "", ENT_QUOTES) ?>"
+                  data-item-url="<?= htmlspecialchars($change["item_url"] ?? "", ENT_QUOTES) ?>"
+                  data-item-content="<?= htmlspecialchars($change["item_content"] ?? "", ENT_QUOTES) ?>"
+                  data-item-platform="<?= htmlspecialchars($change["item_platform"] ?? "", ENT_QUOTES) ?>"
+                  data-item-room="<?= htmlspecialchars($change["item_room"] ?? "", ENT_QUOTES) ?>"
+                  data-original-filename="<?= htmlspecialchars($change["original_filename"] ?? "", ENT_QUOTES) ?>"
+                  data-pending-filename="<?= htmlspecialchars($change["pending_filename"] ?? "", ENT_QUOTES) ?>">
+                  👁 Ver cambios
+                </button>
                 <form method="post" style="display: inline;">
                   <input type="hidden" name="action" value="approve_change">
                   <input type="hidden" name="change_id" value="<?= htmlspecialchars($change["id"]) ?>">
@@ -1520,6 +1940,40 @@ $view = $current_project ? "project" : "list";
   }
   ?>
 
+  <!-- View Change Modal -->
+  <div class="modal fade" id="viewChangeModal" tabindex="-1" aria-labelledby="viewChangeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="viewChangeModalLabel">Cambios Solicitados</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p><strong>Solicitud:</strong> <span id="change_type_label"></span></p>
+          <p><strong>Elemento:</strong> <span id="change_item_name"></span></p>
+          <p><strong>Tipo:</strong> <span id="change_item_type"></span></p>
+          <div id="change_url_row" style="display: none;">
+            <strong>URL:</strong> <a id="change_item_url" href="#" target="_blank" rel="noopener"></a>
+          </div>
+          <div id="change_videocall_row" style="display: none;" class="mt-2">
+            <strong>Plataforma:</strong> <span id="change_item_platform"></span><br>
+            <strong>Sala / código:</strong> <span id="change_item_room"></span>
+          </div>
+          <div id="change_file_row" style="display: none;" class="mt-2">
+            <strong>Archivo:</strong> <span id="change_file_name"></span>
+          </div>
+          <div id="change_content_row" style="display: none;" class="mt-2">
+            <strong>Contenido:</strong>
+            <div id="change_item_content" class="form-control" style="min-height: 160px;"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Add Item Modal -->
   <div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -1542,6 +1996,8 @@ $view = $current_project ? "project" : "list";
                 <option value="link">Enlace (URL, Videollamada, etc.)</option>
                 <option value="file">Archivo (PDF, imagen, etc.)</option>
                 <option value="notepad">Cuaderno (Bloc de notas)</option>
+                <option value="videocall">Videollamada (Jitsi / Google Meet)</option>
+                <option value="pdf_secure">PDF Seguro (sin descarga/impresión)</option>
               </select>
             </div>
 
@@ -1561,8 +2017,10 @@ $view = $current_project ? "project" : "list";
             <div class="mb-3" id="file_field" style="display: none;">
               <label for="item_file" class="form-label">Archivo *</label>
               <input type="file" class="form-control form-control-lg" id="item_file" name="item_file">
-              <small class="form-text text-muted">
-                Formatos soportados: PDF, imágenes, documentos, etc.
+              <small class="form-text text-muted" id="file_help"
+                data-default="Formatos soportados: PDF, imágenes, documentos, etc. Tamaño máximo: <?= htmlspecialchars($max_upload_label) ?>."
+                data-pdf="Solo PDF. Tamaño máximo: <?= htmlspecialchars($max_upload_label) ?>.">
+                Formatos soportados: PDF, imágenes, documentos, etc. Tamaño máximo: <?= htmlspecialchars($max_upload_label) ?>.
               </small>
             </div>
 
@@ -1579,6 +2037,26 @@ $view = $current_project ? "project" : "list";
               </div>
               <div id="notepad_editor" class="form-control" contenteditable="true" style="min-height: 160px;"></div>
               <input type="hidden" id="notepad_content" name="item_content">
+            </div>
+
+            <div class="mb-3" id="videocall_field" style="display: none;">
+              <div class="mb-2">
+                <label for="videocall_platform" class="form-label">Plataforma</label>
+                <select class="form-select" id="videocall_platform" name="videocall_platform">
+                  <option value="google_meet">Google Meet (gratis)</option>
+                  <option value="jitsi">Jitsi Meet (gratis)</option>
+                  <option value="custom">Otra URL</option>
+                </select>
+              </div>
+              <div class="mb-2" id="videocall_room_field">
+                <label for="videocall_room" class="form-label">Nombre de la sala / código</label>
+                <input type="text" class="form-control" id="videocall_room" name="videocall_room" placeholder="mi-sala-clase o abc-defg-hij">
+              </div>
+              <div class="mb-2" id="videocall_url_field" style="display: none;">
+                <label for="videocall_url" class="form-label">URL de videollamada</label>
+                <input type="url" class="form-control" id="videocall_url" name="videocall_url" placeholder="https://...">
+              </div>
+              <small class="text-muted">No requiere API. Se genera un enlace gratuito de Jitsi Meet.</small>
             </div>
           </div>
           <div class="modal-footer">
@@ -1648,6 +2126,27 @@ $view = $current_project ? "project" : "list";
     </div>
   </div>
 
+  <!-- View PDF Secure Modal -->
+  <div class="modal fade" id="viewPdfSecureModal" tabindex="-1" aria-labelledby="viewPdfSecureModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="viewPdfSecureModalLabel">PDF Seguro</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" style="padding: 0;">
+          <!--<div class="alert alert-warning" style="color: black;">
+            Este PDF se muestra en modo seguro. No se permite la descarga, impresión o copia del contenido.
+          </div>-->
+          <iframe id="pdf_secure_frame" style="width: 100%; height: 70vh; border: 1px solid #ddd; margin: 0;" sandbox="allow-same-origin allow-scripts"></iframe>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Edit Item Modal -->
   <div class="modal fade" id="editItemModal" tabindex="-1" aria-labelledby="editItemModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
@@ -1656,7 +2155,7 @@ $view = $current_project ? "project" : "list";
           <h5 class="modal-title" id="editItemModalLabel">Editar Elemento</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
           <div class="modal-body">
             <input type="hidden" name="action" value="edit_item">
             <input type="hidden" name="project_id" value="<?= htmlspecialchars($current_project) ?>">
@@ -1671,6 +2170,33 @@ $view = $current_project ? "project" : "list";
             <div class="mb-3" id="edit_item_url_field">
               <label for="edit_item_url" class="form-label">URL</label>
               <input type="url" class="form-control form-control-lg" id="edit_item_url" name="item_url" placeholder="https://...">
+            </div>
+            <div class="mb-3" id="edit_videocall_field" style="display: none;">
+              <div class="mb-2">
+                <label for="edit_videocall_platform" class="form-label">Plataforma</label>
+                <select class="form-select" id="edit_videocall_platform" name="edit_videocall_platform">
+                  <option value="jitsi">Jitsi Meet (gratis)</option>
+                  <option value="google_meet">Google Meet (gratis)</option>
+                  <option value="custom">Otra URL</option>
+                </select>
+              </div>
+              <div class="mb-2" id="edit_videocall_room_field">
+                <label for="edit_videocall_room" class="form-label">Nombre de la sala / código</label>
+                <input type="text" class="form-control" id="edit_videocall_room" name="edit_videocall_room" placeholder="mi-sala-clase o abc-defg-hij">
+              </div>
+              <div class="mb-2" id="edit_videocall_url_field" style="display: none;">
+                <label for="edit_videocall_url" class="form-label">URL de videollamada</label>
+                <input type="url" class="form-control" id="edit_videocall_url" name="edit_videocall_url" placeholder="https://...">
+              </div>
+            </div>
+            <div class="mb-3" id="edit_file_field" style="display: none;">
+              <label for="edit_item_file" class="form-label">Reemplazar archivo</label>
+              <input type="file" class="form-control form-control-lg" id="edit_item_file" name="edit_item_file">
+              <small class="form-text text-muted" id="edit_file_help"
+                data-default="Formatos soportados: PDF, imágenes, documentos, etc. Tamaño máximo: <?= htmlspecialchars($max_upload_label) ?>."
+                data-pdf="Solo PDF. Tamaño máximo: <?= htmlspecialchars($max_upload_label) ?>.">
+                Formatos soportados: PDF, imágenes, documentos, etc. Tamaño máximo: <?= htmlspecialchars($max_upload_label) ?>.
+              </small>
             </div>
             <div class="mb-3" id="edit_notepad_field" style="display: none;">
               <label class="form-label">Contenido del Cuaderno</label>
@@ -1735,31 +2261,93 @@ $view = $current_project ? "project" : "list";
       var urlField = document.getElementById('url_field');
       var fileField = document.getElementById('file_field');
       var notepadField = document.getElementById('notepad_field');
+      var videocallField = document.getElementById('videocall_field');
       var urlInput = document.getElementById('item_url');
       var fileInput = document.getElementById('item_file');
+      var fileHelp = document.getElementById('file_help');
+      var roomInput = document.getElementById('videocall_room');
+      var videocallUrlInput = document.getElementById('videocall_url');
 
       if (type === 'link') {
         urlField.style.display = 'block';
         fileField.style.display = 'none';
         notepadField.style.display = 'none';
+        videocallField.style.display = 'none';
         urlInput.required = true;
         fileInput.required = false;
+        if (fileInput) fileInput.accept = '';
+        if (fileHelp) fileHelp.textContent = fileHelp.dataset.default || fileHelp.textContent;
+        if (roomInput) roomInput.required = false;
+        if (videocallUrlInput) videocallUrlInput.required = false;
       } else {
         if (type === 'file') {
           urlField.style.display = 'none';
           fileField.style.display = 'block';
           notepadField.style.display = 'none';
+          videocallField.style.display = 'none';
           urlInput.required = false;
           fileInput.required = true;
-        } else {
+          if (fileInput) fileInput.accept = '';
+          if (fileHelp) fileHelp.textContent = fileHelp.dataset.default || fileHelp.textContent;
+          if (roomInput) roomInput.required = false;
+          if (videocallUrlInput) videocallUrlInput.required = false;
+        } else if (type === 'notepad') {
           urlField.style.display = 'none';
           fileField.style.display = 'none';
           notepadField.style.display = 'block';
+          videocallField.style.display = 'none';
           urlInput.required = false;
           fileInput.required = false;
+          if (fileInput) fileInput.accept = '';
+          if (fileHelp) fileHelp.textContent = fileHelp.dataset.default || fileHelp.textContent;
+          if (roomInput) roomInput.required = false;
+          if (videocallUrlInput) videocallUrlInput.required = false;
+        } else if (type === 'pdf_secure') {
+          urlField.style.display = 'none';
+          fileField.style.display = 'block';
+          notepadField.style.display = 'none';
+          videocallField.style.display = 'none';
+          urlInput.required = false;
+          fileInput.required = true;
+          if (fileInput) fileInput.accept = '.pdf,application/pdf';
+          if (fileHelp) fileHelp.textContent = fileHelp.dataset.pdf || fileHelp.textContent;
+          if (roomInput) roomInput.required = false;
+          if (videocallUrlInput) videocallUrlInput.required = false;
+        } else {
+          urlField.style.display = 'none';
+          fileField.style.display = 'none';
+          notepadField.style.display = 'none';
+          videocallField.style.display = 'block';
+          urlInput.required = false;
+          fileInput.required = false;
+          if (fileInput) fileInput.accept = '';
+          if (fileHelp) fileHelp.textContent = fileHelp.dataset.default || fileHelp.textContent;
+          if (roomInput) roomInput.required = true;
+          if (videocallUrlInput) videocallUrlInput.required = false;
         }
       }
     });
+
+    var videocallPlatform = document.getElementById('videocall_platform');
+    if (videocallPlatform) {
+      videocallPlatform.addEventListener('change', function() {
+        var roomField = document.getElementById('videocall_room_field');
+        var urlField = document.getElementById('videocall_url_field');
+        var roomInput = document.getElementById('videocall_room');
+        var urlInput = document.getElementById('videocall_url');
+        if (this.value === 'custom') {
+          if (roomField) roomField.style.display = 'none';
+          if (urlField) urlField.style.display = 'block';
+          if (roomInput) roomInput.required = false;
+          if (urlInput) urlInput.required = true;
+        } else {
+          if (roomField) roomField.style.display = 'block';
+          if (urlField) urlField.style.display = 'none';
+          if (roomInput) roomInput.required = true;
+          if (urlInput) urlInput.required = false;
+        }
+      });
+    }
 
     function decodeHtml(html) {
       var txt = document.createElement('textarea');
@@ -1825,16 +2413,43 @@ $view = $current_project ? "project" : "list";
         document.getElementById('edit_item_name').value = button.getAttribute('data-item-name');
         document.getElementById('edit_item_url').value = button.getAttribute('data-item-url');
         var urlField = document.getElementById('edit_item_url_field');
+        var fileField = document.getElementById('edit_file_field');
         var notepadField = document.getElementById('edit_notepad_field');
+        var videocallField = document.getElementById('edit_videocall_field');
+        var fileHelp = document.getElementById('edit_file_help');
+        var fileInput = document.getElementById('edit_item_file');
         if (itemType === 'link') {
           urlField.style.display = 'block';
+          fileField.style.display = 'none';
           notepadField.style.display = 'none';
+          videocallField.style.display = 'none';
+          if (fileInput) fileInput.accept = '';
+          if (fileHelp) fileHelp.textContent = fileHelp.dataset.default || fileHelp.textContent;
         } else {
           urlField.style.display = 'none';
           if (itemType === 'notepad') {
             notepadField.style.display = 'block';
+            fileField.style.display = 'none';
+            videocallField.style.display = 'none';
+            if (fileInput) fileInput.accept = '';
+            if (fileHelp) fileHelp.textContent = fileHelp.dataset.default || fileHelp.textContent;
+          } else if (itemType === 'videocall') {
+            notepadField.style.display = 'none';
+            fileField.style.display = 'none';
+            videocallField.style.display = 'block';
+            if (fileInput) fileInput.accept = '';
+            if (fileHelp) fileHelp.textContent = fileHelp.dataset.default || fileHelp.textContent;
           } else {
             notepadField.style.display = 'none';
+            fileField.style.display = 'block';
+            videocallField.style.display = 'none';
+            if (itemType === 'pdf_secure') {
+              if (fileInput) fileInput.accept = '.pdf,application/pdf';
+              if (fileHelp) fileHelp.textContent = fileHelp.dataset.pdf || fileHelp.textContent;
+            } else {
+              if (fileInput) fileInput.accept = '';
+              if (fileHelp) fileHelp.textContent = fileHelp.dataset.default || fileHelp.textContent;
+            }
           }
         }
 
@@ -1843,6 +2458,39 @@ $view = $current_project ? "project" : "list";
           var editor = document.getElementById('edit_notepad_editor');
           editor.innerHTML = content;
           document.getElementById('edit_notepad_content').value = content;
+        }
+
+        if (itemType === 'videocall') {
+          var platform = button.getAttribute('data-item-platform') || 'jitsi';
+          var room = button.getAttribute('data-item-room') || '';
+          document.getElementById('edit_videocall_platform').value = platform;
+          document.getElementById('edit_videocall_room').value = room;
+          document.getElementById('edit_videocall_url').value = button.getAttribute('data-item-url') || '';
+
+          var editRoomField = document.getElementById('edit_videocall_room_field');
+          var editUrlField = document.getElementById('edit_videocall_url_field');
+          if (platform === 'custom') {
+            if (editRoomField) editRoomField.style.display = 'none';
+            if (editUrlField) editUrlField.style.display = 'block';
+          } else {
+            if (editRoomField) editRoomField.style.display = 'block';
+            if (editUrlField) editUrlField.style.display = 'none';
+          }
+        }
+      });
+    }
+
+    var editVideocallPlatform = document.getElementById('edit_videocall_platform');
+    if (editVideocallPlatform) {
+      editVideocallPlatform.addEventListener('change', function() {
+        var roomField = document.getElementById('edit_videocall_room_field');
+        var urlField = document.getElementById('edit_videocall_url_field');
+        if (this.value === 'custom') {
+          if (roomField) roomField.style.display = 'none';
+          if (urlField) urlField.style.display = 'block';
+        } else {
+          if (roomField) roomField.style.display = 'block';
+          if (urlField) urlField.style.display = 'none';
         }
       });
     }
@@ -1855,6 +2503,94 @@ $view = $current_project ? "project" : "list";
         var content = decodeHtml(button.getAttribute('data-item-content'));
         document.getElementById('viewNotepadModalLabel').textContent = title;
         document.getElementById('view_notepad_content').innerHTML = content;
+      });
+    }
+
+    var viewPdfSecureModal = document.getElementById('viewPdfSecureModal');
+    if (viewPdfSecureModal) {
+      viewPdfSecureModal.addEventListener('show.bs.modal', function(event) {
+        var button = event.relatedTarget;
+        var title = button.getAttribute('data-item-name') || 'PDF Seguro';
+        var url = button.getAttribute('data-file-url') || '';
+        document.getElementById('viewPdfSecureModalLabel').textContent = title;
+        document.getElementById('pdf_secure_frame').src = url ? ('/entreaulas/pdf_secure_viewer.php?file=' + encodeURIComponent(url)) : '';
+      });
+      viewPdfSecureModal.addEventListener('hidden.bs.modal', function() {
+        document.getElementById('pdf_secure_frame').src = '';
+      });
+    }
+
+    var viewChangeModal = document.getElementById('viewChangeModal');
+    if (viewChangeModal) {
+      viewChangeModal.addEventListener('show.bs.modal', function(event) {
+        var button = event.relatedTarget;
+        var changeType = button.getAttribute('data-change-type') || '';
+        var itemName = button.getAttribute('data-item-name') || '';
+        var itemType = button.getAttribute('data-item-type') || '';
+        var itemUrl = button.getAttribute('data-item-url') || '';
+        var itemContent = button.getAttribute('data-item-content') || '';
+        var itemPlatform = button.getAttribute('data-item-platform') || '';
+        var itemRoom = button.getAttribute('data-item-room') || '';
+        var originalFilename = button.getAttribute('data-original-filename') || '';
+        var pendingFilename = button.getAttribute('data-pending-filename') || '';
+
+        var typeLabel = 'Solicitud';
+        if (changeType === 'add_item') typeLabel = 'Añadir elemento';
+        if (changeType === 'edit_item') typeLabel = 'Editar elemento';
+        if (changeType === 'delete_item') typeLabel = 'Eliminar elemento';
+
+        var itemTypeLabel = 'Archivo';
+        if (itemType === 'link') itemTypeLabel = 'Enlace';
+        if (itemType === 'videocall') itemTypeLabel = 'Videollamada';
+        if (itemType === 'notepad') itemTypeLabel = 'Cuaderno';
+        if (itemType === 'pdf_secure') itemTypeLabel = 'PDF Seguro';
+
+        document.getElementById('change_type_label').textContent = typeLabel;
+        document.getElementById('change_item_name').textContent = itemName || '-';
+        document.getElementById('change_item_type').textContent = itemTypeLabel;
+
+        var urlRow = document.getElementById('change_url_row');
+        var urlEl = document.getElementById('change_item_url');
+        if (itemUrl) {
+          urlRow.style.display = 'block';
+          urlEl.textContent = itemUrl;
+          urlEl.href = itemUrl;
+        } else {
+          urlRow.style.display = 'none';
+          urlEl.textContent = '';
+          urlEl.href = '#';
+        }
+
+        var vcRow = document.getElementById('change_videocall_row');
+        if (itemType === 'videocall') {
+          vcRow.style.display = 'block';
+          document.getElementById('change_item_platform').textContent = itemPlatform || 'jitsi';
+          document.getElementById('change_item_room').textContent = itemRoom || '-';
+        } else {
+          vcRow.style.display = 'none';
+          document.getElementById('change_item_platform').textContent = '';
+          document.getElementById('change_item_room').textContent = '';
+        }
+
+        var fileRow = document.getElementById('change_file_row');
+        var fileName = originalFilename || pendingFilename;
+        if (fileName) {
+          fileRow.style.display = 'block';
+          document.getElementById('change_file_name').textContent = fileName;
+        } else {
+          fileRow.style.display = 'none';
+          document.getElementById('change_file_name').textContent = '';
+        }
+
+        var contentRow = document.getElementById('change_content_row');
+        var contentEl = document.getElementById('change_item_content');
+        if (itemType === 'notepad' && itemContent) {
+          contentRow.style.display = 'block';
+          contentEl.innerHTML = decodeHtml(itemContent);
+        } else {
+          contentRow.style.display = 'none';
+          contentEl.innerHTML = '';
+        }
       });
     }
   </script>
@@ -1892,7 +2628,7 @@ $view = $current_project ? "project" : "list";
     var gridElement = document.querySelector(gridId);
     if (gridElement) {
       var msnry = new Masonry(gridId, {
-        "columnWidth": 280,
+        "columnWidth": 300,
         "itemSelector": ".grid-item",
         "gutter": 10,
         "transitionDuration": 0

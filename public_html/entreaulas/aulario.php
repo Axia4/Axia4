@@ -16,7 +16,7 @@ $aulario = json_decode(file_get_contents("/DATA/entreaulas/Centros/$centro_id/Au
 
 <div id="grid">
     <a href="/entreaulas/paneldiario.php?aulario=<?= urlencode($aulario_id) ?>" class="btn btn-primary grid-item">
-        <img src="/static/arasaac/pdi.png" height="125">
+        <img src="/static/arasaac/pdi.png" height="125" style="background: white; padding: 5px; border-radius: 10px;">
         </br>
         Panel Diario
     </a>

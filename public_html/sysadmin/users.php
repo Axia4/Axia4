@@ -85,6 +85,12 @@ switch ($_GET['action'] ?? '') {
                   Docente
                 </label>
               </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="permissions[]" value="entreaulas:proyectos:delete" id="entreaulas-proyectos-delete">
+                <label class="form-check-label" for="entreaulas-proyectos-delete">
+                  Eliminar Proyectos
+                </label>
+              </div>
             </div>
           </div>
         </div>
@@ -150,6 +156,12 @@ switch ($_GET['action'] ?? '') {
                 <input class="form-check-input" type="checkbox" name="permissions[]" value="entreaulas:docente" id="entreaulas-docente" <?php if (in_array('entreaulas:docente', $userdata['permissions'] ?? [])) echo 'checked'; ?>>
                 <label class="form-check-label" for="entreaulas-docente">
                   Docente
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="permissions[]" value="entreaulas:proyectos:delete" id="entreaulas-proyectos-delete" <?php if (in_array('entreaulas:proyectos:delete', $userdata['permissions'] ?? [])) echo 'checked'; ?>>
+                <label class="form-check-label" for="entreaulas-proyectos-delete">
+                  Eliminar Proyectos
                 </label>
               </div>
             </div>

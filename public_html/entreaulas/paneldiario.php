@@ -156,11 +156,26 @@ switch ($_GET["action"]) {
     $aulario_id = $_GET["aulario"] ?? "";
     $centro_id = $_SESSION["auth_data"]["entreaulas"]["centro"] ?? "";
 
+    $source_aulario_id = $aulario_id;
+    $is_shared = false;
+    if ($aulario_id !== "" && $centro_id !== "") {
+      $aulario_path = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json";
+      $aulario = file_exists($aulario_path) ? json_decode(file_get_contents($aulario_path), true) : null;
+      if ($aulario && !empty($aulario["shared_comedor_from"])) {
+        $shared_from = $aulario["shared_comedor_from"];
+        $shared_aulario_path = "/DATA/entreaulas/Centros/$centro_id/Aularios/$shared_from.json";
+        if (file_exists($shared_aulario_path)) {
+          $source_aulario_id = $shared_from;
+          $is_shared = true;
+        }
+      }
+    }
+
     $dateParam = $_GET["date"] ?? date("Y-m-d");
     $dateObj = DateTime::createFromFormat("Y-m-d", $dateParam) ?: new DateTime();
     $date = $dateObj->format("Y-m-d");
 
-    $menuTypesPath = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id/Comedor-MenuTypes.json";
+    $menuTypesPath = "/DATA/entreaulas/Centros/$centro_id/Aularios/$source_aulario_id/Comedor-MenuTypes.json";
     $defaultMenuTypes = [
       ["id" => "basal", "label" => "Menú basal", "color" => "#0d6efd"],
       ["id" => "vegetariano", "label" => "Menú vegetariano", "color" => "#198754"],
@@ -184,7 +199,7 @@ switch ($_GET["action"]) {
 
     $ym = $dateObj->format("Y-m");
     $day = $dateObj->format("d");
-    $dataPath = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id/Comedor/$ym/$day/_datos.json";
+    $dataPath = "/DATA/entreaulas/Centros/$centro_id/Aularios/$source_aulario_id/Comedor/$ym/$day/_datos.json";
 
     $menuData = [
       "date" => $date,
@@ -208,19 +223,11 @@ switch ($_GET["action"]) {
     ?>
     <script>
       function seleccionarMenuTipo(element, hasData) {
-        if (hasData) {
-          element.style.backgroundColor = "#9cff9f"; // Verde
-          document.getElementById('win-sound').play();
-          setTimeout(() => {
-            window.location.href = "/entreaulas/paneldiario.php?aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>";
-          }, 2000);
-        } else {
-          element.style.backgroundColor = "#ff9088"; // Rojo
-          document.getElementById('lose-sound').play();
-          setTimeout(() => {
-            element.style.backgroundColor = "";
-          }, 2000);
-        }
+        element.style.backgroundColor = "#9cff9f"; // Verde
+        document.getElementById('win-sound').play();
+        setTimeout(() => {
+          window.location.href = "/entreaulas/paneldiario.php?aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>";
+        }, 2000);
       }
     </script>
     <div class="card pad">
@@ -259,18 +266,23 @@ switch ($_GET["action"]) {
             <div class="menu-placeholder">Menú no disponible</div>
           <?php else: ?>
             <div class="menu-lines">
-              <?php foreach ($plates as $plateKey => $plateLabel):
+              <?php
+              $loop = 0;
+              foreach ($plates as $plateKey => $plateLabel):
+                $loop ++;
                 $plate = $menuItem["plates"][$plateKey] ?? ["name" => "", "pictogram" => "", "photo" => ""];
-                $pictSrc = image_src_simple($plate["pictogram"] ?? "", $centro_id, $aulario_id, $date);
+                $pictSrc = image_src_simple($plate["pictogram"] ?? "", $centro_id, $source_aulario_id, $date);
                 ?>
                 <div class="menu-line">
                   <?php if ($pictSrc !== ""): ?>
                     <img class="menu-line-img" src="<?= htmlspecialchars($pictSrc) ?>" alt="<?= htmlspecialchars($plateLabel) ?>">
                   <?php else: ?>
-                    <div class="menu-line-img placeholder">—</div>
+                    <div class="menu-line-img placeholder">
+                      <!-- Nª Plato --><?= $loop ?>
+                    </div>
                   <?php endif; ?>
                   <div class="menu-line-name">
-                    <?= $plate["name"] !== "" ? htmlspecialchars($plate["name"]) : "Sin nombre" ?>
+                    <?= $plate["name"] !== "" ? htmlspecialchars($plate["name"]) : "?" ?>
                   </div>
                 </div>
               <?php endforeach; ?>
@@ -296,10 +308,11 @@ switch ($_GET["action"]) {
       .menu-lines {
         display: grid;
         gap: 8px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       }
       .menu-line {
         display: grid;
-        grid-template-columns: 100px 2fr;
+        grid-template-columns: 100px 1fr;
         align-items: center;
         gap: 8px;
         background: #fff;
@@ -325,7 +338,8 @@ switch ($_GET["action"]) {
       .menu-line-img.placeholder {
         background: #f1f1f1;
         border-style: dashed;
-        color: #777;
+        color: #333;
+        font-size: 5rem;
       }
       .menu-line-name {
         font-size: 1.1rem;
