@@ -1597,6 +1597,7 @@ $view = $current_project ? "project" : "list";
               }
               $aularios = list_aularios($centro_id);
               foreach ($aularios as $other_aulario):
+                //echo $other_aulario["id"] . "-" . $aulario_id;
                 if ($other_aulario["id"] === $aulario_id) {
                   continue;
                 }

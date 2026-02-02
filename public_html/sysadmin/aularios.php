@@ -7,13 +7,14 @@ switch ($_GET["form"]) {
         if (empty($centro_id) || !is_dir("/DATA/entreaulas/Centros/$centro_id")) {
             die("Centro no válido.");
         }
-        $aulario_id = uniqid("aulario_");
+        $aulario_id = strtolower(preg_replace("/[^a-zA-Z0-9_-]/", "_", $_POST["name"]));
         $aulario_data = [
             "name" => $_POST["name"],
             "icon" => $_POST["icon"] ?? "/static/logo-entreaulas.png"
         ];
         // Make path recursive (mkdir -p equivalent)
         @mkdir("/DATA/entreaulas/Centros/$centro_id/Aularios/", 0777, true);
+        @mkdir("/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id/Proyectos/", 0777, true);
         file_put_contents("/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json", json_encode($aulario_data));
         // Update user data
         $_SESSION["auth_data"]["entreaulas"]["aulas"][] = $aulario_id;
@@ -61,7 +62,7 @@ switch ($_GET["form"]) {
         } else {
             unset($aulario_data["linked_projects"]);
         }
-        
+        @mkdir("/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id/Proyectos/", 0777, true);
         file_put_contents($aulario_file, json_encode($aulario_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
         header("Location: ?action=edit&aulario=" . urlencode($aulario_id) . "&centro=" . urlencode($centro_id) . "&saved=1");
         exit();
