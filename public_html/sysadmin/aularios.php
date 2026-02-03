@@ -1,6 +1,37 @@
 <?php
 require_once "_incl/auth_redir.php";
 switch ($_GET["form"]) {
+    case "delete":
+        $aulario_id = $_POST["aulario_id"];
+        $centro_id = $_POST["centro_id"];
+        $aulario_file = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json";
+        if (!file_exists($aulario_file)) {
+            die("Aulario no encontrado.");
+        }
+        // Remove aulario directory and contents
+        $aulario_dir = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id";
+        function rrmdir($dir) {
+            if (is_dir($dir)) {
+                $objects = scandir($dir);
+                foreach ($objects as $object) {
+                    if ($object != "." && $object != "..") {
+                        $obj_path = $dir . "/" . $object;
+                        if (is_dir($obj_path)) {
+                            rrmdir($obj_path);
+                        } else {
+                            unlink($obj_path);
+                        }
+                    }
+                }
+                rmdir($dir);
+            }
+        }
+        rrmdir($aulario_dir);
+        // Remove aulario config file
+        unlink($aulario_file);
+        header("Location: ?action=index");
+        exit();
+        break;
     case "create":
         $user_data = $_SESSION["auth_data"];
         $centro_id = $_POST["centro"];
@@ -321,6 +352,11 @@ switch ($_GET["action"]) {
             <input type="hidden" name="aulario_id" value="<?php echo htmlspecialchars($aulario_id); ?>">
             <input type="hidden" name="centro_id" value="<?php echo htmlspecialchars($centro_id); ?>">
             <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+        </form>
+        <form method="post" action="?form=delete" style="display: inline;">
+            <input type="hidden" name="aulario_id" value="<?php echo htmlspecialchars($aulario_id); ?>">
+            <input type="hidden" name="centro_id" value="<?php echo htmlspecialchars($centro_id); ?>">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('¿Estás seguro de que deseas eliminar este aulario? Esta acción no se puede deshacer.')">Eliminar Aulario</button>
         </form>
     </div>
 </div>
