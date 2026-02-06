@@ -4,12 +4,12 @@ if (in_array("entreaulas:docente", $_SESSION["auth_data"]["permissions"] ?? []) 
     header("HTTP/1.1 403 Forbidden");
     die("Access denied");
 }
-require_once "_incl/pre-body.php";
 
 $aulario_id = $_GET["aulario"] ?? "";
 $centro_id = $_SESSION["auth_data"]["entreaulas"]["centro"] ?? "";
 
 if ($aulario_id === "" || $centro_id === "") {
+	require_once "_incl/pre-body.php";
 	?>
 	<div class="card pad">
 		<h1>Menú del Comedor</h1>
@@ -31,6 +31,7 @@ if ($aulario && !empty($aulario["shared_comedor_from"])) {
 	$shared_aulario_path = "/DATA/entreaulas/Centros/$centro_id/Aularios/$shared_from.json";
 	if (file_exists($shared_aulario_path)) {
 		$source_aulario_id = $shared_from;
+		$source_aulario_name = file_exists($shared_aulario_path) ? json_decode(file_get_contents($shared_aulario_path), true)["name"] ?? $shared_from : $shared_from;
 		$is_shared = true;
 	}
 }
@@ -252,13 +253,12 @@ foreach ($userAulas as $aulaId) {
 		"name" => $aulaData["name"] ?? $aulaId
 	];
 }
+require_once "_incl/pre-body.php";
 ?>
-
-
 
 <?php if ($is_shared): ?>
 	<div class="card pad" style="background: #cfe2ff; color: #084298;">
-		<strong>ℹ️ Datos compartidos:</strong> Este aulario está mostrando los menús del aulario origen. Para editar, debes acceder al aulario origen o desactivar el compartir en la configuración.
+		<strong>ℹ️ Datos compartidos:</strong> Este aulario está mostrando los menús del aulario <?= htmlspecialchars($source_aulario_name) ?>. Para editar, debes acceder al aulario origen o desactivar el acceso compartido en la configuración.
 	</div>
 <?php endif; ?>
 

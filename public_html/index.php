@@ -27,7 +27,7 @@
             <a href="/account/" class="btn btn-primary">Ir a mi cuenta</a>
             <a href="/_login.php?logout=1&redir=/" class="btn btn-secondary">Cerrar sesión</a>
         <?php } else { ?>
-            <a href="/_login.php?redir=/account/" class="btn btn-primary">Iniciar sesión</a>
+            <a href="/_login.php?redir=/" class="btn btn-primary">Iniciar sesión</a>
             <a href="/account/register.php" class="btn btn-primary">Crear cuenta</a>
         <?php } ?>
     </div>

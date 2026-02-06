@@ -55,7 +55,7 @@ require_once "_incl/pre-body.php"; ?>
     <div>
         <h1 class="card-title">Iniciar sesión en Axia4</h1>
         
-        <form method="post">
+        <form method="post" action="?redir=<?= urlencode($_GET["redir"] ?? "/") ?>">
             <div class="card pad" style="max-width: 500px;">
                 <div>
                     <div class="mb-3">
