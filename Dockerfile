@@ -8,7 +8,7 @@ FROM dunglas/frankenphp
 #     && rm -rf /var/lib/apt/lists/*
 
 # Configure PHP extensions
-RUN install-php-extensions gd
+RUN install-php-extensions gd opcache
 
 # Set working directory
 WORKDIR /var/www/html
@@ -36,7 +36,13 @@ RUN echo "session.cookie_lifetime = 604800" >> /usr/local/etc/php/conf.d/custom.
     echo "memory_limit = 512M" >> /usr/local/etc/php/conf.d/custom.ini && \
     echo "max_execution_time = 300" >> /usr/local/etc/php/conf.d/custom.ini && \
     echo "date.timezone = UTC" >> /usr/local/etc/php/conf.d/custom.ini && \
-    echo "display_errors = off" >> /usr/local/etc/php/conf.d/custom.ini
+    echo "display_errors = off" >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo "opcache.enable = 1" >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo "opcache.memory_consumption = 128" >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo "opcache.interned_strings_buffer = 8" >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo "opcache.max_accelerated_files = 4000" >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo "opcache.revalidate_freq = 60" >> /usr/local/etc/php/conf.d/custom.ini && \
+    echo "opcache.fast_shutdown = 1" >> /usr/local/etc/php/conf.d/custom.ini
 
 # Expose port 80
 EXPOSE 80

@@ -1264,7 +1264,7 @@ $view = $current_project ? "project" : "list";
       </svg>
       Proyectos
     </h1>
-    <p>Gestiona proyectos con enlaces y archivos para tu aulario.</p>
+    <p>Los proyectos son carpetas que contienen enlaces y archivos para tu aulario.</p>
     <span>
       <button type="button" class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#createProjectModal">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" height="24" style="vertical-align: middle; fill: white;">
