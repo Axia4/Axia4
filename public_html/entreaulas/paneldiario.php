@@ -119,7 +119,6 @@ switch ($_GET["action"]) {
       ?>
         <a class="card grid-item" style="color: black;" onclick="seleccionarActividad(this, '<?php echo htmlspecialchars($actividad_name); ?>');">
           <img src="_filefetch.php?type=panel_actividades&activity=<?php echo urlencode($actividad_name); ?>&centro=<?php echo urlencode($_SESSION["auth_data"]["entreaulas"]["centro"]); ?>" height="125" class="bg-white">
-          <br>
           <?php echo htmlspecialchars($actividad_name); ?>
         </a>
       <?php } ?>
