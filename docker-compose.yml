@@ -1,6 +1,7 @@
 services:
   axia4-web:
     image: ghcr.io/axia4/axia4:main
+    # Optional: Build from local Dockerfile for development
     build:
       context: .
       dockerfile: Dockerfile
@@ -12,6 +13,4 @@ services:
       - ./DATA:/DATA
       # Optional: Mount the application code for development
       - ./public_html:/var/www/html
-    environment:
-      - APACHE_DOCUMENT_ROOT=/var/www/html
     restart: unless-stopped
