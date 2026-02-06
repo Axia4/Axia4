@@ -158,13 +158,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $canEdit) {
 	if ($action === "delete_type") {
 		$deleteId = trim($_POST["delete_type_id"] ?? "");
 		if ($deleteId !== "") {
+			$deleted = false;
 			$newMenuTypes = [];
 			foreach ($menuTypes as $t) {
-				if (($t["id"] ?? "") !== $deleteId) {
+				if (($t["id"] ?? "") === $deleteId) {
+					$deleted = true;
+				} else {
 					$newMenuTypes[] = $t;
 				}
 			}
-			if (count($newMenuTypes) < count($menuTypes)) {
+			if ($deleted) {
 				$menuTypes = $newMenuTypes;
 				file_put_contents($menuTypesPath, json_encode($menuTypes, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 				// Redirect to the first available menu type or default
@@ -189,6 +192,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $canEdit) {
 					break;
 				}
 			}
+			// Clean up the reference to avoid accidental usage after the loop
 			unset($t);
 			file_put_contents($menuTypesPath, json_encode($menuTypes, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 			header("Location: /entreaulas/comedor.php?aulario=" . urlencode($aulario_id) . "&date=" . urlencode($date) . "&menu=" . urlencode($renameId));
@@ -443,7 +447,9 @@ foreach ($userAulas as $aulaId) {
 
 	<script>
 		function toggleRenameForm(typeId) {
-			const formDiv = document.getElementById('rename-form-' + typeId);
+			// Sanitize typeId to prevent potential XSS
+			const sanitizedId = typeId.replace(/[^a-zA-Z0-9_-]/g, '');
+			const formDiv = document.getElementById('rename-form-' + sanitizedId);
 			if (formDiv) {
 				formDiv.style.display = formDiv.style.display === 'none' ? 'block' : 'none';
 			}
