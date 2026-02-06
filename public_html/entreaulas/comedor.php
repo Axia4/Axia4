@@ -155,6 +155,51 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $canEdit) {
 		}
 	}
 
+	if ($action === "delete_type") {
+		$deleteId = trim($_POST["delete_type_id"] ?? "");
+		if ($deleteId !== "") {
+			$deleted = false;
+			$newMenuTypes = [];
+			foreach ($menuTypes as $t) {
+				if (($t["id"] ?? "") === $deleteId) {
+					$deleted = true;
+				} else {
+					$newMenuTypes[] = $t;
+				}
+			}
+			if ($deleted) {
+				$menuTypes = $newMenuTypes;
+				file_put_contents($menuTypesPath, json_encode($menuTypes, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+				// Redirect to the first available menu type or default
+				$redirectMenuId = !empty($menuTypes) ? $menuTypes[0]["id"] : "basal";
+				header("Location: /entreaulas/comedor.php?aulario=" . urlencode($aulario_id) . "&date=" . urlencode($date) . "&menu=" . urlencode($redirectMenuId));
+				exit;
+			}
+		}
+	}
+
+	if ($action === "rename_type") {
+		$renameId = trim($_POST["rename_type_id"] ?? "");
+		$newLabel = trim($_POST["rename_type_label"] ?? "");
+		$newColor = trim($_POST["rename_type_color"] ?? "");
+		if ($renameId !== "" && $newLabel !== "") {
+			foreach ($menuTypes as &$t) {
+				if (($t["id"] ?? "") === $renameId) {
+					$t["label"] = $newLabel;
+					if ($newColor !== "") {
+						$t["color"] = $newColor;
+					}
+					break;
+				}
+			}
+			// Clean up the reference to avoid accidental usage after the loop
+			unset($t);
+			file_put_contents($menuTypesPath, json_encode($menuTypes, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+			header("Location: /entreaulas/comedor.php?aulario=" . urlencode($aulario_id) . "&date=" . urlencode($date) . "&menu=" . urlencode($renameId));
+			exit;
+		}
+	}
+
 	if ($action === "save") {
 		$menuTypeId = $_POST["menu_type"] ?? $menuTypeId;
 		if (!isset($menuData["menus"][$menuTypeId])) {
@@ -325,25 +370,91 @@ foreach ($userAulas as $aulaId) {
 
 	<details class="card pad">
 		<summary><strong>Administrar tipos de menú</strong></summary>
-		<form method="post" style="margin-top: 10px;">
-			<input type="hidden" name="action" value="add_type">
-			<div class="row g-2">
-				<div class="col-md-4">
-					<label class="form-label">ID</label>
-					<input type="text" name="new_type_id" class="form-control form-control-lg" placeholder="basal">
+		
+		<!-- Add new menu type -->
+		<div style="margin-top: 15px; padding: 15px; background: #e7f1ff; border-radius: 8px;">
+			<h4 style="margin-bottom: 10px;">Añadir nuevo tipo de menú</h4>
+			<form method="post">
+				<input type="hidden" name="action" value="add_type">
+				<div class="row g-2">
+					<div class="col-md-4">
+						<label class="form-label">ID</label>
+						<input type="text" name="new_type_id" class="form-control form-control-lg" placeholder="basal" required>
+					</div>
+					<div class="col-md-5">
+						<label class="form-label">Nombre</label>
+						<input type="text" name="new_type_label" class="form-control form-control-lg" placeholder="Menú basal" required>
+					</div>
+					<div class="col-md-3">
+						<label class="form-label">Color</label>
+						<input type="color" name="new_type_color" class="form-control form-control-lg" value="#0d6efd">
+					</div>
 				</div>
-				<div class="col-md-5">
-					<label class="form-label">Nombre</label>
-					<input type="text" name="new_type_label" class="form-control form-control-lg" placeholder="Menú basal">
+				<button type="submit" class="btn btn-primary btn-lg" style="margin-top: 10px;">Añadir tipo</button>
+			</form>
+		</div>
+
+		<!-- List existing menu types with edit/delete options -->
+		<div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px;">
+			<h4 style="margin-bottom: 15px;">Tipos de menú existentes</h4>
+			<?php foreach ($menuTypes as $type): ?>
+				<div style="margin-bottom: 15px; padding: 12px; background: white; border-radius: 6px; border: 2px solid <?= htmlspecialchars($type["color"] ?? "#ccc") ?>;">
+					<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+						<div style="flex: 1; min-width: 200px;">
+							<strong style="font-size: 1.2rem;"><?= htmlspecialchars($type["label"] ?? $type["id"]) ?></strong>
+							<br>
+							<small style="color: #666;">ID: <?= htmlspecialchars($type["id"] ?? "") ?></small>
+							<br>
+							<small style="color: #666;">Color: <span style="display: inline-block; width: 20px; height: 20px; background: <?= htmlspecialchars($type["color"] ?? "#ccc") ?>; border-radius: 3px; vertical-align: middle;"></span> <?= htmlspecialchars($type["color"] ?? "") ?></small>
+						</div>
+						<div style="display: flex; gap: 8px; flex-wrap: wrap;">
+							<!-- Rename form -->
+							<button type="button" class="btn btn-warning" onclick="toggleRenameForm('<?= htmlspecialchars($type["id"] ?? "") ?>')">Renombrar</button>
+							
+							<!-- Delete form -->
+							<form method="post" style="display: inline;" onsubmit="return confirm('¿Estás seguro de que deseas eliminar este tipo de menú?');">
+								<input type="hidden" name="action" value="delete_type">
+								<input type="hidden" name="delete_type_id" value="<?= htmlspecialchars($type["id"] ?? "") ?>">
+								<button type="submit" class="btn btn-danger">Eliminar</button>
+							</form>
+						</div>
+					</div>
+					<!-- Rename form (hidden by default) -->
+					<div id="rename-form-<?= htmlspecialchars($type["id"] ?? "") ?>" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+						<form method="post">
+							<input type="hidden" name="action" value="rename_type">
+							<input type="hidden" name="rename_type_id" value="<?= htmlspecialchars($type["id"] ?? "") ?>">
+							<div class="row g-2">
+								<div class="col-md-8">
+									<label class="form-label">Nuevo nombre</label>
+									<input type="text" name="rename_type_label" class="form-control" value="<?= htmlspecialchars($type["label"] ?? "") ?>" required>
+								</div>
+								<div class="col-md-4">
+									<label class="form-label">Nuevo color</label>
+									<input type="color" name="rename_type_color" class="form-control" value="<?= htmlspecialchars($type["color"] ?? "#0d6efd") ?>">
+								</div>
+							</div>
+							<div style="margin-top: 8px;">
+								<button type="submit" class="btn btn-success">Guardar cambios</button>
+								<button type="button" class="btn btn-secondary" onclick="toggleRenameForm('<?= htmlspecialchars($type["id"] ?? "") ?>')">Cancelar</button>
+							</div>
+						</form>
+					</div>
 				</div>
-				<div class="col-md-3">
-					<label class="form-label">Color</label>
-					<input type="color" name="new_type_color" class="form-control form-control-lg" value="#0d6efd">
-				</div>
-			</div>
-			<button type="submit" class="btn btn-primary btn-lg" style="margin-top: 10px;">Añadir tipo</button>
-		</form>
+			<?php endforeach; ?>
+		</div>
 	</details>
+
+	<script>
+		function toggleRenameForm(typeId) {
+			// Sanitize typeId to prevent potential XSS
+			const sanitizedId = typeId.replace(/[^a-zA-Z0-9_-]/g, '');
+			const formDiv = document.getElementById('rename-form-' + sanitizedId);
+			if (formDiv) {
+				formDiv.style.display = formDiv.style.display === 'none' ? 'block' : 'none';
+			}
+		}
+	</script>
 <?php endif; ?>
 
 <style>
