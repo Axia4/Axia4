@@ -2,6 +2,10 @@
 require_once "_incl/auth_redir.php";
 require_once "_incl/pre-body.php";
 ?>
+<div class="card pad" style="background: lightblue;">
+    <h1>Aviso: Migración de la plataforma</h1>
+    <span>En los siguientes dias vamos a migrar los datos de EntreAulas a una nueva base de datos, para mayor estabilidad y rendimiento.</span>
+</div>
 <div id="grid">
     <div class="card pad grid-item" style="text-align: center;">
         <h2>¡Hola, <?php echo htmlspecialchars($_SESSION["auth_data"]["display_name"]); ?>!</h2>

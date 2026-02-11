@@ -1,4 +1,8 @@
 <?php require_once "_incl/pre-body.php"; ?>
+<div class="card pad" style="background: lightblue;">
+    <h1>Aviso: Migración de la plataforma</h1>
+    <span>En los siguientes dias vamos a migrar los datos de EntreAulas a una nueva base de datos, para mayor estabilidad y rendimiento.</span>
+</div>
 <div class="card pad">
     <h1>¡Bienvenidx a Axia4!</h1>
     <span>Axia4 es la plataforma unificada de EuskadiTech y Sketaria.</span>
