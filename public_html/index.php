@@ -14,7 +14,7 @@
     <span>En los siguientes días vamos a cambiar la interfaz.</span>
 </div>
 
-<div id="grid" class="app-grid">
+<div id="grid" class="app-grid" style="display: none;">
     <div class="app-card">
         <img src="/static/logo-club.png" alt="Logo Club">
         <div class="app-title">La web del club</div>
@@ -122,7 +122,7 @@
         background: url(/static/portugalete.jpg) #ffffffc2;
         padding: 25px 7px;
         padding-top: 50px;
-        height: 500px;
+        height: 350px;
         border-radius: 50px;
         background-size: cover;
         background-position: center;
@@ -194,6 +194,9 @@
 
     .is-disabled {
         opacity: 0.6;
+    }
+    .app-card .btn.btn-outline-secondary.disabled {
+        color: black;
     }
 </style>
 

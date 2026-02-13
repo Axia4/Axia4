@@ -58,6 +58,9 @@ volumes:
   - ./public_html:/var/www/html  # Uncomment this line
 ```
 
+## Google OAuth Redirect URLs
+Format: `https://example.com/_login.php?google_callback=1`
+
 ## Support
 
 For issues and questions, please open an issue on GitHub.
