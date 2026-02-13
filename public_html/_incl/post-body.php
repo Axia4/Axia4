@@ -1,4 +1,8 @@
     </main>
+    <?php if ($_GET["_hidenav"] != "yes" && $_GET["_hidenav"] != "widget") { ?>
+      </div>
+      </div>
+    <?php } ?>
     <script src="/static/bootstrap.bundle.min.js"></script>
     <script>
       document.addEventListener("DOMContentLoaded", function() {
