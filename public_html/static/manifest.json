@@ -1,0 +1,87 @@
+{
+    "name": "Axia4",
+    "short_name": "Axia4",
+    "description": "Plataforma unificada de EuskadiTech y Sketaria con acceso a EntreAulas, Mi Cuenta y más.",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "portrait-primary",
+    "background_color": "#ffffff",
+    "theme_color": "#9013FE",
+    "icons": [
+        {
+            "src": "/static/logo.png",
+            "sizes": "256x256",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/static/logo.png",
+            "sizes": "256x256",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/static/logo.png",
+            "sizes": "256x256",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "/static/logo.png",
+            "sizes": "540x720",
+            "type": "image/png",
+            "form_factor": "narrow"
+        },
+        {
+            "src": "/static/logo.png",
+            "sizes": "1280x720",
+            "type": "image/png",
+            "form_factor": "wide"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "EntreAulas",
+            "short_name": "EntreAulas",
+            "description": "Gestión de aularios conectados",
+            "url": "/entreaulas/",
+            "icons": [
+                {
+                    "src": "/static/logo-entreaulas.png",
+                    "sizes": "256x256",
+                    "type": "image/png"
+                }
+            ]
+        },
+        {
+            "name": "Mi Cuenta",
+            "short_name": "Cuenta",
+            "description": "Acceso a la plataforma y pagos",
+            "url": "/account/",
+            "icons": [
+                {
+                    "src": "/static/logo-account.png",
+                    "sizes": "256x256",
+                    "type": "image/png"
+                }
+            ]
+        },
+        {
+            "name": "La web del Club",
+            "short_name": "Club",
+            "description": "Ocio y tiempo libre.",
+            "url": "/club/",
+            "icons": [
+                {
+                    "src": "/static/logo-club.png",
+                    "sizes": "256x256",
+                    "type": "image/png"
+                }
+            ]
+        }
+    ],
+    "categories": ["productivity", "education"]
+}

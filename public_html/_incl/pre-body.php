@@ -37,6 +37,7 @@ if (!empty($displayName)) {
   <title><?php echo $APP_TITLE ?? "Axia4"; ?></title>
   <link rel="stylesheet" href="/static/bootstrap.min.css" />
   <link rel="icon" type="image/png" href="/static/<?php echo $APP_ICON ?? "logo.png"; ?>" />
+  <link rel="manifest" href="/static/manifest.json">
 </head>
 
 <body>
