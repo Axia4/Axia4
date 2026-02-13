@@ -54,6 +54,7 @@ if ($_GET["google_callback"] == "1") {
     $email = $user_info["email"];
     $name = $user_info["name"] ?? explode("@", $email)[0];
     $userfile = "/DATA/Usuarios/" . strtolower(str_replace("@", "__", $email)) . ".json";
+    $password = bin2hex(random_bytes(16)); // Generar una contraseña aleatoria para el usuario, aunque no se usará para iniciar sesión
     if (file_exists($userfile)) {
         $userdata = json_decode(file_get_contents($userfile), true);
     } else {
@@ -61,7 +62,7 @@ if ($_GET["google_callback"] == "1") {
             "display_name" => $name,
             "email" => $email,
             "permissions" => ["public"],
-            "password_hash" => password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT), // Contraseña aleatoria, ya que no se usará
+            "password_hash" => password_hash($password, PASSWORD_DEFAULT),
             "google_auth" => true,
             "#" => "Este usuario fue creado automáticamente al iniciar sesión con Google por primera vez.",
         ];
