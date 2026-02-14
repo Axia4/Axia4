@@ -82,8 +82,9 @@ switch ($_GET["form"] ?? '') {
             // Validate image
             $image_info = getimagesize($tmp_name);
             if ($image_info !== false) {
-                move_uploaded_file($tmp_name, $photo_path);
-                chmod($photo_path, 0644);
+                if (move_uploaded_file($tmp_name, $photo_path)) {
+                    chmod($photo_path, 0644);
+                }
             }
         }
         
@@ -133,8 +134,9 @@ switch ($_GET["form"] ?? '') {
             // Validate image
             $image_info = getimagesize($tmp_name);
             if ($image_info !== false) {
-                move_uploaded_file($tmp_name, $photo_path);
-                chmod($photo_path, 0644);
+                if (move_uploaded_file($tmp_name, $photo_path)) {
+                    chmod($photo_path, 0644);
+                }
             }
         }
         
@@ -223,7 +225,7 @@ switch ($_GET["action"] ?? '') {
                     <?php if ($photo_exists): ?>
                         <div class="mb-2">
                             <img src="_filefetch.php?type=alumno_photo&alumno=<?= urlencode($nombre) ?>&centro=<?= urlencode($centro_id) ?>&aulario=<?= urlencode($aulario_id) ?>" 
-                                 alt="<?= htmlspecialchars($nombre) ?>" 
+                                 alt="Foto de <?= htmlspecialchars($nombre) ?>" 
                                  style="max-width: 200px; max-height: 200px; border: 2px solid #ddd; border-radius: 10px;">
                         </div>
                     <?php else: ?>
@@ -311,7 +313,7 @@ switch ($_GET["action"] ?? '') {
                             <td>
                                 <?php if ($photo_exists): ?>
                                     <img src="_filefetch.php?type=alumno_photo&alumno=<?= urlencode($nombre) ?>&centro=<?= urlencode($centro_id) ?>&aulario=<?= urlencode($aulario_id) ?>" 
-                                         alt="<?= htmlspecialchars($nombre) ?>" 
+                                         alt="Foto de <?= htmlspecialchars($nombre) ?>" 
                                          style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;">
                                 <?php else: ?>
                                     <div style="width: 50px; height: 50px; background: #f0f0f0; display: flex; align-items: center; justify-content: center; border-radius: 5px; border: 2px dashed #ccc;">
