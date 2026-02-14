@@ -6,6 +6,12 @@ ini_set('memory_limit', '1G');
 header("Access-Control-Allow-Origin: *");
 
 switch ($_GET["type"]) {
+    case "alumno_photo":
+        $centro = str_replace('..', '_', $_GET["centro"] ?? '');
+        $aulario = str_replace('..', '_', $_GET["aulario"] ?? '');
+        $alumno = str_replace('..', '_', $_GET["alumno"] ?? '');
+        $relpath = "entreaulas/Centros/$centro/Aularios/$aulario/Alumnos/$alumno/photo.jpg";
+        break;
     case "panel_actividades":
         $centro = str_replace('..', '_', $_GET["centro"] ?? '');
         $activity = str_replace('..', '_', $_GET["activity"] ?? '');
