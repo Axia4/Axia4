@@ -347,7 +347,7 @@ if (!empty($displayName)) {
       position: relative;
     }
 
-    .menu-card {
+    header .menu-card {
       position: absolute;
       right: 0;
       margin-top: 10px;
@@ -359,13 +359,13 @@ if (!empty($displayName)) {
       z-index: 10;
     }
 
-    .menu-grid {
+    header .menu-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
       gap: 12px;
     }
 
-    .menu-item {
+    header .menu-item {
       display: flex;
       align-items: center;
       gap: 10px;
@@ -377,7 +377,7 @@ if (!empty($displayName)) {
       outline: 1px solid grey;
     }
 
-    .menu-item img {
+    header .menu-item img {
       height: 28px;
     }
 
