@@ -12,7 +12,7 @@ switch ($_GET["type"]) {
         $alumno = basename($_GET["alumno"] ?? '');
         // Additional validation to prevent empty names
         if (empty($centro) || empty($aulario) || empty($alumno)) {
-            header("HTTP/1.1 400 Bad Request");
+            header("HTTP/1.1 403 Forbidden");
             die("Invalid parameters");
         }
         $relpath = "entreaulas/Centros/$centro/Aularios/$aulario/Alumnos/$alumno/photo.jpg";
