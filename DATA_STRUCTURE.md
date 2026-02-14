@@ -59,6 +59,25 @@ DATA/
 }
 ```
 
+### Aulario Student Names (DATA/entreaulas/Centros/{centro_id}/Aularios/{aulario_id}/Alumnos/)
+
+The Alumnos directory contains subdirectories for each student, where each student has:
+- A unique folder name (student identifier)
+- A `photo.jpg` file with the student's photo/pictogram
+
+Example structure:
+```
+DATA/entreaulas/Centros/centro1/Aularios/aulario_abc123/Alumnos/
+├── Juan/
+│   └── photo.jpg
+├── Maria/
+│   └── photo.jpg
+└── Pedro/
+    └── photo.jpg
+```
+
+This structure is used by the "¿Quién soy?" (Who am I?) feature in Panel Diario, where students can identify themselves by selecting their photo.
+
 ## Generating Password Hashes
 
 To create password hashes for your users, use one of these methods:

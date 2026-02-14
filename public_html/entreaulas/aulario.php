@@ -20,6 +20,13 @@ $aulario = json_decode(file_get_contents("/DATA/entreaulas/Centros/$centro_id/Au
         </br>
         Panel Diario
     </a>
+    <?php if (in_array("entreaulas:docente", $_SESSION["auth_data"]["permissions"] ?? [])): ?>
+        <a href="/entreaulas/alumnos.php?aulario=<?= urlencode($aulario_id) ?>" class="btn btn-info grid-item">
+            <img src="/static/arasaac/alumnos.png" height="125" style="background: white; padding: 5px; border-radius: 10px;" alt="Icono de gestión de alumnos">
+            <br>
+            Gestión de Alumnos
+        </a>
+    <?php endif; ?>
     <?php if (in_array("sysadmin:access", $_SESSION["auth_data"]["permissions"] ?? [])): ?>
         <a href="/sysadmin/aularios.php?action=edit&aulario=<?= urlencode($aulario_id) ?>" class="btn btn-secondary grid-item">
             <img src="/static/iconexperience/gear_edit.png" height="125">

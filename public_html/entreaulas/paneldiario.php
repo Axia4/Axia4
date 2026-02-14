@@ -92,6 +92,12 @@ switch ($_GET["action"]) {
   case "index":
 ?>
     <div id="grid">
+      <!-- ¿Quién soy? -->
+      <a onclick="document.getElementById('click-sound').play()" href="?action=quien_soy&aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>" class="btn btn-primary grid-item">
+        <img src="/static/arasaac/yo.png" height="125" class="bg-white">
+        <br>
+        ¿Quién soy?
+      </a>
       <!-- Calendario -->
       <a onclick="document.getElementById('click-sound').play()" href="?action=calendar&aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>" class="btn btn-primary grid-item">
         <img src="/static/arasaac/calendario.png" height="125" class="bg-white">
@@ -142,6 +148,108 @@ switch ($_GET["action"]) {
       }
     </script>
 
+  <?php
+    break;
+  case "quien_soy":
+    // ¿Quién soy? - Identificación del alumno
+    $aulario_id = basename($_GET["aulario"] ?? '');
+    $centro_id = basename($_SESSION["auth_data"]["entreaulas"]["centro"] ?? '');
+    
+    // Validate parameters
+    if (empty($aulario_id) || empty($centro_id)) {
+      echo '<div class="card pad"><p>Error: Parámetros inválidos.</p></div>';
+      break;
+    }
+    
+    $base_path = "/DATA/entreaulas/Centros";
+    $alumnos_path = "$base_path/$centro_id/Aularios/$aulario_id/Alumnos";
+    
+    // Validate the path is within the expected directory
+    $real_path = realpath($alumnos_path);
+    $real_base = realpath($base_path);
+    
+    $alumnos = [];
+    if ($real_path !== false && $real_base !== false && strpos($real_path, $real_base) === 0 && is_dir($real_path)) {
+      $alumnos = glob($real_path . "/*", GLOB_ONLYDIR);
+    }
+  ?>
+    <script>
+      function seleccionarAlumno(element, nombre) {
+        element.style.backgroundColor = "#9cff9f"; // Verde
+        announceAndMaybeRedirect(
+          "¡Hola " + nombre + "!",
+          "/entreaulas/paneldiario.php?aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>",
+          true
+        );
+      }
+    </script>
+    <div class="card pad">
+      <div>
+        <h1 class="card-title">¿Quién soy?</h1>
+      </div>
+    </div>
+    <div id="grid">
+      <?php 
+      if (empty($alumnos)) {
+      ?>
+        <div class="card pad" style="width: 100%;">
+          <p>No hay alumnos registrados en este aulario.</p>
+          <p>Para añadir alumnos, crea carpetas con sus nombres en: <code><?php echo htmlspecialchars($alumnos_path); ?></code></p>
+          <p>Cada carpeta debe contener un archivo <code>photo.jpg</code> con la foto o pictograma del alumno.</p>
+        </div>
+      <?php 
+      } else {
+        foreach ($alumnos as $alumno_path) {
+          $alumno_name = basename($alumno_path);
+          $photo_path = $alumno_path . "/photo.jpg";
+          $photo_exists = file_exists($photo_path);
+      ?>
+        <a href="javascript:void(0)" class="card grid-item" style="color: black;" onclick="seleccionarAlumno(this, <?php echo json_encode($alumno_name, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>);" aria-label="Seleccionar alumno <?php echo htmlspecialchars($alumno_name); ?>">
+          <?php if ($photo_exists): ?>
+            <img src="_filefetch.php?type=alumno_photo&alumno=<?php echo urlencode($alumno_name); ?>&centro=<?php echo urlencode($centro_id); ?>&aulario=<?php echo urlencode($aulario_id); ?>" height="150" class="bg-white" alt="Foto de <?php echo htmlspecialchars($alumno_name); ?>">
+          <?php else: ?>
+            <div style="width: 150px; height: 150px; background: #f0f0f0; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 2px dashed #ccc;">
+              <span style="font-size: 48px;">?</span>
+            </div>
+          <?php endif; ?>
+          <br>
+          <span style="font-size: 20px; font-weight: bold;"><?php echo htmlspecialchars($alumno_name); ?></span>
+        </a>
+      <?php 
+        }
+      } 
+      ?>
+    </div>
+    <style>
+      .grid-item {
+        margin-bottom: 10px !important;
+        padding: 15px;
+        width: 250px;
+        text-align: center;
+        text-decoration: none;
+      }
+
+      .grid-item img {
+        margin: 0 auto;
+        height: 150px;
+        border-radius: 10px;
+        border: 3px solid #ddd;
+      }
+    </style>
+    <script>
+      var msnry = new Masonry('#grid', {
+        "columnWidth": 250,
+        "itemSelector": ".grid-item",
+        "gutter": 10,
+        "transitionDuration": 0
+      });
+      setTimeout(() => {
+        msnry.layout()
+      }, 250);
+      window.onresize = () => {
+        msnry.layout()
+      }
+    </script>
   <?php
     break;
   case "actividades":

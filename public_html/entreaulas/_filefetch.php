@@ -6,6 +6,17 @@ ini_set('memory_limit', '1G');
 header("Access-Control-Allow-Origin: *");
 
 switch ($_GET["type"]) {
+    case "alumno_photo":
+        $centro = basename($_GET["centro"] ?? '');
+        $aulario = basename($_GET["aulario"] ?? '');
+        $alumno = basename($_GET["alumno"] ?? '');
+        // Additional validation to prevent empty names
+        if (empty($centro) || empty($aulario) || empty($alumno)) {
+            header("HTTP/1.1 403 Forbidden");
+            die("Invalid parameters");
+        }
+        $relpath = "entreaulas/Centros/$centro/Aularios/$aulario/Alumnos/$alumno/photo.jpg";
+        break;
     case "panel_actividades":
         $centro = str_replace('..', '_', $_GET["centro"] ?? '');
         $activity = str_replace('..', '_', $_GET["activity"] ?? '');
@@ -69,20 +80,29 @@ if (!isset($path)) {
 if (!isset($uripath)) {
     $uripath = "/$relpath";
 }
-if (!file_exists($path) || !is_file($path)) {
+
+// Validate that the resolved path is within /DATA directory
+$real_path = realpath($path);
+$real_base = realpath("/DATA");
+if ($real_path === false || $real_base === false || strpos($real_path, $real_base) !== 0) {
+    header("HTTP/1.1 403 Forbidden");
+    die("Access denied");
+}
+
+if (!file_exists($real_path) || !is_file($real_path)) {
     header("HTTP/1.1 404 Not Found");
     die("File not found");
 }
-$mime = mime_content_type($path);
+$mime = mime_content_type($real_path);
 
 // Check if thumbnail is requested
-if (file_exists($path . ".thumbnail") && $_GET["thumbnail"] == "1") {
-    $path .= ".thumbnail";
+if (file_exists($real_path . ".thumbnail") && $_GET["thumbnail"] == "1") {
+    $real_path .= ".thumbnail";
     $uripath .= ".thumbnail";
     $mime = "image/jpeg";
 }
 header("Content-Type: " . $mime);
-header('Content-Length: ' . filesize($path));
+header('Content-Length: ' . filesize($real_path));
 //header('Cache-Control: max-age=7200');
 header("X-Accel-Redirect: $uripath");
 
