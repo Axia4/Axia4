@@ -7,9 +7,14 @@ header("Access-Control-Allow-Origin: *");
 
 switch ($_GET["type"]) {
     case "alumno_photo":
-        $centro = str_replace('..', '_', $_GET["centro"] ?? '');
-        $aulario = str_replace('..', '_', $_GET["aulario"] ?? '');
-        $alumno = str_replace('..', '_', $_GET["alumno"] ?? '');
+        $centro = basename($_GET["centro"] ?? '');
+        $aulario = basename($_GET["aulario"] ?? '');
+        $alumno = basename($_GET["alumno"] ?? '');
+        // Additional validation to prevent empty names
+        if (empty($centro) || empty($aulario) || empty($alumno)) {
+            header("HTTP/1.1 400 Bad Request");
+            die("Invalid parameters");
+        }
         $relpath = "entreaulas/Centros/$centro/Aularios/$aulario/Alumnos/$alumno/photo.jpg";
         break;
     case "panel_actividades":
