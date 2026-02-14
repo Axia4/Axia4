@@ -161,11 +161,16 @@ switch ($_GET["action"]) {
       break;
     }
     
-    $alumnos_path = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id/Alumnos";
-    $alumnos = [];
+    $base_path = "/DATA/entreaulas/Centros";
+    $alumnos_path = "$base_path/$centro_id/Aularios/$aulario_id/Alumnos";
     
-    if (is_dir($alumnos_path)) {
-      $alumnos = glob($alumnos_path . "/*", GLOB_ONLYDIR);
+    // Validate the path is within the expected directory
+    $real_path = realpath($alumnos_path);
+    $real_base = realpath($base_path);
+    
+    $alumnos = [];
+    if ($real_path !== false && $real_base !== false && strpos($real_path, $real_base) === 0 && is_dir($real_path)) {
+      $alumnos = glob($real_path . "/*", GLOB_ONLYDIR);
     }
   ?>
     <script>
@@ -199,9 +204,9 @@ switch ($_GET["action"]) {
           $photo_path = $alumno_path . "/photo.jpg";
           $photo_exists = file_exists($photo_path);
       ?>
-        <a class="card grid-item" style="color: black;" onclick="seleccionarAlumno(this, <?php echo json_encode($alumno_name, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>);">
+        <a href="javascript:void(0)" class="card grid-item" style="color: black;" onclick="seleccionarAlumno(this, <?php echo json_encode($alumno_name, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>);" aria-label="Seleccionar alumno <?php echo htmlspecialchars($alumno_name); ?>">
           <?php if ($photo_exists): ?>
-            <img src="_filefetch.php?type=alumno_photo&alumno=<?php echo urlencode($alumno_name); ?>&centro=<?php echo urlencode($centro_id); ?>&aulario=<?php echo urlencode($aulario_id); ?>" height="150" class="bg-white">
+            <img src="_filefetch.php?type=alumno_photo&alumno=<?php echo urlencode($alumno_name); ?>&centro=<?php echo urlencode($centro_id); ?>&aulario=<?php echo urlencode($aulario_id); ?>" height="150" class="bg-white" alt="Foto de <?php echo htmlspecialchars($alumno_name); ?>">
           <?php else: ?>
             <div style="width: 150px; height: 150px; background: #f0f0f0; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 2px dashed #ccc;">
               <span style="font-size: 48px;">?</span>
