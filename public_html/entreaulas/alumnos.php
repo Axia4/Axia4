@@ -1,6 +1,12 @@
 <?php
 require_once "_incl/auth_redir.php";
 
+// Check if user has docente permission
+if (!in_array("entreaulas:docente", $_SESSION["auth_data"]["permissions"] ?? [])) {
+    header("HTTP/1.1 403 Forbidden");
+    die("Access denied");
+}
+
 $aulario_id = $_GET["aulario"] ?? "";
 $centro_id = $_SESSION["auth_data"]["entreaulas"]["centro"] ?? "";
 
@@ -19,9 +25,23 @@ if (empty($aulario_id) || empty($centro_id)) {
 $aulario_id = basename($aulario_id);
 $centro_id = basename($centro_id);
 
-// Validate paths
+// Validate paths with realpath
 $base_path = "/DATA/entreaulas/Centros";
+$real_base = realpath($base_path);
 $alumnos_base_path = "$base_path/$centro_id/Aularios/$aulario_id/Alumnos";
+
+// Ensure base path exists and is valid
+if ($real_base === false) {
+    require_once "_incl/pre-body.php";
+    ?>
+    <div class="card pad">
+        <h1>Gestión de Alumnos</h1>
+        <p>Error: Directorio base no encontrado.</p>
+    </div>
+    <?php
+    require_once "_incl/post-body.php";
+    exit;
+}
 
 // Handle form submissions
 switch ($_GET["form"] ?? '') {
@@ -36,16 +56,23 @@ switch ($_GET["form"] ?? '') {
         $nombre_safe = basename($nombre);
         $alumno_path = "$alumnos_base_path/$nombre_safe";
         
+        // Validate path with realpath (after potential creation)
+        if (!is_dir($alumnos_base_path)) {
+            mkdir($alumnos_base_path, 0755, true);
+        }
+        
+        $real_alumnos_base = realpath($alumnos_base_path);
+        if ($real_alumnos_base === false || strpos($real_alumnos_base, $real_base) !== 0) {
+            header("Location: ?aulario=" . urlencode($aulario_id) . "&_result=" . urlencode("Error: Ruta inválida"));
+            exit;
+        }
+        
         if (file_exists($alumno_path)) {
             header("Location: ?aulario=" . urlencode($aulario_id) . "&_result=" . urlencode("Ya existe un alumno con ese nombre"));
             exit;
         }
         
-        if (!is_dir($alumnos_base_path)) {
-            mkdir($alumnos_base_path, 0777, true);
-        }
-        
-        mkdir($alumno_path, 0777, true);
+        mkdir($alumno_path, 0755, true);
         
         // Handle photo upload
         if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
@@ -75,6 +102,13 @@ switch ($_GET["form"] ?? '') {
         $nombre_new_safe = basename($nombre_new);
         $alumno_old_path = "$alumnos_base_path/$nombre_old";
         $alumno_new_path = "$alumnos_base_path/$nombre_new_safe";
+        
+        // Validate paths with realpath
+        $real_old_path = realpath($alumno_old_path);
+        if ($real_old_path === false || strpos($real_old_path, $real_base) !== 0) {
+            header("Location: ?aulario=" . urlencode($aulario_id) . "&_result=" . urlencode("Alumno no encontrado"));
+            exit;
+        }
         
         if (!file_exists($alumno_old_path)) {
             header("Location: ?aulario=" . urlencode($aulario_id) . "&_result=" . urlencode("Alumno no encontrado"));
@@ -115,6 +149,13 @@ switch ($_GET["form"] ?? '') {
         }
         
         $alumno_path = "$alumnos_base_path/$nombre";
+        
+        // Validate path with realpath
+        $real_alumno_path = realpath($alumno_path);
+        if ($real_alumno_path === false || strpos($real_alumno_path, $real_base) !== 0) {
+            header("Location: ?aulario=" . urlencode($aulario_id) . "&_result=" . urlencode("Alumno no encontrado"));
+            exit;
+        }
         
         if (file_exists($alumno_path) && is_dir($alumno_path)) {
             // Delete photo if exists
