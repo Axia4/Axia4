@@ -21,6 +21,7 @@ if(strtoupper($_POST["adminpw"]) == strtoupper($config["adminpw"] ?? "")) {
 $APP_CODE = "club";
 $APP_NAME = "La web del Club<sup>3</sup>";
 $APP_TITLE = "La web del Club";
+$PAGE_TITLE = "Editar datos - $date - Club";
 require_once "../_incl/pre-body.php"; ?>
 <div class="card">
     <div>

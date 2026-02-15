@@ -6,6 +6,7 @@ $files = array_reverse($files);
 $APP_CODE = "club";
 $APP_NAME = "La web del Club<sup>3</sup>";
 $APP_TITLE = "La web del Club";
+$PAGE_TITLE = "Club - Inicio";
 require_once "../_incl/pre-body.php"; ?>
 <div class="card pad">
     <h2>Calendario:</h2>

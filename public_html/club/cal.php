@@ -9,6 +9,7 @@ $fotos = glob("/DATA/club/IMG/$file/*/");
 $APP_CODE = "club";
 $APP_NAME = "La web del Club<sup>3</sup>";
 $APP_TITLE = "La web del Club";
+$PAGE_TITLE = $val["title"] ? "$date - " . $val["title"] . " - Club" : "$date - Club";
 require_once "../_incl/pre-body.php"; ?>
 <div class="card pad">
     <h1><?php echo $date; ?> - <?php echo $val["title"] ?: "Por definir"; ?></h1>
