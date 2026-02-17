@@ -576,7 +576,7 @@ if (!empty($displayName)) {
                   <span class="brand-text"><?= $APP_NAME ?></span>
                 </a>
                 <form class="search-bar" action="https://search.tech.eus/s/" method="get">
-                  <input type="text" name="q" placeholder="Busca en Axia4" aria-label="Buscar">
+                  <input type="text" name="q" placeholder="Busqueda Global" aria-label="Buscar">
                 </form>
                 <div class="header-actions">
                   <details class="app-menu">

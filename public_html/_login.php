@@ -1,6 +1,8 @@
 <?php
 session_start();
-$AuthConfig = json_decode(file_get_contents("/DATA/AuthConfig.json"), true);
+if (!isset($AuthConfig)) {
+    $AuthConfig = json_decode(file_get_contents("/DATA/AuthConfig.json"), true);
+}
 $DOMAIN = $_SERVER["HTTP_X_FORWARDED_HOST"] ?? $_SERVER["HTTP_HOST"];
 if ($_GET["reload_user"] == "1") {
     $user = str_replace("@", "__", $_SESSION["auth_user"]);

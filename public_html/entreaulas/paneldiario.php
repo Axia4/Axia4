@@ -1,37 +1,16 @@
 <?php
 require_once "_incl/auth_redir.php";
-require_once "_incl/pre-body.php";
 switch ($_GET["form"]) {
-  case "menu_select":
-    // Guardar menú seleccionado en la base de datos (a implementar)
-    $selected_date = $_POST["fecha"];
-    $plato1 = $_POST["plato1"];
-    $plato2 = $_POST["plato2"];
-    $postre = $_POST["postre"];
-    // Aquí se debería guardar en la base de datos del aulario la selección del menú para la fecha indicada.
-    // Por ahora, solo mostramos un mensaje de confirmación.
-    // Y redirigimos despues de 10 segundos al panel diario.
-    header("Refresh: 10; URL=/entreaulas/paneldiario.php?aulario=" . urlencode($_GET['aulario'] ?? ''));
-?>
-    <div class="card pad">
-      <div>
-        <h1 class="card-title">Menú Seleccionado</h1>
-        <span>
-          Has seleccionado el siguiente menú para el día <?php echo htmlspecialchars($selected_date); ?>:
-        </span>
-        <ul>
-          <li>Primer Plato: <?php echo htmlspecialchars($plato1); ?></li>
-          <li>Segundo Plato: <?php echo htmlspecialchars($plato2); ?></li>
-          <li>Postre: <?php echo htmlspecialchars($postre); ?></li>
-        </ul>
-        <a href="/entreaulas/paneldiario.php?aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>" class="btn btn-primary">Volver
-          al Panel Diario</a>
-      </div>
-    </div>
-<?php
-    die();
+  case "alumno_selected":
+    $alumno = $_GET["alumno"] ?? "";
+    if ($alumno !== "") {
+      $_SESSION["entreaulas_selected_alumno"] = $alumno;
+      header("Location: paneldiario.php?aulario=" . urlencode($_GET["aulario"] ?? ''));
+      die();
+    }
     break;
 }
+require_once "_incl/pre-body.php";
 ?>
 <audio id="win-sound" src="/static/sounds/win.mp3" preload="auto"></audio>
 <audio id="lose-sound" src="/static/sounds/lose.mp3" preload="auto"></audio>
@@ -48,19 +27,23 @@ switch ($_GET["form"]) {
     };
 
     const playFallback = () => {
-      if (!fallbackAudio) {
+      try {
+        if (!fallbackAudio) {
+          console.warn("Fallback audio element not found");
+          doRedirect();
+          return;
+        }
+        fallbackAudio.pause();
+        fallbackAudio.currentTime = 0;
+        fallbackAudio.onended = () => {
+          fallbackAudio.onended = null;
+          doRedirect();
+        };
+        fallbackAudio.play().catch(doRedirect);
+      } catch (e) {
+        console.warn("Error playing fallback audio:", e);
         doRedirect();
-        return;
       }
-      doRedirect();
-      return;
-      fallbackAudio.pause();
-      fallbackAudio.currentTime = 0;
-      fallbackAudio.onended = () => {
-        fallbackAudio.onended = null;
-        doRedirect();
-      };
-      fallbackAudio.play().catch(doRedirect);
     };
 
     if (!message) {
@@ -69,6 +52,7 @@ switch ($_GET["form"]) {
     }
 
     if (!('speechSynthesis' in window)) {
+      console.warn("Speech synthesis not supported");
       playFallback();
       return;
     }
@@ -76,12 +60,37 @@ switch ($_GET["form"]) {
     try {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(message);
+      let finished = false;
+      let started = false;
+      const finalize = (fn) => {
+        if (finished) return;
+        finished = true;
+        fn();
+      };
+      const ttsTimeout = setTimeout(() => {
+        if (!started) {
+          console.warn("Speech synthesis did not start; using fallback");
+          finalize(playFallback);
+        }
+      }, 750);
       utterance.lang = 'es-ES';
       utterance.rate = 1;
-      utterance.onend = doRedirect;
-      utterance.onerror = playFallback;
+      utterance.onstart = () => {
+        started = true;
+        clearTimeout(ttsTimeout);
+      };
+      utterance.onend = () => {
+        clearTimeout(ttsTimeout);
+        finalize(doRedirect);
+      };
+      utterance.onerror = () => {
+        clearTimeout(ttsTimeout);
+        console.warn("Speech synthesis error; using fallback");
+        finalize(playFallback);
+      };
       window.speechSynthesis.speak(utterance);
     } catch (e) {
+      console.warn("Error with speech synthesis:", e);
       playFallback();
     }
   }
@@ -91,7 +100,7 @@ switch ($_GET["action"]) {
   default:
   case "index":
 ?>
-    <div id="grid">
+    <div class="grid">
       <!-- ¿Quién soy? -->
       <a onclick="document.getElementById('click-sound').play()" href="?action=quien_soy&aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>" class="btn btn-primary grid-item">
         <img src="/static/arasaac/yo.png" height="125" class="bg-white">
@@ -119,10 +128,17 @@ switch ($_GET["action"]) {
     </div>
 
     <style>
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 10px;
+        align-items: start;
+      }
+
       .grid-item {
-        margin-bottom: 10px !important;
+        margin-bottom: 0 !important;
         padding: 15px;
-        width: 250px;
+        width: 100%;
         text-align: center;
       }
 
@@ -132,42 +148,26 @@ switch ($_GET["action"]) {
       }
     </style>
 
-
-    <script>
-      var msnry = new Masonry('#grid', {
-        "columnWidth": 250,
-        "itemSelector": ".grid-item",
-        "gutter": 10,
-        "transitionDuration": 0
-      });
-      setTimeout(() => {
-        msnry.layout()
-      }, 250);
-      window.onresize = () => {
-        msnry.layout()
-      }
-    </script>
-
   <?php
     break;
   case "quien_soy":
     // ¿Quién soy? - Identificación del alumno
     $aulario_id = basename($_GET["aulario"] ?? '');
     $centro_id = basename($_SESSION["auth_data"]["entreaulas"]["centro"] ?? '');
-    
+
     // Validate parameters
     if (empty($aulario_id) || empty($centro_id)) {
       echo '<div class="card pad"><p>Error: Parámetros inválidos.</p></div>';
       break;
     }
-    
+
     $base_path = "/DATA/entreaulas/Centros";
     $alumnos_path = "$base_path/$centro_id/Aularios/$aulario_id/Alumnos";
-    
+
     // Validate the path is within the expected directory
     $real_path = realpath($alumnos_path);
     $real_base = realpath($base_path);
-    
+
     $alumnos = [];
     if ($real_path !== false && $real_base !== false && strpos($real_path, $real_base) === 0 && is_dir($real_path)) {
       $alumnos = glob($real_path . "/*", GLOB_ONLYDIR);
@@ -178,7 +178,7 @@ switch ($_GET["action"]) {
         element.style.backgroundColor = "#9cff9f"; // Verde
         announceAndMaybeRedirect(
           "¡Hola " + nombre + "!",
-          "/entreaulas/paneldiario.php?aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>",
+          "/entreaulas/paneldiario.php?aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>&form=alumno_selected&alumno=" + encodeURIComponent(nombre),
           true
         );
       }
@@ -188,45 +188,54 @@ switch ($_GET["action"]) {
         <h1 class="card-title">¿Quién soy?</h1>
       </div>
     </div>
-    <div id="grid">
-      <?php 
+    <div class="grid">
+      <?php
       if (empty($alumnos)) {
       ?>
         <div class="card pad" style="width: 100%;">
           <p>No hay alumnos registrados en este aulario.</p>
-          <p>Para añadir alumnos, crea carpetas con sus nombres en: <code><?php echo htmlspecialchars($alumnos_path); ?></code></p>
-          <p>Cada carpeta debe contener un archivo <code>photo.jpg</code> con la foto o pictograma del alumno.</p>
+          <p>Para añadir alumnos, accede al inicio del aulario.</p>
         </div>
-      <?php 
+        <?php
       } else {
         foreach ($alumnos as $alumno_path) {
           $alumno_name = basename($alumno_path);
           $photo_path = $alumno_path . "/photo.jpg";
           $photo_exists = file_exists($photo_path);
-      ?>
-        <a href="#" class="card grid-item" style="color: black;" onclick='seleccionarAlumno(this, "<?php echo htmlspecialchars($alumno_name, ENT_QUOTES); ?>");' aria-label="Seleccionar alumno <?php echo htmlspecialchars($alumno_name); ?>">
-          <?php if ($photo_exists): ?>
-            <img src="_filefetch.php?type=alumno_photo&alumno=<?php echo urlencode($alumno_name); ?>&centro=<?php echo urlencode($centro_id); ?>&aulario=<?php echo urlencode($aulario_id); ?>" height="150" class="bg-white" alt="Foto de <?php echo htmlspecialchars($alumno_name); ?>">
-          <?php else: ?>
-            <div style="width: 150px; height: 150px; background: #f0f0f0; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 2px dashed #ccc;">
-              <span style="font-size: 48px;">?</span>
-            </div>
-          <?php endif; ?>
-          <br>
-          <span style="font-size: 20px; font-weight: bold;"><?php echo htmlspecialchars($alumno_name); ?></span>
-        </a>
-      <?php 
+        ?>
+          <a href="#" class="card grid-item" style="color: black;" onclick='seleccionarAlumno(this, "<?php echo htmlspecialchars($alumno_name, ENT_QUOTES); ?>");' aria-label="Seleccionar alumno <?php echo htmlspecialchars($alumno_name); ?>">
+            <?php if ($photo_exists): ?>
+              <img src="_filefetch.php?type=alumno_photo&alumno=<?php echo urlencode($alumno_name); ?>&centro=<?php echo urlencode($centro_id); ?>&aulario=<?php echo urlencode($aulario_id); ?>" height="150" class="bg-white" alt="Foto de <?php echo htmlspecialchars($alumno_name); ?>">
+            <?php else: ?>
+              <div style="width: 150px; height: 150px; background: #f0f0f0; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 2px dashed #ccc;">
+                <span style="font-size: 48px;">?</span>
+              </div>
+            <?php endif; ?>
+            <br>
+            <span style="font-size: 20px; font-weight: bold;"><?php echo htmlspecialchars($alumno_name); ?></span>
+          </a>
+      <?php
         }
-      } 
+      }
       ?>
     </div>
     <style>
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 10px;
+        align-items: start;
+      }
+
       .grid-item {
-        margin-bottom: 10px !important;
+        margin-bottom: 0 !important;
         padding: 15px;
-        width: 250px;
+        width: 100%;
         text-align: center;
         text-decoration: none;
+        align-items: center;
+        display: flex;
+        flex-direction: column;
       }
 
       .grid-item img {
@@ -236,20 +245,6 @@ switch ($_GET["action"]) {
         border: 3px solid #ddd;
       }
     </style>
-    <script>
-      var msnry = new Masonry('#grid', {
-        "columnWidth": 250,
-        "itemSelector": ".grid-item",
-        "gutter": 10,
-        "transitionDuration": 0
-      });
-      setTimeout(() => {
-        msnry.layout()
-      }, 250);
-      window.onresize = () => {
-        msnry.layout()
-      }
-    </script>
   <?php
     break;
   case "actividades":
@@ -270,7 +265,7 @@ switch ($_GET["action"]) {
         <h1 class="card-title">¿Que vamos a hacer?</h1>
       </div>
     </div>
-    <div id="grid">
+    <div class="grid">
       <?php foreach ($actividades as $actividad_path) {
         $actividad_name = basename($actividad_path);
       ?>
@@ -281,10 +276,17 @@ switch ($_GET["action"]) {
       <?php } ?>
     </div>
     <style>
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 10px;
+        align-items: start;
+      }
+
       .grid-item {
-        margin-bottom: 10px !important;
+        margin-bottom: 0 !important;
         padding: 15px;
-        width: 250px;
+        width: 100%;
         text-align: center;
         text-decoration: none;
       }
@@ -294,20 +296,6 @@ switch ($_GET["action"]) {
         height: 150px;
       }
     </style>
-    <script>
-      var msnry = new Masonry('#grid', {
-        "columnWidth": 250,
-        "itemSelector": ".grid-item",
-        "gutter": 10,
-        "transitionDuration": 0
-      });
-      setTimeout(() => {
-        msnry.layout()
-      }, 250);
-      window.onresize = () => {
-        msnry.layout()
-      }
-    </script>
   <?php
     break;
   case "menu":
@@ -696,7 +684,7 @@ switch ($_GET["action"]) {
       .grid-item {
         margin-bottom: 10px !important;
         padding: 15px;
-        width: 225px;
+        width: 100%;
         text-align: center;
         text-decoration: none;
       }
@@ -706,20 +694,14 @@ switch ($_GET["action"]) {
         height: 125px;
       }
     </style>
-    <script>
-      var msnry = new Masonry('.grid', {
-        "columnWidth": 225,
-        "itemSelector": ".grid-item",
-        "gutter": 10,
-        "transitionDuration": 0
-      });
-      setTimeout(() => {
-        msnry.layout()
-      }, 250);
-      window.onresize = () => {
-        msnry.layout()
+    <style>
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(225px, 1fr));
+        gap: 10px;
+        align-items: start;
       }
-    </script>
+    </style>
   <?php
     break;
   case "calendario_mes":
@@ -793,7 +775,7 @@ switch ($_GET["action"]) {
       .grid-item {
         margin-bottom: 10px !important;
         padding: 15px;
-        width: 180px;
+        width: 100%;
         text-align: center;
         text-decoration: none;
       }
@@ -803,20 +785,14 @@ switch ($_GET["action"]) {
         height: 125px;
       }
     </style>
-    <script>
-      var msnry = new Masonry('.grid', {
-        "columnWidth": 180,
-        "itemSelector": ".grid-item",
-        "gutter": 10,
-        "transitionDuration": 0
-      });
-      setTimeout(() => {
-        msnry.layout()
-      }, 250);
-      window.onresize = () => {
-        msnry.layout()
+    <style>
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 10px;
+        align-items: start;
       }
-    </script>
+    </style>
 <?php
     break;
 }
