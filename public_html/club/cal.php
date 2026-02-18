@@ -1,6 +1,8 @@
 <?php
+require_once "../_incl/tools.session.php";
+require_once "../_incl/tools.security.php";
 ini_set("display_errors", 0);
-$file = str_replace('/', '_', $_GET["f"]);
+$file = Sf($_GET["f"]);
 $date = implode("/", array_reverse(explode("-", $file)));
 $val = json_decode(file_get_contents("/DATA/club/IMG/$file/data.json"), true);
 
@@ -15,10 +17,10 @@ require_once "../_incl/pre-body.php"; ?>
     <h1><?php echo $date; ?> - <?php echo $val["title"] ?: "Por definir"; ?></h1>
     <span>
         <a href="/club/" class="btn btn-secondary">Volver a Inicio</a>
-        <a href="/club/edit_data.php?f=<?php echo $file; ?>" class="btn btn-secondary">Cambiar datos</a>
-        <a href="/club/upload/index.php?f=<?php echo $file; ?>" class="btn btn-primary">Subir fotos</a>
+        <a href="/club/edit_data.php?f=<?php echo htmlspecialchars($file); ?>" class="btn btn-secondary">Cambiar datos</a>
+        <a href="/club/upload/index.php?f=<?php echo htmlspecialchars($file); ?>" class="btn btn-primary">Subir fotos</a>
         <?php if (isset($val["mapa"]["url"]) and $val["mapa"]["url"] != ""): ?>
-            <a class="btn btn-secondary" href="<?php echo $val["mapa"]["url"]; ?>" target="_blank">Abrir ruta interactiva</a>
+            <a class="btn btn-secondary" href="<?php echo htmlspecialchars($val["mapa"]["url"]); ?>" target="_blank">Abrir ruta interactiva</a>
         <?php endif; ?>
     </span>
 
@@ -44,14 +46,14 @@ require_once "../_incl/pre-body.php"; ?>
                 } ?>
                 <div style="width: 240px; display: inline-block; margin-bottom: 10px; border: 3px solid black; border-radius: 6.5px; box-sizing: content-box;"
                     class="grid-item">
-                    <?php $dl_url = "foto_dl.php?f=$file/$pname/" . str_replace($persona, "", $foto); ?>
+                    <?php $dl_url = "foto_dl.php?f=" . urlencode("$file/$pname/" . str_replace($persona, "", $foto)); ?>
                     <img class="stack" width="240px" loading="lazy" src="<?php echo $dl_url; ?>&thumbnail=1"
-                        alt="Foto de <?php echo $pname . " - " . str_replace($persona, "", $foto); ?>">
+                        alt="Foto de <?php echo htmlspecialchars($pname . " - " . str_replace($persona, "", $foto)); ?>">
                     <div style="padding: 5px; text-align: center;">
-                        Subido por <?php echo $pname; ?><br>
+                        Subido por <?php echo htmlspecialchars($pname); ?><br>
                         <a href="<?php echo $dl_url; ?>" target="_blank" class="btn btn-secondary">Abrir</a>
                         <a href="<?php echo $dl_url; ?>"
-                            download="<?php echo "CLUB-NK5-$file-$pname-" . str_replace($persona, "", $foto); ?>"
+                            download="<?php echo "CLUB-" . htmlspecialchars($file) . "-" . htmlspecialchars($pname) . "-" . htmlspecialchars(str_replace($persona, "", $foto)); ?>"
                             class="btn btn-secondary">Descargar</a>
                     </div>
                 </div>

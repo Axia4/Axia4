@@ -1,12 +1,13 @@
 <?php
-session_start();
+require_once "_incl/tools.session.php";
+require_once "_incl/tools.security.php";
 if (!isset($AuthConfig)) {
     $AuthConfig = json_decode(file_get_contents("/DATA/AuthConfig.json"), true);
 }
 $DOMAIN = $_SERVER["HTTP_X_FORWARDED_HOST"] ?? $_SERVER["HTTP_HOST"];
 if ($_GET["reload_user"] == "1") {
     $user = str_replace("@", "__", $_SESSION["auth_user"]);
-    $userdata = json_decode(file_get_contents("/DATA/Usuarios/$user.json"), true);
+    $userdata = json_decode(file_get_contents("/DATA/Usuarios/" . Sf($user) . ".json"), true);
     $_SESSION['auth_data'] = $userdata;
     $redir = $_GET["redir"] ?? "/";
     header("Location: $redir");
@@ -55,7 +56,7 @@ if ($_GET["google_callback"] == "1") {
     
     $email = $user_info["email"];
     $name = $user_info["name"] ?? explode("@", $email)[0];
-    $userfile = "/DATA/Usuarios/" . strtolower(str_replace("@", "__", $email)) . ".json";
+    $userfile = "/DATA/Usuarios/" . Sf(strtolower(str_replace("@", "__", $email))) . ".json";
     $password = bin2hex(random_bytes(16)); // Generar una contraseña aleatoria para el usuario, aunque no se usará para iniciar sesión
     if (file_exists($userfile)) {
         $userdata = json_decode(file_get_contents($userfile), true);
@@ -123,7 +124,7 @@ if (isset($_POST["user"])) {
     $valid = "";
     $user = trim(strtolower($_POST["user"]));
     $password = $_POST["password"];
-    $userdata = json_decode(file_get_contents("/DATA/Usuarios/$user.json"), true);
+    $userdata = json_decode(file_get_contents("/DATA/Usuarios/" . Sf($user) . ".json"), true);
     if (!isset($userdata["password_hash"])) {
         $_GET["_result"] = "El usuario no existe.";
     }

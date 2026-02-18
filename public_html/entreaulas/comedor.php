@@ -5,7 +5,7 @@ if (in_array("entreaulas:docente", $_SESSION["auth_data"]["permissions"] ?? []) 
     die("Access denied");
 }
 
-$aulario_id = $_GET["aulario"] ?? "";
+$aulario_id = Sf($_GET["aulario"] ?? "");
 $centro_id = $_SESSION["auth_data"]["entreaulas"]["centro"] ?? "";
 
 if ($aulario_id === "" || $centro_id === "") {
@@ -30,7 +30,7 @@ if ($aulario && !empty($aulario["shared_comedor_from"])) {
 	$shared_from = $aulario["shared_comedor_from"];
 	$shared_aulario_path = "/DATA/entreaulas/Centros/$centro_id/Aularios/$shared_from.json";
 	if (file_exists($shared_aulario_path)) {
-		$source_aulario_id = $shared_from;
+		$source_aulario_id = Sf($shared_from);
 		$source_aulario_name = file_exists($shared_aulario_path) ? json_decode(file_get_contents($shared_aulario_path), true)["name"] ?? $shared_from : $shared_from;
 		$is_shared = true;
 	}

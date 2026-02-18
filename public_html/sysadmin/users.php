@@ -1,9 +1,9 @@
 <?php
 require_once "_incl/auth_redir.php";
-
+require_once "_incl/tools.security.php";
 switch ($_GET['form'] ?? '') {
   case 'save_edit':
-    $username = $_POST['username'] ?? '';
+    $username = Sf($_POST['username'] ?? '');
     if (empty($username)) {
       die("Nombre de usuario no proporcionado.");
     }
@@ -104,7 +104,7 @@ switch ($_GET['action'] ?? '') {
     break;
   case 'edit':
     require_once "_incl/pre-body.php";
-    $username = $_GET['user'] ?? '';
+    $username = Sf($_GET['user'] ?? '');
     $userdata = json_decode(file_get_contents("/DATA/Usuarios/$username.json"), true);
 ?>
 <form method="post" action="?form=save_edit">

@@ -1,12 +1,13 @@
 <?php
 require_once "_incl/auth_redir.php";
+require_once "_incl/tools.security.php";
+
 if (in_array("entreaulas:docente", $_SESSION["auth_data"]["permissions"] ?? []) === false) {
   header("HTTP/1.1 403 Forbidden");
   die("Access denied");
 }
 
-
-$aulario_id = $_GET["aulario"] ?? "";
+$aulario_id = Sf($_GET["aulario"] ?? "");
 $centro_id = $_SESSION["auth_data"]["entreaulas"]["centro"] ?? "";
 
 if ($aulario_id === "" || $centro_id === "") {
@@ -406,8 +407,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   }
 
   if ($action === "share_project") {
-    $project_id = $_POST["project_id"] ?? "";
-    $target_aulario = $_POST["target_aulario"] ?? "";
+    $project_id = Sf($_POST["project_id"] ?? "");
+    $target_aulario = Sf($_POST["target_aulario"] ?? "");
 
     if ($project_id !== "" && $target_aulario !== "" && $target_aulario !== $aulario_id) {
       // Only allow sharing local projects
@@ -457,7 +458,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     if (in_array("entreaulas:proyectos:delete", $_SESSION["auth_data"]["permissions"] ?? []) === false) {
       $error = "No tienes permisos para borrar proyectos.";
     } else {
-      $project_id = $_POST["project_id"] ?? "";
+      $project_id = Sf($_POST["project_id"] ?? "");
       if ($project_id !== "") {
         $project = load_project($proyectos_dir, $project_id);
         $project_dir = find_project_path($proyectos_dir, $project_id);
@@ -483,7 +484,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   }
 
   if ($action === "edit_project") {
-    $project_id = $_POST["project_id"] ?? "";
+    $project_id = Sf($_POST["project_id"] ?? "");
     $name = trim($_POST["name"] ?? "");
     $description = sanitize_html($_POST["description"] ?? "");
 
@@ -504,15 +505,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   }
 
   if ($action === "add_item") {
-    $project_id = $_POST["project_id"] ?? "";
-    $item_type = $_POST["item_type"] ?? "link";
-    $item_name = trim($_POST["item_name"] ?? "");
-    $item_url = trim($_POST["item_url"] ?? "");
-    $item_content = sanitize_html($_POST["item_content"] ?? "");
-    $videocall_platform = $_POST["videocall_platform"] ?? "jitsi";
-    $videocall_room = trim($_POST["videocall_room"] ?? "");
-    $videocall_url = trim($_POST["videocall_url"] ?? "");
-    $source_aulario_param = $_POST["source_aulario"] ?? "";
+    $project_id = Sf($_POST["project_id"] ?? "");
+    $item_type = Sf($_POST["item_type"] ?? "link");
+    $item_name = trim(Sf($_POST["item_name"] ?? ""));
+    $item_url = trim(Sf($_POST["item_url"] ?? ""));
+    $item_content = sanitize_html(Sf($_POST["item_content"] ?? ""));
+    $videocall_platform = Sf($_POST["videocall_platform"] ?? "jitsi");
+    $videocall_room = trim(Sf($_POST["videocall_room"] ?? ""));
+    $videocall_url = trim(Sf($_POST["videocall_url"] ?? ""));
+    $source_aulario_param = Sf($_POST["source_aulario"] ?? "");
 
     // Determine which directory to use and permission level
     $working_dir = $proyectos_dir;
@@ -524,10 +525,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
       // Validate the link
       $linked_projects = $aulario["linked_projects"] ?? [];
       foreach ($linked_projects as $link) {
-        if (($link["source_aulario"] ?? "") === $source_aulario_param &&
-          ($link["project_id"] ?? "") === $project_id
+        if ((Sf($link["source_aulario"] ?? "") === $source_aulario_param) &&
+          (Sf($link["project_id"] ?? "") === $project_id)
         ) {
-          $permission = $link["permission"] ?? "read_only";
+          $permission = Sf($link["permission"] ?? "read_only");
           if ($permission === "full_edit") {
             $working_dir = $proyectos_dir;
           } elseif ($permission === "request_edit") {
@@ -722,8 +723,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   }
 
   if ($action === "approve_change" || $action === "reject_change") {
-    $change_id = $_POST["change_id"] ?? "";
-    $project_id = $_POST["project_id"] ?? "";
+    $change_id = Sf($_POST["change_id"] ?? "");
+    $project_id = Sf($_POST["project_id"] ?? "");
 
     if (!empty($change_id) && !empty($project_id)) {
       $project_dir = find_project_path($proyectos_dir, $project_id);
@@ -786,15 +787,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                   }
 
                   if (in_array(($item["type"] ?? ""), ["file", "pdf_secure"], true) && !empty($change_data["pending_filename"])) {
-                    $pending_file = "$pending_dir/" . $change_data["pending_filename"];
-                    $target_file = "$project_dir/" . $change_data["pending_filename"];
+                    $pending_file = "$pending_dir/" . Sf($change_data["pending_filename"]);
+                    $target_file = "$project_dir/" . Sf($change_data["pending_filename"]);
                     if (file_exists($pending_file)) {
                       if (!is_dir($project_dir)) {
                         mkdir($project_dir, 0755, true);
                       }
                       rename($pending_file, $target_file);
                       if (!empty($item["filename"])) {
-                        $old_path = "$project_dir/" . $item["filename"];
+                        $old_path = "$project_dir/" . Sf($item["filename"]);
                         if (file_exists($old_path)) {
                           unlink($old_path);
                           if (file_exists($old_path . ".eadat")) {
@@ -802,8 +803,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                           }
                         }
                       }
-                      $item["filename"] = $change_data["pending_filename"];
-                      $item["original_name"] = $change_data["original_filename"] ?? $change_data["pending_filename"];
+                      $item["filename"] = Sf($change_data["pending_filename"]);
+                      $item["original_name"] = Sf($change_data["original_filename"] ?? $change_data["pending_filename"]);
 
                       $file_meta = [
                         "id" => $item_id,
@@ -851,21 +852,21 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $item["room"] = $change_data["item_room"] ?? "";
               } elseif (in_array($change_data["item_type"], ["file", "pdf_secure"], true) && !empty($change_data["pending_filename"])) {
                 // Move file from pending to project directory
-                $pending_file = "$pending_dir/" . $change_data["pending_filename"];
-                $target_file = "$project_dir/" . $change_data["pending_filename"];
+                $pending_file = "$pending_dir/" . Sf($change_data["pending_filename"]);
+                $target_file = "$project_dir/" . Sf($change_data["pending_filename"]);
 
                 if (file_exists($pending_file)) {
                   if (!is_dir($project_dir)) {
                     mkdir($project_dir, 0755, true);
                   }
                   rename($pending_file, $target_file);
-                  $item["filename"] = $change_data["pending_filename"];
-                  $item["original_name"] = $change_data["original_filename"] ?? $change_data["pending_filename"];
+                  $item["filename"] = Sf($change_data["pending_filename"]);
+                  $item["original_name"] = Sf($change_data["original_filename"] ?? $change_data["pending_filename"]);
 
                   $file_meta = [
                     "id" => $item_id,
-                    "name" => $change_data["item_name"],
-                    "type" => $change_data["item_type"],
+                    "name" => Sf($change_data["item_name"]),
+                    "type" => Sf($change_data["item_type"]),
                     "original_name" => $item["original_name"],
                     "created_at" => $item["created_at"]
                   ];
@@ -886,7 +887,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         } else {
           // Reject - just delete pending file if exists
           if (!empty($change_data["pending_filename"])) {
-            $pending_file = "$pending_dir/" . $change_data["pending_filename"];
+            $pending_file = "$pending_dir/" . Sf($change_data["pending_filename"]);
             if (file_exists($pending_file)) {
               unlink($pending_file);
             }
@@ -901,9 +902,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   }
 
   if ($action === "delete_item") {
-    $project_id = $_POST["project_id"] ?? "";
-    $item_id = $_POST["item_id"] ?? "";
-    $source_aulario_param = $_POST["source_aulario"] ?? "";
+    $project_id = Sf($_POST["project_id"] ?? "");
+    $item_id = Sf($_POST["item_id"] ?? "");
+    $source_aulario_param = Sf($_POST["source_aulario"] ?? "");
 
     // Determine which directory to use based on whether this is a linked project
     $working_dir = $proyectos_dir;
@@ -1010,15 +1011,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   }
 
   if ($action === "edit_item") {
-    $project_id = $_POST["project_id"] ?? "";
-    $item_id = $_POST["item_id"] ?? "";
-    $item_name = trim($_POST["item_name"] ?? "");
-    $item_url = trim($_POST["item_url"] ?? "");
-    $item_content = sanitize_html($_POST["item_content"] ?? "");
-    $videocall_platform = $_POST["edit_videocall_platform"] ?? "jitsi";
-    $videocall_room = trim($_POST["edit_videocall_room"] ?? "");
-    $videocall_url = trim($_POST["edit_videocall_url"] ?? "");
-    $source_aulario_param = $_POST["source_aulario"] ?? "";
+    $project_id = Sf($_POST["project_id"] ?? "");
+    $item_id = Sf($_POST["item_id"] ?? "");
+    $item_name = Sf(trim($_POST["item_name"] ?? ""));
+    $item_url = Sf(trim($_POST["item_url"] ?? ""));
+    $item_content = Sf(sanitize_html($_POST["item_content"] ?? ""));
+    $videocall_platform = Sf($_POST["edit_videocall_platform"] ?? "jitsi");
+    $videocall_room = Sf(trim($_POST["edit_videocall_room"] ?? ""));
+    $videocall_url = Sf(trim($_POST["edit_videocall_url"] ?? ""));
+    $source_aulario_param = Sf($_POST["source_aulario"] ?? "");
 
     $working_dir = $proyectos_dir;
     $permission = "full_edit";

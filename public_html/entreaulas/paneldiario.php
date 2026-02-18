@@ -1,5 +1,6 @@
 <?php
 require_once "_incl/auth_redir.php";
+require_once "_incl/tools.security.php";
 ini_set("display_errors", "0");
 // Funciones auxiliares para el diario
 function getDiarioPath($alumno, $centro_id, $aulario_id) {
@@ -749,7 +750,7 @@ switch ($_GET["action"]) {
     break;
   case "menu":
     // Menú del comedor (nuevo sistema, vista simplificada)
-    $aulario_id = $_GET["aulario"] ?? "";
+    $aulario_id = Sf($_GET["aulario"] ?? '');
     $centro_id = $_SESSION["auth_data"]["entreaulas"]["centro"] ?? "";
 
     $source_aulario_id = $aulario_id;
@@ -758,7 +759,7 @@ switch ($_GET["action"]) {
       $aulario_path = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json";
       $aulario = file_exists($aulario_path) ? json_decode(file_get_contents($aulario_path), true) : null;
       if ($aulario && !empty($aulario["shared_comedor_from"])) {
-        $shared_from = $aulario["shared_comedor_from"];
+        $shared_from = Sf($aulario["shared_comedor_from"]);
         $shared_aulario_path = "/DATA/entreaulas/Centros/$centro_id/Aularios/$shared_from.json";
         if (file_exists($shared_aulario_path)) {
           $source_aulario_id = $shared_from;

@@ -1,7 +1,9 @@
 <?php
 require_once "_incl/auth_redir.php";
 require_once "_incl/pre-body.php";
-$aulario_id = $_GET["id"];
+require_once "_incl/tools.security.php";
+
+$aulario_id = Sf($_GET["id"]);
 $centro_id = $_SESSION["auth_data"]["entreaulas"]["centro"];
 $aulario = json_decode(file_get_contents("/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json"), true);
 ?>

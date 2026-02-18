@@ -1,9 +1,10 @@
 <?php
 require_once "_incl/auth_redir.php";
+require_once "_incl/tools.security.php";
 switch ($_GET["form"]) {
     case "delete":
-        $aulario_id = $_POST["aulario_id"];
-        $centro_id = $_POST["centro_id"];
+        $aulario_id = Sf($_POST["aulario_id"] ?? "");
+        $centro_id = Sf($_POST["centro_id"] ?? "");
         $aulario_file = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json";
         if (!file_exists($aulario_file)) {
             die("Aulario no encontrado.");
@@ -34,14 +35,14 @@ switch ($_GET["form"]) {
         break;
     case "create":
         $user_data = $_SESSION["auth_data"];
-        $centro_id = $_POST["centro"];
+        $centro_id = Sf($_POST["centro"] ?? "");
         if (empty($centro_id) || !is_dir("/DATA/entreaulas/Centros/$centro_id")) {
             die("Centro no válido.");
         }
-        $aulario_id = strtolower(preg_replace("/[^a-zA-Z0-9_-]/", "_", $_POST["name"]));
+        $aulario_id = strtolower(preg_replace("/[^a-zA-Z0-9_-]/", "_", Sf($_POST["name"] ?? "")));
         $aulario_data = [
-            "name" => $_POST["name"],
-            "icon" => $_POST["icon"] ?? "/static/logo-entreaulas.png"
+            "name" => Sf($_POST["name"] ?? ""),
+            "icon" => Sf($_POST["icon"] ?? "/static/logo-entreaulas.png")
         ];
         // Make path recursive (mkdir -p equivalent)
         @mkdir("/DATA/entreaulas/Centros/$centro_id/Aularios/", 0777, true);
@@ -53,18 +54,18 @@ switch ($_GET["form"]) {
         exit();
         break;
     case "save_edit":
-        $aulario_id = $_POST["aulario_id"];
-        $centro_id = $_POST["centro_id"];
+        $aulario_id = Sf($_POST["aulario_id"] ?? "");
+        $centro_id = Sf($_POST["centro_id"] ?? "");
         $aulario_file = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json";
         if (!file_exists($aulario_file)) {
             die("Aulario no encontrado.");
         }
         $aulario_data = json_decode(file_get_contents($aulario_file), true);
-        $aulario_data["name"] = $_POST["name"];
-        $aulario_data["icon"] = $_POST["icon"];
+        $aulario_data["name"] = Sf($_POST["name"] ?? "");
+        $aulario_data["icon"] = Sf($_POST["icon"] ?? "/static/logo-entreaulas.png");
         
         // Handle shared comedor configuration
-        $share_comedor_from = $_POST["share_comedor_from"] ?? "";
+        $share_comedor_from = Sf($_POST["share_comedor_from"] ?? "");
         
         if (!empty($share_comedor_from) && $share_comedor_from !== "none") {
             $aulario_data["shared_comedor_from"] = $share_comedor_from;
@@ -74,9 +75,9 @@ switch ($_GET["form"]) {
         
         // Handle linked projects configuration
         $linked_projects = [];
-        $linked_aularios = $_POST["linked_aulario"] ?? [];
-        $linked_project_ids = $_POST["linked_project_id"] ?? [];
-        $linked_permissions = $_POST["linked_permission"] ?? [];
+        $linked_aularios = Sf($_POST["linked_aulario"] ?? []);
+        $linked_project_ids = Sf($_POST["linked_project_id"] ?? []);
+        $linked_permissions = Sf($_POST["linked_permission"] ?? []);
         
         for ($i = 0; $i < count($linked_aularios); $i++) {
             if (!empty($linked_aularios[$i]) && !empty($linked_project_ids[$i])) {
@@ -140,8 +141,8 @@ switch ($_GET["action"]) {
 <?php
         break;
     case "edit":
-        $aulario_id = $_GET["aulario"];
-        $centro_id = $_GET["centro"];
+        $aulario_id = Sf($_GET["aulario"] ?? "");
+        $centro_id = Sf($_GET["centro"] ?? "");
         $aulario_file = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json";
         if (!file_exists($aulario_file)) {
             die("Aulario no encontrado.");
@@ -384,7 +385,7 @@ switch ($_GET["action"]) {
             <tbody>
                 <?php
                 $user_data = $_SESSION["auth_data"];
-                $centro_filter = $_GET['centro'] ?? "*";
+                $centro_filter = Sf($_GET['centro'] ?? "*");
                 $aulas_filelist = glob("/DATA/entreaulas/Centros/$centro_filter/Aularios/*.json");
                 foreach ($aulas_filelist as $aula_file) {
                     $aula_data = json_decode(file_get_contents($aula_file), true);

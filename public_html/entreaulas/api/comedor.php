@@ -1,6 +1,6 @@
 <?php
 header("Content-Type: application/json; charset=utf-8");
-
+require_once __DIR__ . "/../_incl/tools.security.php";
 require_once __DIR__ . "/../_incl/auth_redir.php";
 
 // Check permissions
@@ -16,7 +16,7 @@ if ($centro_id === "") {
 }
 
 $action = $_GET["action"] ?? ($_POST["action"] ?? "");
-$aulario_id = $_GET["aulario"] ?? $_POST["aulario"] ?? "";
+$aulario_id = Sf($_GET["aulario"] ?? $_POST["aulario"] ?? "");
 
 // Validate aulario_id
 if ($aulario_id === "") {
@@ -41,7 +41,7 @@ if ($aulario && !empty($aulario["shared_comedor_from"])) {
     $shared_from = $aulario["shared_comedor_from"];
     $shared_aulario_path = "/DATA/entreaulas/Centros/$centro_id/Aularios/$shared_from.json";
     if (file_exists($shared_aulario_path)) {
-        $source_aulario_id = $shared_from;
+        $source_aulario_id = Sf($shared_from);
         $is_shared = true;
     }
 }

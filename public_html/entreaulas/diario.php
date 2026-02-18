@@ -1,5 +1,6 @@
 <?php
 require_once "_incl/auth_redir.php";
+require_once "_incl/tools.security.php";
 
 // Check if user has docente permission
 if (!in_array("entreaulas:docente", $_SESSION["auth_data"]["permissions"] ?? [])) {
@@ -7,9 +8,9 @@ if (!in_array("entreaulas:docente", $_SESSION["auth_data"]["permissions"] ?? [])
     die("Acceso denegado");
 }
 
-$aulario_id = $_GET["aulario"] ?? "";
-$centro_id = $_SESSION["auth_data"]["entreaulas"]["centro"] ?? "";
-$alumno = $_GET["alumno"] ?? "";
+$aulario_id = Sf($_GET["aulario"] ?? "");
+$centro_id = Sf($_SESSION["auth_data"]["entreaulas"]["centro"] ?? "");
+$alumno = Sf($_GET["alumno"] ?? "");
 
 if (empty($aulario_id) || empty($centro_id)) {
     require_once "_incl/pre-body.php";
@@ -213,8 +214,8 @@ require_once "_incl/pre-body.php";
 
 <?php
 // Show specific diary entry if requested
-$type = $_GET["type"] ?? "Panel";
-$date = $_GET["date"] ?? date("Y-m-d");
+$type = Sf($_GET["type"] ?? "");
+$date = Sf($_GET["date"] ?? date("Y-m-d"));
 
 if (!empty($type) && !empty($date)) {
     $date = preg_replace('/[^0-9-]/', '', $date); // Sanitize date

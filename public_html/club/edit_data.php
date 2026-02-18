@@ -1,6 +1,6 @@
 <?php
 ini_set("display_errors", 0);
-$file = str_replace('/', '_', $_GET["f"]);
+$file = Sf($_GET["f"]);
 $date = implode("/", array_reverse(explode("-", $file)));
 $val = json_decode(file_get_contents("/DATA/club/IMG/$file/data.json"), true);
 $config = json_decode(file_get_contents("/DATA/club/config.json"), true);

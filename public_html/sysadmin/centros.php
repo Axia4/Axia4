@@ -1,8 +1,9 @@
 <?php
 require_once "_incl/auth_redir.php";
+require_once "_incl/tools.security.php";
 switch ($_GET["form"]) {
     case "create":
-        $centro_id = $_POST["name"];
+        $centro_id = Sf($_POST["name"] ?? "");
         if (empty($centro_id)) {
             die("Nombre del centro no proporcionado.");
         }
@@ -19,12 +20,12 @@ switch ($_GET["form"]) {
         ini_set("display_errors", 1);
         ini_set('upload_max_filesize', '256M');
         ini_set('post_max_size', '256M');
-        $centro_id = $_GET['centro'] ?? '';
+        $centro_id = Sf($_GET['centro'] ?? '');
         $centro_path = "/DATA/entreaulas/Centros/$centro_id";
         if (!is_dir($centro_path)) {
             die("Centro no válido.");
         }
-        $activity_name = $_POST["name"] ?? '';
+        $activity_name = Sf($_POST["name"] ?? '');
         if (empty($activity_name)) {
             die("Nombre de la actividad no proporcionado.");
         }
@@ -47,8 +48,8 @@ switch ($_GET["form"]) {
         ini_set("display_errors", 1);
         ini_set('upload_max_filesize', '256M');
         ini_set('post_max_size', '256M');
-        $centro_id = $_GET['centro'] ?? '';
-        $activity_name = $_GET['activity'] ?? '';
+        $centro_id = Sf($_GET['centro'] ?? '');
+        $activity_name = Sf($_GET['activity'] ?? '');
         $activity_path = "/DATA/entreaulas/Centros/$centro_id/Panel/Actividades/$activity_name";
         if (!is_dir($activity_path)) {
             die("Actividad no válida.");
@@ -58,8 +59,8 @@ switch ($_GET["form"]) {
             $photo_path = "$activity_path/photo.jpg";
             move_uploaded_file($activity_photo["tmp_name"], $photo_path);
         }
-        if ($_POST['nombre'] != $_GET['activity']) {
-            $new_activity_name = $_POST['nombre'];
+        if (Sf($_POST['nombre'] ?? '') != $activity_name) {
+            $new_activity_name = Sf($_POST['nombre'] ?? '');
             $new_activity_path = "/DATA/entreaulas/Centros/$centro_id/Panel/Actividades/$new_activity_name";
             if (is_dir($new_activity_path)) {
                 die("Ya existe una actividad con ese nombre.");
@@ -74,8 +75,8 @@ switch ($_GET["form"]) {
 require_once "_incl/pre-body.php"; 
 switch ($_GET["action"]) {
     case "edit_activity":
-        $centro_id = $_GET['centro'] ?? '';
-        $activity_name = $_GET['activity'] ?? '';
+        $centro_id = Sf($_GET['centro'] ?? '');
+        $activity_name = Sf($_GET['activity'] ?? '');
         $activity_path = "/DATA/entreaulas/Centros/$centro_id/Panel/Actividades/$activity_name";
         if (!is_dir($activity_path)) {
             die("Actividad no válida.");
@@ -111,7 +112,7 @@ switch ($_GET["action"]) {
 <?php
         break;
     case "new_activity":
-        $centro_id = $_GET['centro'] ?? '';
+        $centro_id = Sf($_GET['centro'] ?? '');
         $centro_path = "/DATA/entreaulas/Centros/$centro_id";
         if (!is_dir($centro_path)) {
             die("Centro no válido.");
@@ -159,7 +160,7 @@ switch ($_GET["action"]) {
 <?php
         break;
     case "edit":
-        $centro_id = $_GET['centro'] ?? '';
+        $centro_id = Sf($_GET['centro'] ?? '');
         $centro_path = "/DATA/entreaulas/Centros/$centro_id";
         if (!is_dir($centro_path)) {
             die("Centro no válido.");
@@ -221,7 +222,7 @@ switch ($_GET["action"]) {
                 foreach ($activities as $activity_path) {
                     $activity_name = basename($activity_path);
                     $image_path = "/DATA/entreaulas/Centros/$centro_id/Panel/Actividades/" . basename($activity_name) . "/photo.jpg";
-                    $image_fetchpath = file_exists($image_path) ? "/entreaulas/_filefetch.php?type=panel_actividades&centro=" . urlencode($centro_id) . "&activity=" . urlencode(basename($activity_name)) : '/static/logo-entreaulas.png';
+                    $image_fetchpath = file_exists($image_path) ? "/entreaulas/_filefetch.php?type=panel_actividades&centro=" . urlencode($centro_id) . "&activity=" . urlencode($activity_name) : '/static/logo-entreaulas.png';
                     echo '<tr>';
                     echo '<td><img src="' . htmlspecialchars($image_fetchpath) . '" alt="Foto" style="height: 50px;"></td>';
                     echo '<td>' . htmlspecialchars($activity_name) . '</td>';

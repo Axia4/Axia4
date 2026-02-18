@@ -641,8 +641,8 @@ if (!empty($displayName)) {
               <?php } ?>
               <?php if (isset($_GET["_result"])) { ?>
                 <div class="card pad"
-                  style="padding: 10px; background-color: <?php echo $_GET["_resultcolor"] ?? 'lightgreen'; ?>; text-align: center;">
-                  <h3><?php echo $_GET["_result"]; ?></h3>
+                  style="padding: 10px; background-color: <?php echo Si($_GET["_resultcolor"] ?? 'lightgreen'); ?>; text-align: center;">
+                  <h3><?php echo htmlspecialchars($_GET["_result"]); ?></h3>
                 </div>
               <?php } ?>
               <!-- <div class="card pad" style="padding: 15px; background: #ffcc00; color: #000;">

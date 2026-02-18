@@ -1,9 +1,9 @@
 <?php
 require_once "_incl/auth_redir.php";
-
+require_once "_incl/tools.security.php";
 switch ($_GET['form'] ?? '') {
   case 'save_password':
-    $username = $_POST['username'] ?? '';
+    $username = Sf($_POST['username'] ?? '');
     $new_password = $_POST['new_password'] ?? '';
     $confirm_password = $_POST['confirm_password'] ?? '';
 
