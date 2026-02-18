@@ -282,6 +282,16 @@ switch ($_GET["action"] ?? '') {
             });
         }
         ?>
+        <style>
+            .btn-info {
+                background: #0dcaf0;
+                color: white;
+            }
+            
+            .btn-info:hover {
+                background: #0bb5d9;
+            }
+        </style>
         <div class="card pad">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <h1 class="card-title" style="margin: 0;">Gestión de Alumnos</h1>
@@ -301,6 +311,7 @@ switch ($_GET["action"] ?? '') {
                         <tr>
                             <th>Foto</th>
                             <th>Nombre</th>
+                            <th>Diario</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
@@ -308,6 +319,8 @@ switch ($_GET["action"] ?? '') {
                         <?php foreach ($alumnos as $alumno_path): 
                             $nombre = basename($alumno_path);
                             $photo_exists = file_exists("$alumno_path/photo.jpg");
+                            $diario_path = "$alumno_path/Diario/" . date("Y-m-d");
+                            $has_diary_today = file_exists("$diario_path/Panel.json");
                         ?>
                         <tr>
                             <td>
@@ -323,8 +336,16 @@ switch ($_GET["action"] ?? '') {
                             </td>
                             <td><strong><?= htmlspecialchars($nombre) ?></strong></td>
                             <td>
-                                <a href="?aulario=<?= urlencode($aulario_id) ?>&action=edit&alumno=<?= urlencode($nombre) ?>" class="btn btn-sm btn-primary">Editar</a>
-                                <a href="?aulario=<?= urlencode($aulario_id) ?>&action=delete&alumno=<?= urlencode($nombre) ?>" class="btn btn-sm btn-danger">Eliminar</a>
+                                <?php if ($has_diary_today): ?>
+                                    <span style="display: inline-block; background: #28a745; color: white; padding: 4px 8px; border-radius: 3px; font-size: 0.85rem; margin-right: 5px;">✓ Hoy</span>
+                                <?php else: ?>
+                                    <span style="display: inline-block; background: #6c757d; color: white; padding: 4px 8px; border-radius: 3px; font-size: 0.85rem;">Sin diario</span>
+                                <?php endif; ?>
+                            </td>
+                            <td style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                <a href="diario.php?aulario=<?= urlencode($aulario_id) ?>&alumno=<?= urlencode($nombre) ?>" class="btn btn-sm btn-info" title="Ver Diario">📖 Diario</a>
+                                <a href="?aulario=<?= urlencode($aulario_id) ?>&action=edit&alumno=<?= urlencode($nombre) ?>" class="btn btn-sm btn-primary">✏️ Editar</a>
+                                <a href="?aulario=<?= urlencode($aulario_id) ?>&action=delete&alumno=<?= urlencode($nombre) ?>" class="btn btn-sm btn-danger">🗑️ Eliminar</a>
                             </td>
                         </tr>
                         <?php endforeach; ?>
