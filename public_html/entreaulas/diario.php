@@ -1,6 +1,6 @@
 <?php
 require_once "_incl/auth_redir.php";
-require_once "_incl/tools.security.php";
+require_once "../_incl/tools.security.php";
 
 // Check if user has docente permission
 if (!in_array("entreaulas:docente", $_SESSION["auth_data"]["permissions"] ?? [])) {

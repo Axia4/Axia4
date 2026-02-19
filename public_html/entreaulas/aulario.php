@@ -1,7 +1,7 @@
 <?php
 require_once "_incl/auth_redir.php";
 require_once "_incl/pre-body.php";
-require_once "_incl/tools.security.php";
+require_once "../_incl/tools.security.php";
 
 function safe_id_segment($value)
 {

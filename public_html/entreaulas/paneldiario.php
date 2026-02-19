@@ -1,6 +1,6 @@
 <?php
 require_once "_incl/auth_redir.php";
-require_once "_incl/tools.security.php";
+require_once "../_incl/tools.security.php";
 ini_set("display_errors", "0");
 
 function safe_id_segment($value) {

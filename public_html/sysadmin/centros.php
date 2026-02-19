@@ -1,6 +1,6 @@
 <?php
 require_once "_incl/auth_redir.php";
-require_once "_incl/tools.security.php";
+require_once "../_incl/tools.security.php";
 
 function safe_path_segment($value)
 {
