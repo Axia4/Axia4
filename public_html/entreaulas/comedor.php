@@ -128,10 +128,20 @@ function safe_filename($name)
 {
 	// Normalize to base name to avoid directory traversal
 	$name = basename($name);
+
+	// Best-effort normalize encoding to avoid odd Unicode tricks
+	if (function_exists('mb_convert_encoding')) {
+		$name = mb_convert_encoding($name, 'UTF-8', 'UTF-8');
+	}
+
 	// Replace disallowed characters with underscore
 	$name = preg_replace("/[^a-zA-Z0-9._-]/", "_", $name);
+	// Collapse multiple underscores introduced by replacement
+	$name = preg_replace('/_+/', '_', $name);
+
 	// Remove leading dots to avoid hidden/special files like ".htaccess"
 	$name = ltrim($name, '.');
+
 	// Ensure there is at most one dot in the filename to prevent extension confusion
 	if (substr_count($name, '.') > 1) {
 		$parts = explode('.', $name);
@@ -144,6 +154,34 @@ function safe_filename($name)
 			$name  = ($base === '' ? 'file' : $base) . '.' . $ext;
 		}
 	}
+
+	// Trim stray dots/underscores from the start and end
+	$name = trim($name, "._");
+
+	// Enforce a maximum length (common filesystem limit is 255 bytes)
+	$maxLen = 255;
+	if (strlen($name) > $maxLen) {
+		$dotPos = strrpos($name, '.');
+		if ($dotPos !== false) {
+			$ext  = substr($name, $dotPos);
+			$base = substr($name, 0, $dotPos);
+			$baseMaxLen = $maxLen - strlen($ext);
+			if ($baseMaxLen < 1) {
+				// Fallback if extension is unusually long
+				$name = substr($name, 0, $maxLen);
+			} else {
+				$name = substr($base, 0, $baseMaxLen) . $ext;
+			}
+		} else {
+			$name = substr($name, 0, $maxLen);
+		}
+	}
+
+	// Ensure we never return an empty or invalid filename
+	if ($name === '' || $name === '.' || $name === '..') {
+		$name = 'file';
+	}
+
 	return $name;
 }
 
@@ -153,11 +191,63 @@ function handle_image_upload($fieldName, $targetBaseName, $baseDir, &$uploadErro
 		return null;
 	}
 	$ext = strtolower(pathinfo($_FILES[$fieldName]["name"], PATHINFO_EXTENSION));
-	$allowed = ["jpg", "jpeg", "png", "webp", "gif"]; 
+	$allowed = ["jpg", "jpeg", "png", "webp", "gif"];
+
+	// Validate by extension first
 	if (!in_array($ext, $allowed, true)) {
 		$uploadErrors[] = "El archivo " . htmlspecialchars($_FILES[$fieldName]["name"]) . " no es una imagen válida.";
 		return null;
 	}
+
+	// Also validate by MIME type / file contents to avoid spoofed extensions
+	$tmpPath = $_FILES[$fieldName]["tmp_name"];
+	$mimeType = null;
+
+	if (function_exists('finfo_open')) {
+		$finfo = @finfo_open(FILEINFO_MIME_TYPE);
+		if ($finfo !== false) {
+			$mime = @finfo_file($finfo, $tmpPath);
+			if ($mime !== false) {
+				$mimeType = $mime;
+			}
+			@finfo_close($finfo);
+		}
+	}
+
+	// Fallback: try exif_imagetype if available and finfo did not work
+	if ($mimeType === null && function_exists('exif_imagetype')) {
+		$type = @exif_imagetype($tmpPath);
+		if ($type !== false) {
+			switch ($type) {
+				case IMAGETYPE_JPEG:
+					$mimeType = 'image/jpeg';
+					break;
+				case IMAGETYPE_PNG:
+					$mimeType = 'image/png';
+					break;
+				case IMAGETYPE_GIF:
+					$mimeType = 'image/gif';
+					break;
+				case IMAGETYPE_WEBP:
+					$mimeType = 'image/webp';
+					break;
+			}
+		}
+	}
+
+	$allowedMime = [
+		'jpg'  => 'image/jpeg',
+		'jpeg' => 'image/jpeg',
+		'png'  => 'image/png',
+		'gif'  => 'image/gif',
+		'webp' => 'image/webp',
+	];
+
+	if ($mimeType === null || !in_array($mimeType, $allowedMime, true)) {
+		$uploadErrors[] = "El archivo " . htmlspecialchars($_FILES[$fieldName]["name"]) . " no es una imagen válida.";
+		return null;
+	}
+
 	if (!is_dir($baseDir)) {
 		mkdir($baseDir, 0777, true);
 	}
