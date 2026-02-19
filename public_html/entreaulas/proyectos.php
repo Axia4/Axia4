@@ -57,6 +57,32 @@ function safe_filename($name)
   return $name;
 }
 
+function safe_path_segment($value)
+{
+  $value = basename((string)$value);
+  $value = preg_replace('/[^a-zA-Z0-9_-]/', '', $value);
+  return $value;
+}
+
+function safe_join_file($base_dir, $filename)
+{
+  $safe_name = safe_filename($filename);
+  if ($safe_name === '' || $safe_name === '.' || $safe_name === '..') {
+    return null;
+  }
+  return rtrim($base_dir, '/') . '/' . $safe_name;
+}
+
+function safe_aulario_config_path($centro_id, $aulario_id)
+{
+  $safe_centro = safe_path_segment($centro_id);
+  $safe_aulario = safe_path_segment($aulario_id);
+  if ($safe_centro === '' || $safe_aulario === '') {
+    return null;
+  }
+  return "/DATA/entreaulas/Centros/$safe_centro/Aularios/$safe_aulario.json";
+}
+
 function sanitize_html($html)
 {
   $html = trim($html ?? "");
@@ -244,7 +270,12 @@ function save_project($proyectos_dir, $project_id, $data)
 {
   $project_dir = find_project_path($proyectos_dir, $project_id);
   if (!$project_dir && isset($data["_project_dir"])) {
-    $project_dir = $data["_project_dir"];
+    $candidate_dir = (string)$data["_project_dir"];
+    $proyectos_base_real = realpath($proyectos_dir);
+    $candidate_real = realpath($candidate_dir);
+    if ($proyectos_base_real !== false && $candidate_real !== false && (strpos($candidate_real, $proyectos_base_real . DIRECTORY_SEPARATOR) === 0 || $candidate_real === $proyectos_base_real)) {
+      $project_dir = $candidate_dir;
+    }
   }
   if (!$project_dir) {
     return false;
@@ -431,7 +462,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
   if ($action === "share_project") {
     $project_id = Sf($_POST["project_id"] ?? "");
-    $target_aulario = Sf($_POST["target_aulario"] ?? "");
+    $target_aulario = safe_path_segment(Sf($_POST["target_aulario"] ?? ""));
 
     if ($project_id !== "" && $target_aulario !== "" && $target_aulario !== $aulario_id) {
       // Only allow sharing local projects
@@ -439,8 +470,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
       if (!$is_local_project) {
         $error = "No se puede compartir un proyecto ajeno.";
       } else {
-        $target_config_path = "/DATA/entreaulas/Centros/$centro_id/Aularios/$target_aulario.json";
-        if (!file_exists($target_config_path)) {
+        $target_config_path = safe_aulario_config_path($centro_id, $target_aulario);
+        if ($target_config_path === null || !file_exists($target_config_path)) {
           $error = "Aulario de destino no encontrado.";
         } else {
           $target_config = json_decode(file_get_contents($target_config_path), true);
@@ -746,7 +777,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   }
 
   if ($action === "approve_change" || $action === "reject_change") {
-    $change_id = Sf($_POST["change_id"] ?? "");
+    $change_id = safe_filename(Sf($_POST["change_id"] ?? ""));
     $project_id = Sf($_POST["project_id"] ?? "");
 
     if (!empty($change_id) && !empty($project_id)) {
@@ -758,9 +789,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     if (!empty($change_id) && !empty($project_id) && empty($error)) {
       $pending_dir = "$project_dir/pending_changes";
-      $change_file = "$pending_dir/$change_id.json";
+      $change_file = safe_join_file($pending_dir, $change_id . ".json");
 
-      if (file_exists($change_file)) {
+      if ($change_file && file_exists($change_file)) {
         $change_data = json_decode(file_get_contents($change_file), true);
 
         if ($action === "approve_change") {
@@ -775,8 +806,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     $new_items[] = $item;
                   } else {
                     if (in_array($item["type"], ["file", "pdf_secure"], true) && isset($item["filename"])) {
-                      $file_path = "$project_dir/" . $item["filename"];
-                      if (file_exists($file_path)) {
+                      $file_path = safe_join_file($project_dir, $item["filename"]);
+                      if ($file_path && file_exists($file_path)) {
                         unlink($file_path);
                         if (file_exists($file_path . ".eadat")) {
                           unlink($file_path . ".eadat");
@@ -810,24 +841,25 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                   }
 
                   if (in_array(($item["type"] ?? ""), ["file", "pdf_secure"], true) && !empty($change_data["pending_filename"])) {
-                    $pending_file = "$pending_dir/" . Sf($change_data["pending_filename"]);
-                    $target_file = "$project_dir/" . Sf($change_data["pending_filename"]);
-                    if (file_exists($pending_file)) {
+                    $pending_filename = safe_filename(Sf($change_data["pending_filename"]));
+                    $pending_file = safe_join_file($pending_dir, $pending_filename);
+                    $target_file = safe_join_file($project_dir, $pending_filename);
+                    if ($pending_file && $target_file && file_exists($pending_file)) {
                       if (!is_dir($project_dir)) {
                         mkdir($project_dir, 0755, true);
                       }
                       rename($pending_file, $target_file);
                       if (!empty($item["filename"])) {
-                        $old_path = "$project_dir/" . Sf($item["filename"]);
-                        if (file_exists($old_path)) {
+                        $old_path = safe_join_file($project_dir, Sf($item["filename"]));
+                        if ($old_path && file_exists($old_path)) {
                           unlink($old_path);
                           if (file_exists($old_path . ".eadat")) {
                             unlink($old_path . ".eadat");
                           }
                         }
                       }
-                      $item["filename"] = Sf($change_data["pending_filename"]);
-                      $item["original_name"] = Sf($change_data["original_filename"] ?? $change_data["pending_filename"]);
+                      $item["filename"] = $pending_filename;
+                      $item["original_name"] = Sf($change_data["original_filename"] ?? $pending_filename);
 
                       $file_meta = [
                         "id" => $item_id,
@@ -841,8 +873,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                   }
 
                   if (in_array(($item["type"] ?? ""), ["file", "pdf_secure"], true) && !empty($item["filename"])) {
-                    $file_path = "$project_dir/" . $item["filename"];
-                    if (file_exists($file_path . ".eadat")) {
+                    $file_path = safe_join_file($project_dir, $item["filename"]);
+                    if ($file_path && file_exists($file_path . ".eadat")) {
                       $file_meta = json_decode(file_get_contents($file_path . ".eadat"), true) ?: [];
                       $file_meta["name"] = $item["name"];
                       save_file_metadata($file_path, $file_meta);
@@ -875,16 +907,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $item["room"] = $change_data["item_room"] ?? "";
               } elseif (in_array($change_data["item_type"], ["file", "pdf_secure"], true) && !empty($change_data["pending_filename"])) {
                 // Move file from pending to project directory
-                $pending_file = "$pending_dir/" . Sf($change_data["pending_filename"]);
-                $target_file = "$project_dir/" . Sf($change_data["pending_filename"]);
+                $pending_filename = safe_filename(Sf($change_data["pending_filename"]));
+                $pending_file = safe_join_file($pending_dir, $pending_filename);
+                $target_file = safe_join_file($project_dir, $pending_filename);
 
-                if (file_exists($pending_file)) {
+                if ($pending_file && $target_file && file_exists($pending_file)) {
                   if (!is_dir($project_dir)) {
                     mkdir($project_dir, 0755, true);
                   }
                   rename($pending_file, $target_file);
-                  $item["filename"] = Sf($change_data["pending_filename"]);
-                  $item["original_name"] = Sf($change_data["original_filename"] ?? $change_data["pending_filename"]);
+                  $item["filename"] = $pending_filename;
+                  $item["original_name"] = Sf($change_data["original_filename"] ?? $pending_filename);
 
                   $file_meta = [
                     "id" => $item_id,
@@ -910,8 +943,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         } else {
           // Reject - just delete pending file if exists
           if (!empty($change_data["pending_filename"])) {
-            $pending_file = "$pending_dir/" . Sf($change_data["pending_filename"]);
-            if (file_exists($pending_file)) {
+            $pending_file = safe_join_file($pending_dir, Sf($change_data["pending_filename"]));
+            if ($pending_file && file_exists($pending_file)) {
               unlink($pending_file);
             }
           }
@@ -919,7 +952,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
 
         // Delete the change request file
-        unlink($change_file);
+        if ($change_file && file_exists($change_file)) {
+          unlink($change_file);
+        }
       }
     }
   }
@@ -1009,7 +1044,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
           } else {
             // Delete file if it's a file type
             if (in_array($item["type"], ["file", "pdf_secure"], true) && isset($item["filename"])) {
-              $file_path = $project_dir ? "$project_dir/" . $item["filename"] : null;
+              $file_path = $project_dir ? safe_join_file($project_dir, $item["filename"]) : null;
               if ($file_path && file_exists($file_path)) {
                 unlink($file_path);
                 if (file_exists($file_path . ".eadat")) {
@@ -1217,8 +1252,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
               }
 
               if (isset($item["filename"])) {
-                $old_path = "$project_dir/" . $item["filename"];
-                if (file_exists($old_path)) {
+                $old_path = safe_join_file($project_dir, $item["filename"]);
+                if ($old_path && file_exists($old_path)) {
                   unlink($old_path);
                   if (file_exists($old_path . ".eadat")) {
                     unlink($old_path . ".eadat");
@@ -1239,8 +1274,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
               save_file_metadata($target_path, $file_meta);
             }
             if (in_array($item["type"], ["file", "pdf_secure"], true) && $project_dir && isset($item["filename"])) {
-              $file_path = "$project_dir/" . $item["filename"];
-              if (file_exists($file_path . ".eadat")) {
+              $file_path = safe_join_file($project_dir, $item["filename"]);
+              if ($file_path && file_exists($file_path . ".eadat")) {
                 $file_meta = json_decode(file_get_contents($file_path . ".eadat"), true) ?: [];
                 $file_meta["name"] = $item_name;
                 save_file_metadata($file_path, $file_meta);
@@ -1422,7 +1457,7 @@ $view = $current_project ? "project" : "list";
   <!-- Project Detail View -->
   <?php
   // Check if this is a linked project from another aulario
-  $source_aulario_for_project = $_GET["source"] ?? "";
+  $source_aulario_for_project = safe_path_segment($_GET["source"] ?? "");
   $is_linked_project = false;
   $linked_permission = "read_only";
 
@@ -1536,7 +1571,15 @@ $view = $current_project ? "project" : "list";
                 <title>share-variant</title>
                 <path d="M18,16.08C17.24,16.08 16.56,16.38 16.04,16.85L8.91,12.7C8.96,12.47 9,12.24 9,12C9,11.76 8.96,11.53 8.91,11.3L15.96,7.19C16.5,7.69 17.21,8 18,8A3,3 0 0,0 21,5A3,3 0 0,0 18,2A3,3 0 0,0 15,5C15,5.24 15.04,5.47 15.09,5.7L8.04,9.81C7.5,9.31 6.79,9 6,9A3,3 0 0,0 3,12A3,3 0 0,0 6,15C6.79,15 7.5,14.69 8.04,14.19L15.16,18.34C15.11,18.55 15.08,18.77 15.08,19C15.08,20.61 16.39,21.91 18,21.91C19.61,21.91 20.92,20.61 20.92,19A2.92,2.92 0 0,0 18,16.08Z" />
               </svg>
-              <?= htmlspecialchars(json_decode(file_get_contents("/DATA/entreaulas/Centros/$centro_id/Aularios/$source_aulario_for_project.json"), true)["name"] ?? "") ?>
+              <?php
+              $source_aulario_path = safe_aulario_config_path($centro_id, $source_aulario_for_project);
+              $source_aulario_name = "";
+              if ($source_aulario_path && file_exists($source_aulario_path)) {
+                $source_aulario_data = json_decode(file_get_contents($source_aulario_path), true);
+                $source_aulario_name = $source_aulario_data["name"] ?? "";
+              }
+              ?>
+              <?= htmlspecialchars($source_aulario_name) ?>
             </span>
           <?php endif; ?>
         </h1>
@@ -1878,8 +1921,9 @@ $view = $current_project ? "project" : "list";
         <?php foreach ($pending_changes as $change):
           $requesting_aulario = $change["requested_by_aulario"] ?? "Desconocido";
           // Get requesting aulario name
-          $req_aul_path = "/DATA/entreaulas/Centros/$centro_id/Aularios/$requesting_aulario.json";
-          $req_aul_data = file_exists($req_aul_path) ? json_decode(file_get_contents($req_aul_path), true) : null;
+          $requesting_aulario = safe_path_segment($requesting_aulario);
+          $req_aul_path = safe_aulario_config_path($centro_id, $requesting_aulario);
+          $req_aul_data = ($req_aul_path && file_exists($req_aul_path)) ? json_decode(file_get_contents($req_aul_path), true) : null;
           $req_aul_name = $req_aul_data["name"] ?? $requesting_aulario;
           $req_persona_name = $change["requested_by_persona_name"] ?? "Desconocido";
         ?>

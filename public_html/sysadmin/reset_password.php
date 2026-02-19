@@ -1,9 +1,20 @@
 <?php
 require_once "_incl/auth_redir.php";
 require_once "_incl/tools.security.php";
+
+function safe_username($value)
+{
+  $value = basename((string)$value);
+  $value = preg_replace('/[^a-zA-Z0-9._-]/', '', $value);
+  if (strpos($value, '..') !== false) {
+    return '';
+  }
+  return $value;
+}
+
 switch ($_GET['form'] ?? '') {
   case 'save_password':
-    $username = Sf($_POST['username'] ?? '');
+    $username = safe_username(Sf($_POST['username'] ?? ''));
     $new_password = $_POST['new_password'] ?? '';
     $confirm_password = $_POST['confirm_password'] ?? '';
 
@@ -40,7 +51,7 @@ switch ($_GET['form'] ?? '') {
 
 require_once "_incl/pre-body.php";
 
-$username = $_GET['user'] ?? '';
+$username = safe_username($_GET['user'] ?? '');
 if (empty($username)) {
   die("Usuario no especificado.");
 }

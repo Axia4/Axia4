@@ -1,10 +1,24 @@
 <?php
 require_once "_incl/auth_redir.php";
 require_once "_incl/tools.security.php";
-switch ($_GET["form"]) {
+
+function safe_path_segment($value)
+{
+    $value = trim((string)$value);
+    $value = str_replace(["\0", "/", "\\"], "", $value);
+    $value = str_replace("..", "", $value);
+    $value = basename($value);
+    if ($value === "." || $value === "..") {
+        return "";
+    }
+    return $value;
+}
+
+$form_action = $_GET["form"] ?? "";
+switch ($form_action) {
     case "delete":
-        $aulario_id = Sf($_POST["aulario_id"] ?? "");
-        $centro_id = Sf($_POST["centro_id"] ?? "");
+        $aulario_id = safe_path_segment(Sf($_POST["aulario_id"] ?? ""));
+        $centro_id = safe_path_segment(Sf($_POST["centro_id"] ?? ""));
         $aulario_file = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json";
         if (!file_exists($aulario_file)) {
             die("Aulario no encontrado.");
@@ -35,7 +49,7 @@ switch ($_GET["form"]) {
         break;
     case "create":
         $user_data = $_SESSION["auth_data"];
-        $centro_id = Sf($_POST["centro"] ?? "");
+        $centro_id = safe_path_segment(Sf($_POST["centro"] ?? ""));
         if (empty($centro_id) || !is_dir("/DATA/entreaulas/Centros/$centro_id")) {
             die("Centro no válido.");
         }
@@ -54,8 +68,8 @@ switch ($_GET["form"]) {
         exit();
         break;
     case "save_edit":
-        $aulario_id = Sf($_POST["aulario_id"] ?? "");
-        $centro_id = Sf($_POST["centro_id"] ?? "");
+        $aulario_id = safe_path_segment(Sf($_POST["aulario_id"] ?? ""));
+        $centro_id = safe_path_segment(Sf($_POST["centro_id"] ?? ""));
         $aulario_file = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json";
         if (!file_exists($aulario_file)) {
             die("Aulario no encontrado.");
@@ -65,7 +79,7 @@ switch ($_GET["form"]) {
         $aulario_data["icon"] = Sf($_POST["icon"] ?? "/static/logo-entreaulas.png");
         
         // Handle shared comedor configuration
-        $share_comedor_from = Sf($_POST["share_comedor_from"] ?? "");
+        $share_comedor_from = safe_path_segment(Sf($_POST["share_comedor_from"] ?? ""));
         
         if (!empty($share_comedor_from) && $share_comedor_from !== "none") {
             $aulario_data["shared_comedor_from"] = $share_comedor_from;
@@ -75,16 +89,21 @@ switch ($_GET["form"]) {
         
         // Handle linked projects configuration
         $linked_projects = [];
-        $linked_aularios = Sf($_POST["linked_aulario"] ?? []);
-        $linked_project_ids = Sf($_POST["linked_project_id"] ?? []);
-        $linked_permissions = Sf($_POST["linked_permission"] ?? []);
+        $linked_aularios = $_POST["linked_aulario"] ?? [];
+        $linked_project_ids = $_POST["linked_project_id"] ?? [];
+        $linked_permissions = $_POST["linked_permission"] ?? [];
         
         for ($i = 0; $i < count($linked_aularios); $i++) {
-            if (!empty($linked_aularios[$i]) && !empty($linked_project_ids[$i])) {
+            $src_aul = safe_path_segment($linked_aularios[$i] ?? "");
+            $proj_id = safe_path_segment($linked_project_ids[$i] ?? "");
+            $perm = in_array(($linked_permissions[$i] ?? "read_only"), ["read_only", "request_edit", "full_edit"], true)
+                ? ($linked_permissions[$i] ?? "read_only")
+                : "read_only";
+            if (!empty($src_aul) && !empty($proj_id)) {
                 $linked_projects[] = [
-                    "source_aulario" => $linked_aularios[$i],
-                    "project_id" => $linked_project_ids[$i],
-                    "permission" => $linked_permissions[$i] ?? "read_only"
+                    "source_aulario" => $src_aul,
+                    "project_id" => $proj_id,
+                    "permission" => $perm
                 ];
             }
         }
@@ -102,7 +121,8 @@ switch ($_GET["form"]) {
 }
 
 require_once "_incl/pre-body.php"; 
-switch ($_GET["action"]) {
+$view_action = $_GET["action"] ?? "index";
+switch ($view_action) {
     case "new":
         ?>
 <div class="card pad">
@@ -141,8 +161,8 @@ switch ($_GET["action"]) {
 <?php
         break;
     case "edit":
-        $aulario_id = Sf($_GET["aulario"] ?? "");
-        $centro_id = Sf($_GET["centro"] ?? "");
+        $aulario_id = safe_path_segment(Sf($_GET["aulario"] ?? ""));
+        $centro_id = safe_path_segment(Sf($_GET["centro"] ?? ""));
         $aulario_file = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json";
         if (!file_exists($aulario_file)) {
             die("Aulario no encontrado.");
@@ -385,8 +405,12 @@ switch ($_GET["action"]) {
             <tbody>
                 <?php
                 $user_data = $_SESSION["auth_data"];
-                $centro_filter = Sf($_GET['centro'] ?? "*");
-                $aulas_filelist = glob("/DATA/entreaulas/Centros/$centro_filter/Aularios/*.json");
+                $centro_filter = safe_path_segment(Sf($_GET['centro'] ?? ""));
+                if ($centro_filter !== "") {
+                    $aulas_filelist = glob("/DATA/entreaulas/Centros/$centro_filter/Aularios/*.json") ?: [];
+                } else {
+                    $aulas_filelist = glob("/DATA/entreaulas/Centros/*/Aularios/*.json") ?: [];
+                }
                 foreach ($aulas_filelist as $aula_file) {
                     $aula_data = json_decode(file_get_contents($aula_file), true);
                     $centro_id = basename(dirname(dirname($aula_file)));

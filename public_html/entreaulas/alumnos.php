@@ -7,8 +7,37 @@ if (!in_array("entreaulas:docente", $_SESSION["auth_data"]["permissions"] ?? [])
     die("Access denied");
 }
 
-$aulario_id = $_GET["aulario"] ?? "";
-$centro_id = $_SESSION["auth_data"]["entreaulas"]["centro"] ?? "";
+function safe_id_segment($value)
+{
+    $value = basename((string)$value);
+    return preg_replace('/[^A-Za-z0-9_-]/', '', $value);
+}
+
+function safe_centro_id($value)
+{
+    return preg_replace('/[^0-9]/', '', (string)$value);
+}
+
+function safe_alumno_name($value)
+{
+    $value = basename((string)$value);
+    $value = trim($value);
+    $value = preg_replace('/[\x00-\x1F\x7F]/u', '', $value);
+    $value = str_replace(['/', '\\'], '', $value);
+    return $value;
+}
+
+function path_is_within($real_base, $real_path)
+{
+    if ($real_base === false || $real_path === false) {
+        return false;
+    }
+    $base_prefix = rtrim($real_base, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+    return strpos($real_path, $base_prefix) === 0 || $real_path === rtrim($real_base, DIRECTORY_SEPARATOR);
+}
+
+$aulario_id = safe_id_segment($_GET["aulario"] ?? "");
+$centro_id = safe_centro_id($_SESSION["auth_data"]["entreaulas"]["centro"] ?? "");
 
 if (empty($aulario_id) || empty($centro_id)) {
     require_once "_incl/pre-body.php";
@@ -21,9 +50,6 @@ if (empty($aulario_id) || empty($centro_id)) {
     require_once "_incl/post-body.php";
     exit;
 }
-
-$aulario_id = basename($aulario_id);
-$centro_id = basename($centro_id);
 
 // Validate paths with realpath
 $base_path = "/DATA/entreaulas/Centros";
@@ -53,7 +79,11 @@ switch ($_GET["form"] ?? '') {
         }
         
         // Sanitize filename
-        $nombre_safe = basename($nombre);
+        $nombre_safe = safe_alumno_name($nombre);
+        if ($nombre_safe === "") {
+            header("Location: ?aulario=" . urlencode($aulario_id) . "&_result=" . urlencode("Nombre inválido"));
+            exit;
+        }
         $alumno_path = "$alumnos_base_path/$nombre_safe";
         
         // Validate path with realpath (after potential creation)
@@ -62,7 +92,7 @@ switch ($_GET["form"] ?? '') {
         }
         
         $real_alumnos_base = realpath($alumnos_base_path);
-        if ($real_alumnos_base === false || strpos($real_alumnos_base, $real_base) !== 0) {
+        if (!path_is_within($real_base, $real_alumnos_base)) {
             header("Location: ?aulario=" . urlencode($aulario_id) . "&_result=" . urlencode("Error: Ruta inválida"));
             exit;
         }
@@ -92,7 +122,7 @@ switch ($_GET["form"] ?? '') {
         exit;
         
     case 'edit':
-        $nombre_old = basename($_POST['nombre_old'] ?? '');
+        $nombre_old = safe_alumno_name($_POST['nombre_old'] ?? '');
         $nombre_new = trim($_POST['nombre_new'] ?? '');
         
         if (empty($nombre_old) || empty($nombre_new)) {
@@ -100,13 +130,27 @@ switch ($_GET["form"] ?? '') {
             exit;
         }
         
-        $nombre_new_safe = basename($nombre_new);
+        $nombre_new_safe = safe_alumno_name($nombre_new);
+        if ($nombre_new_safe === "") {
+            header("Location: ?aulario=" . urlencode($aulario_id) . "&_result=" . urlencode("Nombre inválido"));
+            exit;
+        }
         $alumno_old_path = "$alumnos_base_path/$nombre_old";
         $alumno_new_path = "$alumnos_base_path/$nombre_new_safe";
+
+        if (!is_dir($alumnos_base_path)) {
+            header("Location: ?aulario=" . urlencode($aulario_id) . "&_result=" . urlencode("Alumno no encontrado"));
+            exit;
+        }
+        $real_alumnos_base = realpath($alumnos_base_path);
+        if (!path_is_within($real_base, $real_alumnos_base)) {
+            header("Location: ?aulario=" . urlencode($aulario_id) . "&_result=" . urlencode("Ruta inválida"));
+            exit;
+        }
         
         // Validate paths with realpath
         $real_old_path = realpath($alumno_old_path);
-        if ($real_old_path === false || strpos($real_old_path, $real_base) !== 0) {
+        if (!path_is_within($real_alumnos_base, $real_old_path)) {
             header("Location: ?aulario=" . urlencode($aulario_id) . "&_result=" . urlencode("Alumno no encontrado"));
             exit;
         }
@@ -144,17 +188,27 @@ switch ($_GET["form"] ?? '') {
         exit;
         
     case 'delete':
-        $nombre = basename($_POST['nombre'] ?? '');
+        $nombre = safe_alumno_name($_POST['nombre'] ?? '');
         if (empty($nombre)) {
             header("Location: ?aulario=" . urlencode($aulario_id) . "&_result=" . urlencode("Nombre inválido"));
             exit;
         }
         
         $alumno_path = "$alumnos_base_path/$nombre";
+
+        if (!is_dir($alumnos_base_path)) {
+            header("Location: ?aulario=" . urlencode($aulario_id) . "&_result=" . urlencode("Alumno no encontrado"));
+            exit;
+        }
+        $real_alumnos_base = realpath($alumnos_base_path);
+        if (!path_is_within($real_base, $real_alumnos_base)) {
+            header("Location: ?aulario=" . urlencode($aulario_id) . "&_result=" . urlencode("Ruta inválida"));
+            exit;
+        }
         
         // Validate path with realpath
         $real_alumno_path = realpath($alumno_path);
-        if ($real_alumno_path === false || strpos($real_alumno_path, $real_base) !== 0) {
+        if (!path_is_within($real_alumnos_base, $real_alumno_path)) {
             header("Location: ?aulario=" . urlencode($aulario_id) . "&_result=" . urlencode("Alumno no encontrado"));
             exit;
         }
@@ -198,7 +252,7 @@ switch ($_GET["action"] ?? '') {
         exit;
         
     case 'edit':
-        $nombre = basename($_GET['alumno'] ?? '');
+        $nombre = safe_alumno_name($_GET['alumno'] ?? '');
         $alumno_path = "$alumnos_base_path/$nombre";
         
         if (empty($nombre) || !file_exists($alumno_path)) {
@@ -246,7 +300,7 @@ switch ($_GET["action"] ?? '') {
         exit;
         
     case 'delete':
-        $nombre = basename($_GET['alumno'] ?? '');
+        $nombre = safe_alumno_name($_GET['alumno'] ?? '');
         $alumno_path = "$alumnos_base_path/$nombre";
         
         if (empty($nombre) || !file_exists($alumno_path)) {

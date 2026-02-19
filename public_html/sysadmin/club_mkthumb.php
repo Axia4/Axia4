@@ -2,20 +2,38 @@
 require_once "_incl/auth_redir.php";
 require_once "_incl/pre-body.php"; 
 require_once "../_incl/tools.photos.php";
-switch ($_GET["action"]) {
+$action = $_GET["action"] ?? "index";
+switch ($action) {
     case "generate_thumbs":
         ini_set("max_execution_time", 300);
         ini_set("memory_limit", "1024M");
         // ini_set("display_errors", 1);
         echo "<div class='card pad'><h1>Generando Miniaturas...</h1>";
         // Iterate over all club photos and generate thumbnails if they don't exist
-        $club_cal_folders = array_filter(glob("/DATA/club/IMG/*"), 'is_dir');
+        $club_base = realpath("/DATA/club/IMG");
+        if ($club_base === false) {
+            echo "No se encontró el directorio base de imágenes.<br>";
+            echo "<h2>Proceso completado.</h2></div>";
+            break;
+        }
+        $club_cal_folders = array_filter(glob("/DATA/club/IMG/*") ?: [], 'is_dir');
         foreach ($club_cal_folders as $cal_folder) {
-            $personas = array_filter(glob("$cal_folder/*"), 'is_dir');
+            $real_cal_folder = realpath($cal_folder);
+            if ($real_cal_folder === false || strpos($real_cal_folder, rtrim($club_base, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR) !== 0) {
+                continue;
+            }
+            $personas = array_filter(glob("$real_cal_folder/*") ?: [], 'is_dir');
             foreach ($personas as $persona) {
-                $fotos = preg_grep('/^([^.])/', scandir($persona));
+                $real_persona = realpath($persona);
+                if ($real_persona === false || strpos($real_persona, rtrim($club_base, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR) !== 0) {
+                    continue;
+                }
+                $fotos = preg_grep('/^([^.])/', scandir($real_persona));
                 foreach ($fotos as $foto) {
-                    $foto_path = "$persona/$foto";
+                    $foto_path = "$real_persona/$foto";
+                    if (!is_file($foto_path)) {
+                        continue;
+                    }
                     $thumbnail_path = "$foto_path.thumbnail";
                     if (file_exists($thumbnail_path)) {
                         continue;

@@ -8,9 +8,29 @@ if (!in_array("entreaulas:docente", $_SESSION["auth_data"]["permissions"] ?? [])
     die("Acceso denegado");
 }
 
-$aulario_id = Sf($_GET["aulario"] ?? "");
-$centro_id = Sf($_SESSION["auth_data"]["entreaulas"]["centro"] ?? "");
-$alumno = Sf($_GET["alumno"] ?? "");
+function safe_id_segment($value)
+{
+    $value = basename((string)$value);
+    return preg_replace('/[^A-Za-z0-9_-]/', '', $value);
+}
+
+function safe_centro_id($value)
+{
+    return preg_replace('/[^0-9]/', '', (string)$value);
+}
+
+function path_is_within($real_base, $real_path)
+{
+    if ($real_base === false || $real_path === false) {
+        return false;
+    }
+    $base_prefix = rtrim($real_base, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+    return strpos($real_path, $base_prefix) === 0 || $real_path === rtrim($real_base, DIRECTORY_SEPARATOR);
+}
+
+$aulario_id = safe_id_segment(Sf($_GET["aulario"] ?? ""));
+$centro_id = safe_centro_id(Sf($_SESSION["auth_data"]["entreaulas"]["centro"] ?? ""));
+$alumno = safe_id_segment(Sf($_GET["alumno"] ?? ""));
 
 if (empty($aulario_id) || empty($centro_id)) {
     require_once "_incl/pre-body.php";
@@ -23,9 +43,6 @@ if (empty($aulario_id) || empty($centro_id)) {
     require_once "_incl/post-body.php";
     exit;
 }
-
-$aulario_id = basename($aulario_id);
-$centro_id = basename($centro_id);
 
 // Validate paths with realpath
 $base_path = "/DATA/entreaulas/Centros";
@@ -50,11 +67,7 @@ $alumnos = [];
 // Resolve and validate alumnos path to ensure it stays within the allowed base directory
 $alumnos_real_path = realpath($alumnos_base_path);
 if ($alumnos_real_path !== false) {
-    // Ensure the resolved path is within the expected base path
-    $real_base_with_sep = rtrim($real_base, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
-    $alumnos_real_with_sep = rtrim($alumnos_real_path, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
-
-    if (strpos($alumnos_real_with_sep, $real_base_with_sep) === 0 && is_dir($alumnos_real_path)) {
+    if (path_is_within($real_base, $alumnos_real_path) && is_dir($alumnos_real_path)) {
         $alumnos = glob($alumnos_real_path . "/*", GLOB_ONLYDIR);
         usort($alumnos, function($a, $b) {
             return strcasecmp(basename($a), basename($b));
@@ -123,11 +136,24 @@ if (empty($alumno)) {
 }
 
 // If alumno is specified, validate and show their diary
-$alumno = basename($alumno);
 $alumno_path = "$alumnos_base_path/$alumno";
 
+$real_alumnos_base = realpath($alumnos_base_path);
+if (!path_is_within($real_base, $real_alumnos_base)) {
+    require_once "_incl/pre-body.php";
+    ?>
+    <div class="card pad">
+        <h1>Diario del Alumno</h1>
+        <p>Ruta de alumnos inválida.</p>
+    </div>
+    <?php
+    require_once "_incl/post-body.php";
+    exit;
+}
+
 // Validate path with realpath
-if (!is_dir($alumno_path)) {
+$real_alumno_path = realpath($alumno_path);
+if ($real_alumno_path === false || !path_is_within($real_alumnos_base, $real_alumno_path) || !is_dir($real_alumno_path)) {
     require_once "_incl/pre-body.php";
     ?>
     <div class="card pad">
@@ -138,6 +164,7 @@ if (!is_dir($alumno_path)) {
     require_once "_incl/post-body.php";
     exit;
 }
+$alumno_path = $real_alumno_path;
 
 // Get diario types and data
 $diario_types = [
@@ -223,11 +250,22 @@ require_once "_incl/pre-body.php";
 
 <?php
 // Show specific diary entry if requested
-$type = Sf($_GET["type"] ?? "");
+$type = safe_id_segment(Sf($_GET["type"] ?? ""));
 $date = Sf($_GET["date"] ?? date("Y-m-d"));
 
 if (!empty($type) && !empty($date)) {
-    $date = preg_replace('/[^0-9-]/', '', $date); // Sanitize date
+    $date = preg_replace('/[^0-9-]/', '', $date);
+    $is_valid_date = false;
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        $date_obj = DateTime::createFromFormat('Y-m-d', $date);
+        $is_valid_date = $date_obj && $date_obj->format('Y-m-d') === $date;
+    }
+    if (!$is_valid_date || !array_key_exists($type, $diario_types)) {
+        $type = "";
+    }
+}
+
+if (!empty($type) && !empty($date)) {
     $type_file = "$alumno_path/Diario/$date/$type.json";
     
     if (file_exists($type_file)):

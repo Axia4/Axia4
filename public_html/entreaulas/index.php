@@ -1,6 +1,28 @@
 <?php
 require_once "_incl/auth_redir.php";
-require_once "_incl/pre-body.php";?>
+require_once "_incl/pre-body.php";
+
+function safe_id_segment($value)
+{
+    $value = basename((string)$value);
+    return preg_replace('/[^A-Za-z0-9_-]/', '', $value);
+}
+
+function safe_centro_id($value)
+{
+    return preg_replace('/[^0-9]/', '', (string)$value);
+}
+
+function safe_aulario_config_path($centro_id, $aulario_id)
+{
+    $centro = safe_centro_id($centro_id);
+    $aulario = safe_id_segment($aulario_id);
+    if ($centro === '' || $aulario === '') {
+        return null;
+    }
+    return "/DATA/entreaulas/Centros/$centro/Aularios/$aulario.json";
+}
+?>
 <div class="card pad">
     <div>
         <h1 class="card-title">¡Hola, <?php echo $_SESSION["auth_data"]["display_name"];?>!</h1>
@@ -11,13 +33,26 @@ require_once "_incl/pre-body.php";?>
 </div>
 <div id="grid">
     <?php $user_data = $_SESSION["auth_data"];
-    $centro_id = $user_data["entreaulas"]["centro"];
+    $centro_id = safe_centro_id($user_data["entreaulas"]["centro"] ?? "");
     foreach ($user_data["entreaulas"]["aulas"] as $aulario_id) {
-        $aulario = json_decode(file_get_contents("/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json"), true);
-        echo '<a href="/entreaulas/aulario.php?id=' . $aulario_id . '" class="btn btn-primary grid-item">
-            <img style="height: 125px;" src="' . $aulario["icon"] . '" alt="' . htmlspecialchars($aulario["name"]) . ' Icono">
+        $aulario_id = safe_id_segment($aulario_id);
+        if ($aulario_id === "") {
+            continue;
+        }
+        $aulario_path = safe_aulario_config_path($centro_id, $aulario_id);
+        if (!$aulario_path || !file_exists($aulario_path)) {
+            continue;
+        }
+        $aulario = json_decode(file_get_contents($aulario_path), true);
+        if (!is_array($aulario)) {
+            continue;
+        }
+        $aulario_name = $aulario["name"] ?? $aulario_id;
+        $aulario_icon = $aulario["icon"] ?? "/static/arasaac/aulario.png";
+        echo '<a href="/entreaulas/aulario.php?id=' . urlencode($aulario_id) . '" class="btn btn-primary grid-item">
+            <img style="height: 125px;" src="' . htmlspecialchars($aulario_icon, ENT_QUOTES) . '" alt="' . htmlspecialchars($aulario_name) . ' Icono">
             <br>
-            ' . htmlspecialchars($aulario["name"]) . '
+            ' . htmlspecialchars($aulario_name) . '
         </a>';
     } ?>
 </div>

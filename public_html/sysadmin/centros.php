@@ -1,9 +1,23 @@
 <?php
 require_once "_incl/auth_redir.php";
 require_once "_incl/tools.security.php";
-switch ($_GET["form"]) {
+
+function safe_path_segment($value)
+{
+    $value = trim((string)$value);
+    $value = str_replace(["\0", "/", "\\"], "", $value);
+    $value = str_replace("..", "", $value);
+    $value = basename($value);
+    if ($value === "." || $value === "..") {
+        return "";
+    }
+    return $value;
+}
+
+$form_action = $_GET["form"] ?? "";
+switch ($form_action) {
     case "create":
-        $centro_id = Sf($_POST["name"] ?? "");
+        $centro_id = safe_path_segment(Sf($_POST["name"] ?? ""));
         if (empty($centro_id)) {
             die("Nombre del centro no proporcionado.");
         }
@@ -20,12 +34,12 @@ switch ($_GET["form"]) {
         ini_set("display_errors", 1);
         ini_set('upload_max_filesize', '256M');
         ini_set('post_max_size', '256M');
-        $centro_id = Sf($_GET['centro'] ?? '');
+        $centro_id = safe_path_segment(Sf($_GET['centro'] ?? ''));
         $centro_path = "/DATA/entreaulas/Centros/$centro_id";
         if (!is_dir($centro_path)) {
             die("Centro no válido.");
         }
-        $activity_name = Sf($_POST["name"] ?? '');
+        $activity_name = safe_path_segment(Sf($_POST["name"] ?? ''));
         if (empty($activity_name)) {
             die("Nombre de la actividad no proporcionado.");
         }
@@ -48,8 +62,8 @@ switch ($_GET["form"]) {
         ini_set("display_errors", 1);
         ini_set('upload_max_filesize', '256M');
         ini_set('post_max_size', '256M');
-        $centro_id = Sf($_GET['centro'] ?? '');
-        $activity_name = Sf($_GET['activity'] ?? '');
+        $centro_id = safe_path_segment(Sf($_GET['centro'] ?? ''));
+        $activity_name = safe_path_segment(Sf($_GET['activity'] ?? ''));
         $activity_path = "/DATA/entreaulas/Centros/$centro_id/Panel/Actividades/$activity_name";
         if (!is_dir($activity_path)) {
             die("Actividad no válida.");
@@ -59,8 +73,8 @@ switch ($_GET["form"]) {
             $photo_path = "$activity_path/photo.jpg";
             move_uploaded_file($activity_photo["tmp_name"], $photo_path);
         }
-        if (Sf($_POST['nombre'] ?? '') != $activity_name) {
-            $new_activity_name = Sf($_POST['nombre'] ?? '');
+        if (safe_path_segment(Sf($_POST['nombre'] ?? '')) != $activity_name) {
+            $new_activity_name = safe_path_segment(Sf($_POST['nombre'] ?? ''));
             $new_activity_path = "/DATA/entreaulas/Centros/$centro_id/Panel/Actividades/$new_activity_name";
             if (is_dir($new_activity_path)) {
                 die("Ya existe una actividad con ese nombre.");
@@ -73,10 +87,11 @@ switch ($_GET["form"]) {
 }
 
 require_once "_incl/pre-body.php"; 
-switch ($_GET["action"]) {
+$view_action = $_GET["action"] ?? "index";
+switch ($view_action) {
     case "edit_activity":
-        $centro_id = Sf($_GET['centro'] ?? '');
-        $activity_name = Sf($_GET['activity'] ?? '');
+        $centro_id = safe_path_segment(Sf($_GET['centro'] ?? ''));
+        $activity_name = safe_path_segment(Sf($_GET['activity'] ?? ''));
         $activity_path = "/DATA/entreaulas/Centros/$centro_id/Panel/Actividades/$activity_name";
         if (!is_dir($activity_path)) {
             die("Actividad no válida.");
@@ -112,7 +127,7 @@ switch ($_GET["action"]) {
 <?php
         break;
     case "new_activity":
-        $centro_id = Sf($_GET['centro'] ?? '');
+        $centro_id = safe_path_segment(Sf($_GET['centro'] ?? ''));
         $centro_path = "/DATA/entreaulas/Centros/$centro_id";
         if (!is_dir($centro_path)) {
             die("Centro no válido.");
@@ -160,7 +175,7 @@ switch ($_GET["action"]) {
 <?php
         break;
     case "edit":
-        $centro_id = Sf($_GET['centro'] ?? '');
+        $centro_id = safe_path_segment(Sf($_GET['centro'] ?? ''));
         $centro_path = "/DATA/entreaulas/Centros/$centro_id";
         if (!is_dir($centro_path)) {
             die("Centro no válido.");

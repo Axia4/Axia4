@@ -3,9 +3,39 @@ require_once "_incl/auth_redir.php";
 require_once "_incl/pre-body.php";
 require_once "_incl/tools.security.php";
 
-$aulario_id = Sf($_GET["id"]);
-$centro_id = $_SESSION["auth_data"]["entreaulas"]["centro"];
-$aulario = json_decode(file_get_contents("/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json"), true);
+function safe_id_segment($value)
+{
+    $value = basename((string)$value);
+    return preg_replace('/[^A-Za-z0-9_-]/', '', $value);
+}
+
+function safe_centro_id($value)
+{
+    return preg_replace('/[^0-9]/', '', (string)$value);
+}
+
+function safe_aulario_config_path($centro_id, $aulario_id)
+{
+    $centro = safe_centro_id($centro_id);
+    $aulario = safe_id_segment($aulario_id);
+    if ($centro === '' || $aulario === '') {
+        return null;
+    }
+    return "/DATA/entreaulas/Centros/$centro/Aularios/$aulario.json";
+}
+
+$aulario_id = safe_id_segment(Sf($_GET["id"] ?? ""));
+$centro_id = safe_centro_id($_SESSION["auth_data"]["entreaulas"]["centro"] ?? "");
+$aulario_path = safe_aulario_config_path($centro_id, $aulario_id);
+$aulario = ($aulario_path && file_exists($aulario_path)) ? json_decode(file_get_contents($aulario_path), true) : null;
+
+if (!$aulario || !is_array($aulario)) {
+?>
+<div class="card pad">
+    <h1 class="card-title">Aulario no encontrado</h1>
+    <p>No se ha podido cargar la configuración del aulario.</p>
+</div>
+<?php require_once "_incl/post-body.php"; exit; }
 ?>
 <div class="card pad">
     <div>

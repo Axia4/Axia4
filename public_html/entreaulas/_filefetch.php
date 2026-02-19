@@ -5,11 +5,31 @@ ob_end_flush();
 ini_set('memory_limit', '1G'); 
 header("Access-Control-Allow-Origin: *");
 
-switch ($_GET["type"]) {
+function safe_id_segment($value)
+{
+    $value = basename((string)$value);
+    return preg_replace('/[^A-Za-z0-9_-]/', '', $value);
+}
+
+function safe_centro_id($value)
+{
+    return preg_replace('/[^0-9]/', '', (string)$value);
+}
+
+function safe_filename($name)
+{
+    $name = basename((string)$name);
+    $name = preg_replace('/[^A-Za-z0-9._-]/', '_', $name);
+    $name = ltrim($name, '.');
+    return $name;
+}
+
+$type = $_GET["type"] ?? "";
+switch ($type) {
     case "alumno_photo":
-        $centro = basename($_GET["centro"] ?? '');
-        $aulario = basename($_GET["aulario"] ?? '');
-        $alumno = basename($_GET["alumno"] ?? '');
+        $centro = safe_centro_id($_GET["centro"] ?? '');
+        $aulario = safe_id_segment($_GET["aulario"] ?? '');
+        $alumno = safe_id_segment($_GET["alumno"] ?? '');
         // Additional validation to prevent empty names
         if (empty($centro) || empty($aulario) || empty($alumno)) {
             header("HTTP/1.1 403 Forbidden");
@@ -18,15 +38,23 @@ switch ($_GET["type"]) {
         $relpath = "entreaulas/Centros/$centro/Aularios/$aulario/Alumnos/$alumno/photo.jpg";
         break;
     case "panel_actividades":
-        $centro = str_replace('..', '_', $_GET["centro"] ?? '');
-        $activity = str_replace('..', '_', $_GET["activity"] ?? '');
+        $centro = safe_centro_id($_GET["centro"] ?? '');
+        $activity = safe_id_segment($_GET["activity"] ?? '');
+        if (empty($centro) || empty($activity)) {
+            header("HTTP/1.1 400 Bad Request");
+            die("Invalid parameters");
+        }
         $relpath = "entreaulas/Centros/$centro/Panel/Actividades/$activity/photo.jpg";
         break;
     case "comedor_image":
-        $centro = str_replace('..', '_', $_GET["centro"] ?? '');
-        $aulario = str_replace('..', '_', $_GET["aulario"] ?? '');
+        $centro = safe_centro_id($_GET["centro"] ?? '');
+        $aulario = safe_id_segment($_GET["aulario"] ?? '');
         $date = preg_replace('/[^0-9-]/', '', $_GET["date"] ?? '');
-        $file = basename($_GET["file"] ?? '');
+        $file = safe_filename($_GET["file"] ?? '');
+        if (empty($centro) || empty($aulario) || empty($file)) {
+            header("HTTP/1.1 400 Bad Request");
+            die("Invalid parameters");
+        }
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
             header("HTTP/1.1 400 Bad Request");
             die("Invalid date");
@@ -36,9 +64,13 @@ switch ($_GET["type"]) {
         $relpath = "entreaulas/Centros/$centro/Aularios/$aulario/Comedor/$ym/$day/$file";
         break;
     case "proyecto_file":
-        $centro = str_replace('..', '_', $_GET["centro"] ?? '');
-        $project = str_replace('..', '_', $_GET["project"] ?? '');
-        $file = basename($_GET["file"] ?? '');
+        $centro = safe_centro_id($_GET["centro"] ?? '');
+        $project = safe_id_segment($_GET["project"] ?? '');
+        $file = safe_filename($_GET["file"] ?? '');
+        if (empty($centro) || empty($project) || empty($file)) {
+            header("HTTP/1.1 400 Bad Request");
+            die("Invalid parameters");
+        }
         // Ensure no directory traversal
         if (strpos($file, '..') !== false || strpos($file, '/') !== false || strpos($file, '\\') !== false) {
             header("HTTP/1.1 400 Bad Request");
@@ -73,6 +105,9 @@ switch ($_GET["type"]) {
         $path = $project_dir . "/" . $file;
         $uripath = str_replace("/DATA", "", $path);
         break;
+    default:
+        header("HTTP/1.1 400 Bad Request");
+        die("Invalid type");
 }
 if (!isset($path)) {
     $path = "/DATA/$relpath";
@@ -84,7 +119,8 @@ if (!isset($uripath)) {
 // Validate that the resolved path is within /DATA directory
 $real_path = realpath($path);
 $real_base = realpath("/DATA");
-if ($real_path === false || $real_base === false || strpos($real_path, $real_base) !== 0) {
+$real_base_prefix = $real_base !== false ? rtrim($real_base, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR : null;
+if ($real_path === false || $real_base === false || $real_base_prefix === null || strpos($real_path, $real_base_prefix) !== 0) {
     header("HTTP/1.1 403 Forbidden");
     die("Access denied");
 }
@@ -96,7 +132,7 @@ if (!file_exists($real_path) || !is_file($real_path)) {
 $mime = mime_content_type($real_path);
 
 // Check if thumbnail is requested
-if (file_exists($real_path . ".thumbnail") && $_GET["thumbnail"] == "1") {
+if (file_exists($real_path . ".thumbnail") && (($_GET["thumbnail"] ?? "") === "1")) {
     $real_path .= ".thumbnail";
     $uripath .= ".thumbnail";
     $mime = "image/jpeg";

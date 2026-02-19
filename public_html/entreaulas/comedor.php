@@ -5,8 +5,29 @@ if (in_array("entreaulas:docente", $_SESSION["auth_data"]["permissions"] ?? []) 
     die("Access denied");
 }
 
-$aulario_id = Sf($_GET["aulario"] ?? "");
-$centro_id = $_SESSION["auth_data"]["entreaulas"]["centro"] ?? "";
+function safe_id_segment($value)
+{
+	$value = basename((string)$value);
+	return preg_replace('/[^A-Za-z0-9_-]/', '', $value);
+}
+
+function safe_centro_id($value)
+{
+	return preg_replace('/[^0-9]/', '', (string)$value);
+}
+
+function safe_aulario_config_path($centro_id, $aulario_id)
+{
+	$centro = safe_centro_id($centro_id);
+	$aulario = safe_id_segment($aulario_id);
+	if ($centro === "" || $aulario === "") {
+		return null;
+	}
+	return "/DATA/entreaulas/Centros/$centro/Aularios/$aulario.json";
+}
+
+$aulario_id = safe_id_segment(Sf($_GET["aulario"] ?? ""));
+$centro_id = safe_centro_id($_SESSION["auth_data"]["entreaulas"]["centro"] ?? "");
 
 if ($aulario_id === "" || $centro_id === "") {
 	require_once "_incl/pre-body.php";
@@ -20,18 +41,18 @@ if ($aulario_id === "" || $centro_id === "") {
 	exit;
 }
 
-$aulario_path = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json";
-$aulario = file_exists($aulario_path) ? json_decode(file_get_contents($aulario_path), true) : null;
+$aulario_path = safe_aulario_config_path($centro_id, $aulario_id);
+$aulario = ($aulario_path && file_exists($aulario_path)) ? json_decode(file_get_contents($aulario_path), true) : null;
 
 // Check if this aulario shares comedor data from another aulario
 $source_aulario_id = $aulario_id; // Default to current aulario
 $is_shared = false;
 if ($aulario && !empty($aulario["shared_comedor_from"])) {
-	$shared_from = $aulario["shared_comedor_from"];
-	$shared_aulario_path = "/DATA/entreaulas/Centros/$centro_id/Aularios/$shared_from.json";
-	if (file_exists($shared_aulario_path)) {
-		$source_aulario_id = Sf($shared_from);
-		$source_aulario_name = file_exists($shared_aulario_path) ? json_decode(file_get_contents($shared_aulario_path), true)["name"] ?? $shared_from : $shared_from;
+	$shared_from = safe_id_segment($aulario["shared_comedor_from"]);
+	$shared_aulario_path = safe_aulario_config_path($centro_id, $shared_from);
+	if ($shared_aulario_path && file_exists($shared_aulario_path)) {
+		$source_aulario_id = $shared_from;
+		$source_aulario_name = json_decode(file_get_contents($shared_aulario_path), true)["name"] ?? $shared_from;
 		$is_shared = true;
 	}
 }
@@ -153,7 +174,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $canEdit) {
 	$action = $_POST["action"] ?? "";
 
 	if ($action === "add_type") {
-		$newId = strtolower(trim($_POST["new_type_id"] ?? ""));
+		$newId = safe_id_segment(strtolower(trim($_POST["new_type_id"] ?? "")));
 		$newLabel = trim($_POST["new_type_label"] ?? "");
 		$newColor = trim($_POST["new_type_color"] ?? "#0d6efd");
 		if ($newId !== "" && $newLabel !== "") {
@@ -174,7 +195,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $canEdit) {
 	}
 
 	if ($action === "delete_type") {
-		$deleteId = trim($_POST["delete_type_id"] ?? "");
+		$deleteId = safe_id_segment(trim($_POST["delete_type_id"] ?? ""));
 		if ($deleteId !== "") {
 			$deleted = false;
 			$newMenuTypes = [];
@@ -197,7 +218,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $canEdit) {
 	}
 
 	if ($action === "rename_type") {
-		$renameId = trim($_POST["rename_type_id"] ?? "");
+		$renameId = safe_id_segment(trim($_POST["rename_type_id"] ?? ""));
 		$newLabel = trim($_POST["rename_type_label"] ?? "");
 		$newColor = trim($_POST["rename_type_color"] ?? "");
 		if ($renameId !== "" && $newLabel !== "") {
@@ -219,7 +240,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $canEdit) {
 	}
 
 	if ($action === "save") {
-		$menuTypeId = $_POST["menu_type"] ?? $menuTypeId;
+		$menuTypeId = safe_id_segment($_POST["menu_type"] ?? $menuTypeId);
 		if (!isset($menuData["menus"][$menuTypeId])) {
 			$menuData["menus"][$menuTypeId] = blank_menu();
 		}
@@ -263,11 +284,15 @@ $nextDate = (clone $dateObj)->modify("+1 day")->format("Y-m-d");
 $userAulas = $_SESSION["auth_data"]["entreaulas"]["aulas"] ?? [];
 $aulaOptions = [];
 foreach ($userAulas as $aulaId) {
-	$aulaPath = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulaId.json";
+	$aulaIdSafe = safe_id_segment($aulaId);
+	if ($aulaIdSafe === "") {
+		continue;
+	}
+	$aulaPath = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulaIdSafe.json";
 	$aulaData = file_exists($aulaPath) ? json_decode(file_get_contents($aulaPath), true) : null;
 	$aulaOptions[] = [
-		"id" => $aulaId,
-		"name" => $aulaData["name"] ?? $aulaId
+		"id" => $aulaIdSafe,
+		"name" => $aulaData["name"] ?? $aulaIdSafe
 	];
 }
 require_once "_incl/pre-body.php";

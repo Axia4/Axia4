@@ -1,16 +1,33 @@
 <?php
 require_once "_incl/auth_redir.php";
 require_once "_incl/tools.security.php";
+
+function safe_username($value)
+{
+  $value = basename((string)$value);
+  $value = preg_replace('/[^a-zA-Z0-9._-]/', '', $value);
+  if (strpos($value, '..') !== false) {
+    return '';
+  }
+  return $value;
+}
+
+function safe_centro_id($value)
+{
+  return preg_replace('/[^0-9]/', '', (string)$value);
+}
+
+function safe_aulario_id($value)
+{
+  $value = basename((string)$value);
+  return preg_replace('/[^a-zA-Z0-9_-]/', '', $value);
+}
+
 switch ($_GET['form'] ?? '') {
   case 'save_edit':
-    $username = Sf($_POST['username'] ?? '');
+    $username = safe_username(Sf($_POST['username'] ?? ''));
     if (empty($username)) {
       die("Nombre de usuario no proporcionado.");
-    }
-    // Validate username to prevent directory traversal
-    $username = basename($username);
-    if (preg_match('/[^a-zA-Z0-9._-]/', $username) || strpos($username, '..') !== false) {
-      die("Nombre de usuario inválido.");
     }
     $user_file = "/DATA/Usuarios/$username.json";
     $userdata_old = [];
@@ -23,14 +40,25 @@ switch ($_GET['form'] ?? '') {
         }
       }
     }
+    $permissions = $_POST['permissions'] ?? [];
+    if (!is_array($permissions)) {
+      $permissions = [];
+    }
+
+    $aulas = $_POST['aulas'] ?? [];
+    if (!is_array($aulas)) {
+      $aulas = [];
+    }
+    $aulas = array_values(array_filter(array_map('safe_aulario_id', $aulas)));
+
     $userdata_new = [
       'display_name' => $_POST['display_name'] ?? '',
       'email' => $_POST['email'] ?? '',
-      'permissions' => $_POST['permissions'] ?? [],
+      'permissions' => $permissions,
       'entreaulas' => [
-        'centro' => $_POST['centro'] ?? '',
+        'centro' => safe_centro_id($_POST['centro'] ?? ''),
         'role' => $_POST['role'] ?? '',
-        'aulas' => $_POST['aulas'] ?? []
+        'aulas' => $aulas
       ]
     ];
     // Merge old and new data to preserve any other fields, like password hashes or custom metadata.
@@ -119,10 +147,8 @@ switch ($_GET['action'] ?? '') {
     break;
   case 'edit':
     require_once "_incl/pre-body.php";
-    $username = Sf($_GET['user'] ?? '');
-    // Validate username to prevent directory traversal
-    $username = basename($username);
-    if (preg_match('/[^a-zA-Z0-9._-]/', $username) || strpos($username, '..') !== false) {
+    $username = safe_username(Sf($_GET['user'] ?? ''));
+    if (empty($username)) {
       die("Nombre de usuario inválido.");
     }
     $user_file = "/DATA/Usuarios/$username.json";
@@ -227,10 +253,11 @@ switch ($_GET['action'] ?? '') {
       <div class="mb-3">
         <label class="form-label">Aulas asignadas: <small>(Guarda primero para actualizar la lista)</small></label><br>
         <?php
-        $aulas_filelist = glob("/DATA/entreaulas/Centros/" . ($userdata["entreaulas"]['centro'] ?? '') . "/Aularios/*.json");
+        $user_centro = safe_centro_id($userdata["entreaulas"]['centro'] ?? '');
+        $aulas_filelist = $user_centro !== '' ? (glob("/DATA/entreaulas/Centros/" . $user_centro . "/Aularios/*.json") ?: []) : [];
         foreach ($aulas_filelist as $aula_file) {
           $aula_data = json_decode(file_get_contents($aula_file), true);
-          $aula_id = basename($aula_file, ".json");
+          $aula_id = safe_aulario_id(basename($aula_file, ".json"));
           $is_assigned = in_array($aula_id, $userdata["entreaulas"]['aulas'] ?? []);
           echo '<div class="form-check form-check-inline">';
           echo '<input class="form-check-input" type="checkbox" name="aulas[]" value="' . htmlspecialchars($aula_id) . '" id="aula-' . htmlspecialchars($aula_id) . '" ' . ($is_assigned ? 'checked' : '') . '>';
