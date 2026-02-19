@@ -7,6 +7,11 @@ switch ($_GET['form'] ?? '') {
     if (empty($username)) {
       die("Nombre de usuario no proporcionado.");
     }
+    // Validate username to prevent directory traversal
+    $username = basename($username);
+    if (preg_match('/[^a-zA-Z0-9._-]/', $username) || strpos($username, '..') !== false) {
+      die("Nombre de usuario inválido.");
+    }
     $user_file = "/DATA/Usuarios/$username.json";
     $userdata_old = [];
     if (is_readable($user_file)) {
@@ -115,11 +120,16 @@ switch ($_GET['action'] ?? '') {
   case 'edit':
     require_once "_incl/pre-body.php";
     $username = Sf($_GET['user'] ?? '');
-    $userFile = "/DATA/Usuarios/$username.json";
-    if (!file_exists($userFile) || !is_readable($userFile)) {
+    // Validate username to prevent directory traversal
+    $username = basename($username);
+    if (preg_match('/[^a-zA-Z0-9._-]/', $username) || strpos($username, '..') !== false) {
+      die("Nombre de usuario inválido.");
+    }
+    $user_file = "/DATA/Usuarios/$username.json";
+    if (!file_exists($user_file) || !is_readable($user_file)) {
       die("Usuario no encontrado o datos no disponibles.");
     }
-    $userdata = json_decode(file_get_contents($userFile), true) ?? [];
+    $userdata = json_decode(file_get_contents($user_file), true) ?? [];
 ?>
 <form method="post" action="?form=save_edit">
   <div class="card pad">

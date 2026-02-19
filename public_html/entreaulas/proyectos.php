@@ -10,9 +10,10 @@ if (in_array("entreaulas:docente", $_SESSION["auth_data"]["permissions"] ?? []) 
 $aulario_id = Sf($_GET["aulario"] ?? "");
 $centro_id = $_SESSION["auth_data"]["entreaulas"]["centro"] ?? "";
 
-// Sanitize and validate centro_id to prevent directory traversal
+// Sanitize and validate centro_id and aulario_id to prevent directory traversal
 $centro_id = safe_filename($centro_id);
-if ($aulario_id === "" || $centro_id === "" || strpos($centro_id, '..') !== false) {
+$aulario_id = safe_filename($aulario_id);
+if ($aulario_id === "" || $centro_id === "" || strpos($centro_id, '..') !== false || strpos($aulario_id, '..') !== false) {
   require_once "_incl/pre-body.php";
 ?>
   <div class="card pad">

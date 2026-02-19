@@ -116,7 +116,12 @@ function safe_filename($name)
 		$parts = explode('.', $name);
 		$ext   = array_pop($parts);
 		$base  = implode('_', $parts);
-		$name  = ($base === '' ? 'file' : $base) . '.' . $ext;
+		// Ensure extension is not empty
+		if ($ext === '') {
+			$name = $base === '' ? 'file' : $base;
+		} else {
+			$name  = ($base === '' ? 'file' : $base) . '.' . $ext;
+		}
 	}
 	return $name;
 }
