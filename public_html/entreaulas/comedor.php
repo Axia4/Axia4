@@ -105,8 +105,20 @@ $uploadErrors = [];
 
 function safe_filename($name)
 {
+	// Normalize to base name to avoid directory traversal
 	$name = basename($name);
-	return preg_replace("/[^a-zA-Z0-9._-]/", "_", $name);
+	// Replace disallowed characters with underscore
+	$name = preg_replace("/[^a-zA-Z0-9._-]/", "_", $name);
+	// Remove leading dots to avoid hidden/special files like ".htaccess"
+	$name = ltrim($name, '.');
+	// Ensure there is at most one dot in the filename to prevent extension confusion
+	if (substr_count($name, '.') > 1) {
+		$parts = explode('.', $name);
+		$ext   = array_pop($parts);
+		$base  = implode('_', $parts);
+		$name  = ($base === '' ? 'file' : $base) . '.' . $ext;
+	}
+	return $name;
 }
 
 function handle_image_upload($fieldName, $targetBaseName, $baseDir, &$uploadErrors)

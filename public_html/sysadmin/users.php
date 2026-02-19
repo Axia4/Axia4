@@ -7,7 +7,17 @@ switch ($_GET['form'] ?? '') {
     if (empty($username)) {
       die("Nombre de usuario no proporcionado.");
     }
-    $userdata_old = json_decode(file_get_contents("/DATA/Usuarios/$username.json"), true) ?? [];
+    $user_file = "/DATA/Usuarios/$username.json";
+    $userdata_old = [];
+    if (is_readable($user_file)) {
+      $file_contents = file_get_contents($user_file);
+      if ($file_contents !== false) {
+        $decoded = json_decode($file_contents, true);
+        if (is_array($decoded)) {
+          $userdata_old = $decoded;
+        }
+      }
+    }
     $userdata_new = [
       'display_name' => $_POST['display_name'] ?? '',
       'email' => $_POST['email'] ?? '',
@@ -105,7 +115,11 @@ switch ($_GET['action'] ?? '') {
   case 'edit':
     require_once "_incl/pre-body.php";
     $username = Sf($_GET['user'] ?? '');
-    $userdata = json_decode(file_get_contents("/DATA/Usuarios/$username.json"), true);
+    $userFile = "/DATA/Usuarios/$username.json";
+    if (!file_exists($userFile) || !is_readable($userFile)) {
+      die("Usuario no encontrado o datos no disponibles.");
+    }
+    $userdata = json_decode(file_get_contents($userFile), true) ?? [];
 ?>
 <form method="post" action="?form=save_edit">
   <div class="card pad">

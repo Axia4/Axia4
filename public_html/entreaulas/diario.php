@@ -46,11 +46,20 @@ if ($real_base === false) {
 // Get list of alumnos if not specified
 $alumnos_base_path = "$base_path/$centro_id/Aularios/$aulario_id/Alumnos";
 $alumnos = [];
-if (is_dir($alumnos_base_path)) {
-    $alumnos = glob($alumnos_base_path . "/*", GLOB_ONLYDIR);
-    usort($alumnos, function($a, $b) {
-        return strcasecmp(basename($a), basename($b));
-    });
+
+// Resolve and validate alumnos path to ensure it stays within the allowed base directory
+$alumnos_real_path = realpath($alumnos_base_path);
+if ($alumnos_real_path !== false) {
+    // Ensure the resolved path is within the expected base path
+    $real_base_with_sep = rtrim($real_base, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+    $alumnos_real_with_sep = rtrim($alumnos_real_path, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+
+    if (strpos($alumnos_real_with_sep, $real_base_with_sep) === 0 && is_dir($alumnos_real_path)) {
+        $alumnos = glob($alumnos_real_path . "/*", GLOB_ONLYDIR);
+        usort($alumnos, function($a, $b) {
+            return strcasecmp(basename($a), basename($b));
+        });
+    }
 }
 
 // If no alumno specified, show list

@@ -4,7 +4,25 @@ require_once "_incl/tools.security.php";
 ini_set("display_errors", "0");
 // Funciones auxiliares para el diario
 function getDiarioPath($alumno, $centro_id, $aulario_id) {
-  $base_path = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id/Alumnos/$alumno";
+  // Validate path components to avoid directory traversal or illegal characters
+  // Allow only alphanumeric, underscore and dash for alumno and aulario_id
+  $idPattern = '/^[A-Za-z0-9_-]+$/';
+  // Typically centro_id is numeric; restrict it accordingly
+  $centroPattern = '/^[0-9]+$/';
+
+  if (!preg_match($idPattern, (string)$alumno) ||
+      !preg_match($idPattern, (string)$aulario_id) ||
+      !preg_match($centroPattern, (string)$centro_id)) {
+    // Invalid identifiers, do not construct a filesystem path
+    return null;
+  }
+
+  // Extra safety: strip any directory components if present
+  $alumno_safe = basename($alumno);
+  $centro_safe = basename($centro_id);
+  $aulario_safe = basename($aulario_id);
+
+  $base_path = "/DATA/entreaulas/Centros/$centro_safe/Aularios/$aulario_safe/Alumnos/$alumno_safe";
   return $base_path . "/Diario/" . date("Y-m-d");
 }
 
