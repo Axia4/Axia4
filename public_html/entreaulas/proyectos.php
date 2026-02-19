@@ -10,7 +10,10 @@ if (in_array("entreaulas:docente", $_SESSION["auth_data"]["permissions"] ?? []) 
 $aulario_id = Sf($_GET["aulario"] ?? "");
 $centro_id = $_SESSION["auth_data"]["entreaulas"]["centro"] ?? "";
 
-if ($aulario_id === "" || $centro_id === "") {
+// Sanitize and validate centro_id and aulario_id to prevent directory traversal
+$centro_id = safe_filename($centro_id);
+$aulario_id = safe_filename($aulario_id);
+if ($aulario_id === "" || $centro_id === "" || strpos($centro_id, '..') !== false || strpos($aulario_id, '..') !== false) {
   require_once "_incl/pre-body.php";
 ?>
   <div class="card pad">
@@ -33,8 +36,25 @@ if (!is_dir($proyectos_dir)) {
 // Helper functions
 function safe_filename($name)
 {
+  // Normalize to base name to avoid directory traversal
   $name = basename($name);
-  return preg_replace("/[^a-zA-Z0-9._-]/", "_", $name);
+  // Replace disallowed characters with underscore
+  $name = preg_replace("/[^a-zA-Z0-9._-]/", "_", $name);
+  // Remove leading dots to avoid hidden/special files like ".htaccess"
+  $name = ltrim($name, '.');
+  // Ensure there is at most one dot in the filename to prevent extension confusion
+  if (substr_count($name, '.') > 1) {
+    $parts = explode('.', $name);
+    $ext   = array_pop($parts);
+    $base  = implode('_', $parts);
+    // Ensure extension is not empty
+    if ($ext === '') {
+      $name = $base === '' ? 'file' : $base;
+    } else {
+      $name  = ($base === '' ? 'file' : $base) . '.' . $ext;
+    }
+  }
+  return $name;
 }
 
 function sanitize_html($html)
@@ -193,7 +213,10 @@ function format_bytes($bytes)
   return $bytes . "B";
 }
 
-$app_max_upload_bytes = 500 * 1024 * 1024;
+if (!defined('APP_MAX_UPLOAD_BYTES')) {
+  define('APP_MAX_UPLOAD_BYTES', 500 * 1024 * 1024);
+}
+$app_max_upload_bytes = APP_MAX_UPLOAD_BYTES;
 $upload_limit = parse_size_to_bytes(ini_get("upload_max_filesize"));
 $post_limit = parse_size_to_bytes(ini_get("post_max_size"));
 $max_upload_bytes = $app_max_upload_bytes;
