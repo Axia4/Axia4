@@ -12,6 +12,13 @@ function safe_username($value)
   return $value;
 }
 
+define('USERS_DIR', '/DATA/Usuarios/');
+
+function get_user_file_path($username)
+{
+  return USERS_DIR . $username . '.json';
+}
+
 function safe_centro_id($value)
 {
   return preg_replace('/[^0-9]/', '', (string)$value);
@@ -29,7 +36,7 @@ switch ($_GET['form'] ?? '') {
     if (empty($username)) {
       die("Nombre de usuario no proporcionado.");
     }
-    $user_file = "/DATA/Usuarios/$username.json";
+    $user_file = get_user_file_path($username);
     $userdata_old = [];
     if (is_readable($user_file)) {
       $file_contents = file_get_contents($user_file);
@@ -63,7 +70,28 @@ switch ($_GET['form'] ?? '') {
     ];
     // Merge old and new data to preserve any other fields, like password hashes or custom metadata.
     $userdata = array_merge($userdata_old, $userdata_new);
-    file_put_contents("/DATA/Usuarios/$username.json", json_encode($userdata, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    $user_dir = rtrim(USERS_DIR, '/');
+    $user_file = get_user_file_path($username);
+    if (!is_dir($user_dir) || !is_writable($user_dir)) {
+      die("No se puede guardar el usuario: directorio de datos no disponible.");
+    }
+    $json_data = json_encode($userdata, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    if ($json_data === false) {
+      die("No se puede guardar el usuario: error al codificar los datos.");
+    }
+    $tmp_file = tempnam($user_dir, 'user_');
+    if ($tmp_file === false) {
+      die("No se puede guardar el usuario: no se pudo crear un archivo temporal.");
+    }
+    $bytes_written = file_put_contents($tmp_file, $json_data, LOCK_EX);
+    if ($bytes_written === false) {
+      @unlink($tmp_file);
+      die("No se puede guardar el usuario: error al escribir en el disco.");
+    }
+    if (!rename($tmp_file, $user_file)) {
+      @unlink($tmp_file);
+      die("No se puede guardar el usuario: no se pudo finalizar la grabación del archivo.");
+    }
     header("Location: ?action=edit&user=" . urlencode($username) . "&_result=" . urlencode("Cambios guardados correctamente a las ".date("H:i:s")." (hora servidor)."));
     exit;
     break;
@@ -151,11 +179,18 @@ switch ($_GET['action'] ?? '') {
     if (empty($username)) {
       die("Nombre de usuario inválido.");
     }
-    $user_file = "/DATA/Usuarios/$username.json";
+    $user_file = get_user_file_path($username);
     if (!file_exists($user_file) || !is_readable($user_file)) {
       die("Usuario no encontrado o datos no disponibles.");
     }
-    $userdata = json_decode(file_get_contents($user_file), true) ?? [];
+    $jsonContent = file_get_contents($user_file);
+    if ($jsonContent === false) {
+      die("Error al leer los datos del usuario.");
+    }
+    $userdata = json_decode($jsonContent, true);
+    if (!is_array($userdata) || json_last_error() !== JSON_ERROR_NONE) {
+      die("Datos de usuario corruptos o con formato inválido.");
+    }
 ?>
 <form method="post" action="?form=save_edit">
   <div class="card pad">
@@ -300,9 +335,13 @@ switch ($_GET['action'] ?? '') {
           </thead>
           <tbody>
             <?php
-            $users_filelist = glob("/DATA/Usuarios/*.json");
+            $users_filelist = glob(USERS_DIR . '*.json') ?: [];
             foreach ($users_filelist as $user_file) {
               $userdata = json_decode(file_get_contents($user_file), true);
+              if (!is_array($userdata)) {
+                error_log("users.php: corrupted or unreadable user file: $user_file");
+                $userdata = [];
+              }
               // Username is the filename without path and extension
               $username = basename($user_file, ".json");
               echo "<tr>";
