@@ -58,6 +58,32 @@ function Si($input) {
     return $input;
 }
 
+function safe_username_to_filename($username) {
+    /**
+     * Convert a username (plain username or email) to a safe filename for use in file operations.
+     * 
+     * Email addresses have @ replaced with __ to match how Google OAuth users are stored.
+     * The result contains only alphanumeric characters, dots, underscores, and hyphens.
+     * 
+     * @param string $username The username or email to convert.
+     * @return string The safe filename (without path or extension), or "" if invalid.
+     */
+    $filename = strtolower((string)$username);
+    // Remove null bytes
+    $filename = str_replace("\0", "", $filename);
+    // Replace @ with __ (to match Google OAuth file naming)
+    $filename = str_replace("@", "__", $filename);
+    // Remove any path components to prevent directory traversal
+    $filename = basename($filename);
+    // Remove .. sequences
+    $filename = str_replace("..", "", $filename);
+    // Keep only alphanumeric, dot, underscore, hyphen
+    $filename = preg_replace("/[^a-zA-Z0-9._-]/", "_", $filename);
+    // Trim dots and underscores from ends
+    $filename = trim($filename, "._");
+    return $filename;
+}
+
 function Sb($input) {
     /**
      * Sanitize a boolean input by converting it to a boolean value.

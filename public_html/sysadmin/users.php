@@ -32,7 +32,7 @@ function safe_aulario_id($value)
 
 switch ($_GET['form'] ?? '') {
   case 'save_edit':
-    $username = safe_username(Sf($_POST['username'] ?? ''));
+    $username = safe_username($_POST['username'] ?? '');
     if (empty($username)) {
       die("Nombre de usuario no proporcionado.");
     }
@@ -175,7 +175,7 @@ switch ($_GET['action'] ?? '') {
     break;
   case 'edit':
     require_once "_incl/pre-body.php";
-    $username = safe_username(Sf($_GET['user'] ?? ''));
+    $username = safe_username($_GET['user'] ?? '');
     if (empty($username)) {
       die("Nombre de usuario inválido.");
     }

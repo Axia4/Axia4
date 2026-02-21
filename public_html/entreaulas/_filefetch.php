@@ -1,8 +1,11 @@
 <?php
 ini_set("display_errors", 0);
+ini_set('memory_limit', '1G');
+
+require_once __DIR__ . "/_incl/auth_redir.php";
+
 ob_implicit_flush(true);
 ob_end_flush();
-ini_set('memory_limit', '1G'); 
 header("Access-Control-Allow-Origin: *");
 
 function safe_id_segment($value)

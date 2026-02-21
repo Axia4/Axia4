@@ -14,7 +14,7 @@ function safe_username($value)
 
 switch ($_GET['form'] ?? '') {
   case 'save_password':
-    $username = safe_username(Sf($_POST['username'] ?? ''));
+    $username = safe_username($_POST['username'] ?? '');
     $new_password = $_POST['new_password'] ?? '';
     $confirm_password = $_POST['confirm_password'] ?? '';
 

@@ -28,9 +28,9 @@ function path_is_within($real_base, $real_path)
     return strpos($real_path, $base_prefix) === 0 || $real_path === rtrim($real_base, DIRECTORY_SEPARATOR);
 }
 
-$aulario_id = safe_id_segment(Sf($_GET["aulario"] ?? ""));
-$centro_id = safe_centro_id(Sf($_SESSION["auth_data"]["entreaulas"]["centro"] ?? ""));
-$alumno = safe_id_segment(Sf($_GET["alumno"] ?? ""));
+$aulario_id = safe_id_segment($_GET["aulario"] ?? "");
+$centro_id = safe_centro_id($_SESSION["auth_data"]["entreaulas"]["centro"] ?? "");
+$alumno = safe_id_segment($_GET["alumno"] ?? "");
 
 if (empty($aulario_id) || empty($centro_id)) {
     require_once "_incl/pre-body.php";
@@ -250,11 +250,10 @@ require_once "_incl/pre-body.php";
 
 <?php
 // Show specific diary entry if requested
-$type = safe_id_segment(Sf($_GET["type"] ?? ""));
-$date = Sf($_GET["date"] ?? date("Y-m-d"));
+$type = safe_id_segment($_GET["type"] ?? "");
+$date = preg_replace('/[^0-9-]/', '', $_GET["date"] ?? date("Y-m-d"));
 
 if (!empty($type) && !empty($date)) {
-    $date = preg_replace('/[^0-9-]/', '', $date);
     $is_valid_date = false;
     if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
         $date_obj = DateTime::createFromFormat('Y-m-d', $date);
