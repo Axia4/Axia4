@@ -17,6 +17,53 @@ function sc_safe_order_id($value)
     return preg_replace('/[^a-zA-Z0-9_-]/', '', basename((string)$value));
 }
 
+/**
+ * Load personas from the existing Alumnos system.
+ * Returns array keyed by "{aulario_id}:{alumno_name}" with
+ * ['Nombre', 'Region' (aulario display name), 'AularioID', 'HasPhoto'] entries.
+ */
+function sc_load_personas_from_alumnos($centro_id)
+{
+    $aularios_path = "/DATA/entreaulas/Centros/$centro_id/Aularios";
+    $personas = [];
+    if (!is_dir($aularios_path)) {
+        return $personas;
+    }
+    foreach (glob("$aularios_path/*.json") ?: [] as $aulario_file) {
+        $aulario_id   = basename($aulario_file, '.json');
+        $aulario_data = json_decode(file_get_contents($aulario_file), true);
+        $aulario_name = $aulario_data['name'] ?? $aulario_id;
+        $alumnos_path = "$aularios_path/$aulario_id/Alumnos";
+        if (!is_dir($alumnos_path)) {
+            continue;
+        }
+        foreach (glob("$alumnos_path/*/", GLOB_ONLYDIR) ?: [] as $alumno_dir) {
+            $alumno_name = basename($alumno_dir);
+            $key = $aulario_id . ':' . $alumno_name;
+            $personas[$key] = [
+                'Nombre'    => $alumno_name,
+                'Region'    => $aulario_name,
+                'AularioID' => $aulario_id,
+                'HasPhoto'  => file_exists("$alumno_dir/photo.jpg"),
+            ];
+        }
+    }
+    return $personas;
+}
+
+/**
+ * Return a human-readable label for a persona key.
+ * Falls back to showing the raw stored value for legacy orders.
+ */
+function sc_persona_label($persona_key, $personas)
+{
+    if (isset($personas[$persona_key])) {
+        $p = $personas[$persona_key];
+        return $p['Nombre'] . ' (' . $p['Region'] . ')';
+    }
+    return $persona_key;
+}
+
 $centro_id = safe_centro_id_sc($_SESSION['auth_data']['entreaulas']['centro'] ?? '');
 if ($centro_id === '') {
     require_once "_incl/pre-body.php";
@@ -37,6 +84,7 @@ $estados_colores = [
 ];
 
 $can_edit = in_array('supercafe:edit', $_SESSION['auth_data']['permissions'] ?? []);
+$personas = sc_load_personas_from_alumnos($centro_id);
 
 // Handle POST actions (requires edit permission)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $can_edit) {
@@ -139,7 +187,7 @@ require_once "_incl/pre-body.php";
                         ?>
                         <tr style="background: <?= htmlspecialchars($bg) ?>;">
                             <td><?= htmlspecialchars($order['Fecha'] ?? '') ?></td>
-                            <td><?= htmlspecialchars($order['Persona'] ?? '') ?></td>
+                            <td><?= htmlspecialchars(sc_persona_label($order['Persona'] ?? '', $personas)) ?></td>
                             <td style="white-space: pre-wrap; max-width: 250px;"><?= htmlspecialchars($order['Comanda'] ?? '') ?></td>
                             <td><?= htmlspecialchars($order['Notas'] ?? '') ?></td>
                             <td><strong><?= htmlspecialchars($estado) ?></strong></td>
@@ -203,7 +251,7 @@ require_once "_incl/pre-body.php";
                         <?php foreach ($orders_deuda as $order): ?>
                         <tr style="background: #f5d3ff;">
                             <td><?= htmlspecialchars($order['Fecha'] ?? '') ?></td>
-                            <td><?= htmlspecialchars($order['Persona'] ?? '') ?></td>
+                            <td><?= htmlspecialchars(sc_persona_label($order['Persona'] ?? '', $personas)) ?></td>
                             <td style="white-space: pre-wrap; max-width: 250px;"><?= htmlspecialchars($order['Comanda'] ?? '') ?></td>
                             <td><?= htmlspecialchars($order['Notas'] ?? '') ?></td>
                             <?php if ($can_edit): ?>

@@ -192,6 +192,33 @@ switch ($_GET['action'] ?? '') {
       <button type="submit" class="btn btn-primary mt-3">Crear Usuario</button>
     </div>
   </div>
+  <div class="card pad">
+    <div>
+      <h2>EntreAulas: Configuración</h2>
+      <div class="mb-3">
+        <label for="centro" class="form-label">Centro asociado:</label>
+        <select id="centro" name="centro" class="form-select">
+          <option value="">-- Selecciona un centro --</option>
+          <?php
+          $centros_folders_add = glob("/DATA/entreaulas/Centros/*", GLOB_ONLYDIR) ?: [];
+          foreach ($centros_folders_add as $centro_folder) {
+            $centro_id_opt = basename($centro_folder);
+            echo '<option value="' . htmlspecialchars($centro_id_opt) . '">' . htmlspecialchars($centro_id_opt) . '</option>';
+          }
+          ?>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label for="role" class="form-label">Rol en EntreAulas:</label>
+        <select id="role" name="role" class="form-select">
+          <option value="">-- Selecciona un rol --</option>
+          <option value="teacher">Profesor</option>
+          <option value="student">Estudiante</option>
+        </select>
+      </div>
+      <p class="text-muted"><small>Las aulas podrán asignarse tras guardar el usuario.</small></p>
+    </div>
+  </div>
 </form>
 <?php
     require_once "_incl/post-body.php";

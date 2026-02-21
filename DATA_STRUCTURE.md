@@ -17,8 +17,7 @@ DATA/
         │   │   ├── aulario_abc123.json
         │   │   └── aulario_xyz456.json
         │   └── SuperCafe/                 # SuperCafe data (per centro)
-        │       ├── Personas.json          # People directory
-        │       ├── Menu.json              # Menu items / categories
+        │       ├── Menu.json              # Menu items / categories (optional)
         │       └── Comandas/              # One JSON file per order
         │           └── sc<id>.json
         └── centro2/
@@ -28,14 +27,10 @@ DATA/
 
 ## File Examples
 
-### SuperCafe Persons (DATA/entreaulas/Centros/{centro_id}/SuperCafe/Personas.json)
+### SuperCafe (persons come from the existing Alumnos system)
 
-```json
-{
-  "persona1": { "Nombre": "Ana García", "Region": "Clase A" },
-  "persona2": { "Nombre": "Luis Martínez", "Region": "Clase B" }
-}
-```
+Persons are loaded automatically from the aulario Alumnos directories — no separate configuration file is needed.
+See the **Aulario Student Names** section for the alumnos data format.
 
 ### SuperCafe Menu (DATA/entreaulas/Centros/{centro_id}/SuperCafe/Menu.json)
 
@@ -57,13 +52,14 @@ DATA/
 ```json
 {
   "Fecha": "2024-01-15",
-  "Persona": "persona1",
+  "Persona": "aulario_abc123:Juan",
   "Comanda": "1x Café, 1x Bocadillo",
   "Notas": "Sin azúcar",
   "Estado": "Pedido"
 }
 ```
 
+`Persona` is stored as `{aulario_id}:{alumno_name}` and resolved to a display name at render time.
 Order statuses: `Pedido`, `En preparación`, `Listo`, `Entregado`, `Deuda`.
 A person with 3 or more orders in `Deuda` status cannot place new orders.
 

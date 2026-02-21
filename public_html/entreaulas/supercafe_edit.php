@@ -31,14 +31,45 @@ define('SC_MAX_DEBTS', 3);
 
 $valid_statuses = ['Pedido', 'En preparación', 'Listo', 'Entregado', 'Deuda'];
 
-function sc_load_personas($sc_base)
+/**
+ * Load personas from the existing Alumnos system (alumnos.php).
+ * Returns array keyed by "{aulario_id}:{alumno_name}" with
+ * ['Nombre', 'Region' (aulario display name), 'AularioID'] entries.
+ * Groups are sorted by aulario name, alumnos sorted alphabetically.
+ */
+function sc_load_personas_from_alumnos($centro_id)
 {
-    $path = "$sc_base/Personas.json";
-    if (!file_exists($path)) {
-        return [];
+    $aularios_path = "/DATA/entreaulas/Centros/$centro_id/Aularios";
+    $personas = [];
+    if (!is_dir($aularios_path)) {
+        return $personas;
     }
-    $data = json_decode(file_get_contents($path), true);
-    return is_array($data) ? $data : [];
+    $aulario_files = glob("$aularios_path/*.json") ?: [];
+    foreach ($aulario_files as $aulario_file) {
+        $aulario_id   = basename($aulario_file, '.json');
+        $aulario_data = json_decode(file_get_contents($aulario_file), true);
+        $aulario_name = $aulario_data['name'] ?? $aulario_id;
+        $alumnos_path = "$aularios_path/$aulario_id/Alumnos";
+        if (!is_dir($alumnos_path)) {
+            continue;
+        }
+        $alumno_dirs = glob("$alumnos_path/*/", GLOB_ONLYDIR) ?: [];
+        usort($alumno_dirs, function ($a, $b) {
+            return strcasecmp(basename($a), basename($b));
+        });
+        foreach ($alumno_dirs as $alumno_dir) {
+            $alumno_name = basename($alumno_dir);
+            // Key uses ':' as separator; safe_id_segment chars [A-Za-z0-9_-] exclude ':'
+            $key = $aulario_id . ':' . $alumno_name;
+            $personas[$key] = [
+                'Nombre'    => $alumno_name,
+                'Region'    => $aulario_name,
+                'AularioID' => $aulario_id,
+                'HasPhoto'  => file_exists("$alumno_dir/photo.jpg"),
+            ];
+        }
+    }
+    return $personas;
 }
 
 function sc_load_menu($sc_base)
@@ -51,7 +82,7 @@ function sc_load_menu($sc_base)
     return is_array($data) ? $data : [];
 }
 
-function sc_count_debts($persona_id)
+function sc_count_debts($persona_key)
 {
     if (!is_dir(SC_DATA_DIR)) {
         return 0;
@@ -60,7 +91,7 @@ function sc_count_debts($persona_id)
     foreach (glob(SC_DATA_DIR . '/*.json') ?: [] as $file) {
         $data = json_decode(file_get_contents($file), true);
         if (is_array($data)
-            && ($data['Persona'] ?? '') === $persona_id
+            && ($data['Persona'] ?? '') === $persona_key
             && ($data['Estado'] ?? '') === 'Deuda') {
             $count++;
         }
@@ -92,22 +123,30 @@ if (!$is_new && is_readable($order_file)) {
     }
 }
 
-$personas = sc_load_personas($sc_base);
+$personas = sc_load_personas_from_alumnos($centro_id);
 $menu     = sc_load_menu($sc_base);
+
+// Group personas by aulario for the optgroup picker
+$personas_by_aulario = [];
+foreach ($personas as $key => $pinfo) {
+    $personas_by_aulario[$pinfo['Region']][$key] = $pinfo;
+}
 
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $persona_id = $_POST['Persona'] ?? '';
-    $notas      = trim($_POST['Notas'] ?? '');
-    $estado     = $_POST['Estado'] ?? 'Pedido';
+    $persona_key = $_POST['Persona'] ?? '';
+    $notas       = trim($_POST['Notas'] ?? '');
+    $estado      = $_POST['Estado'] ?? 'Pedido';
 
     if (!in_array($estado, $valid_statuses, true)) {
         $estado = 'Pedido';
     }
 
-    if ($persona_id === '') {
-        $error = '¡Hay que elegir una persona!';
+    // Validate that the submitted persona key exists in the loaded list.
+    // When no alumnos are configured ($personas is empty), accept any non-empty free-text value.
+    if ($persona_key === '' || (!empty($personas) && !array_key_exists($persona_key, $personas))) {
+        $error = '¡Hay que elegir una persona válida!';
     } else {
         // Build comanda string from selected menu items
         $comanda_parts = [];
@@ -122,7 +161,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         } else {
-            // No menu configured: accept free-text input
             $manual = trim($_POST['Comanda_manual'] ?? '');
             if ($manual !== '') {
                 $comanda_parts[] = $manual;
@@ -130,10 +168,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $comanda_str = implode(', ', $comanda_parts);
 
-        // Debt check: only for new orders or when changing the person
+        // Debt check: only for new orders or when the person changes
         $prev_persona = $order_data['Persona'] ?? '';
-        if ($is_new || $prev_persona !== $persona_id) {
-            $debt_count = sc_count_debts($persona_id);
+        if ($is_new || $prev_persona !== $persona_key) {
+            $debt_count = sc_count_debts($persona_key);
             if ($debt_count >= SC_MAX_DEBTS) {
                 $error = 'Esta persona tiene ' . $debt_count . ' comandas en deuda. No se puede realizar el pedido.';
             }
@@ -142,7 +180,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($error === '') {
             $new_data = [
                 'Fecha'   => date('Y-m-d'),
-                'Persona' => $persona_id,
+                'Persona' => $persona_key,
                 'Comanda' => $comanda_str,
                 'Notas'   => $notas,
                 'Estado'  => $is_new ? 'Pedido' : $estado,
@@ -192,26 +230,44 @@ require_once "_incl/pre-body.php";
 
         <div class="mb-3">
             <label class="form-label"><strong>Persona</strong></label>
-            <?php if (!empty($personas)): ?>
+            <?php if (!empty($personas_by_aulario)): ?>
                 <select name="Persona" class="form-select" required>
                     <option value="">-- Selecciona una persona --</option>
-                    <?php foreach ($personas as $pid => $pinfo): ?>
-                        <option value="<?= htmlspecialchars($pid) ?>"
-                            <?= ($order_data['Persona'] === (string)$pid) ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($pinfo['Nombre'] ?? $pid) ?>
-                            <?php if (!empty($pinfo['Region'])): ?>
-                                (<?= htmlspecialchars($pinfo['Region']) ?>)
-                            <?php endif; ?>
-                        </option>
+                    <?php foreach ($personas_by_aulario as $region_name => $group): ?>
+                        <optgroup label="<?= htmlspecialchars($region_name) ?>">
+                            <?php foreach ($group as $pkey => $pinfo): ?>
+                                <option value="<?= htmlspecialchars($pkey) ?>"
+                                    <?= ($order_data['Persona'] === $pkey) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($pinfo['Nombre']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </optgroup>
                     <?php endforeach; ?>
                 </select>
+                <?php
+                // Show photo of the currently selected person (if editing)
+                $sel_key  = $order_data['Persona'];
+                $sel_info = $personas[$sel_key] ?? null;
+                if ($sel_info && $sel_info['HasPhoto']):
+                ?>
+                    <div id="sc-persona-photo" style="margin-top: 8px;">
+                        <?php $photo_url = '/entreaulas/_filefetch.php?type=alumno_photo'
+                            . '&centro=' . urlencode($centro_id)
+                            . '&aulario=' . urlencode($sel_info['AularioID'])
+                            . '&alumno=' . urlencode($sel_info['Nombre']); ?>
+                        <img src="<?= htmlspecialchars($photo_url) ?>"
+                             alt="Foto de <?= htmlspecialchars($sel_info['Nombre']) ?>"
+                             style="height: 80px; border-radius: 8px; border: 2px solid #dee2e6;">
+                    </div>
+                <?php endif; ?>
             <?php else: ?>
                 <input type="text" name="Persona" class="form-control"
                        value="<?= htmlspecialchars($order_data['Persona']) ?>"
                        placeholder="Nombre de la persona" required>
                 <small class="text-muted">
-                    No hay personas configuradas en
-                    <code>/DATA/entreaulas/Centros/<?= htmlspecialchars($centro_id) ?>/SuperCafe/Personas.json</code>.
+                    No hay alumnos registrados en los aularios de este centro.
+                    Añade alumnos desde
+                    <a href="/entreaulas/">EntreAulas</a>.
                 </small>
             <?php endif; ?>
         </div>
@@ -281,3 +337,4 @@ require_once "_incl/pre-body.php";
 </form>
 
 <?php require_once "_incl/post-body.php"; ?>
+
