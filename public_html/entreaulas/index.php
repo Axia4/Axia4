@@ -55,6 +55,15 @@ function safe_aulario_config_path($centro_id, $aulario_id)
             ' . htmlspecialchars($aulario_name) . '
         </a>';
     } ?>
+    <?php if (in_array('supercafe:access', $_SESSION['auth_data']['permissions'] ?? [])): ?>
+        <a href="/entreaulas/supercafe.php" class="btn btn-warning grid-item">
+            <img src="/static/iconexperience/purchase_order_cart.png" height="125"
+                 style="background: white; padding: 5px; border-radius: 10px;"
+                 alt="Icono SuperCafe">
+            <br>
+            SuperCafe
+        </a>
+    <?php endif; ?>
 </div>
 
 <style>

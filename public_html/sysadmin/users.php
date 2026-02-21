@@ -165,8 +165,58 @@ switch ($_GET['action'] ?? '') {
             </div>
           </div>
         </div>
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="headingSupercafe">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSupercafe" aria-expanded="false" aria-controls="collapseSupercafe">
+              SuperCafe
+            </button>
+          </h2>
+          <div id="collapseSupercafe" class="accordion-collapse collapse" aria-labelledby="headingSupercafe" data-bs-parent="#permissionsAccordion">
+            <div class="accordion-body">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="permissions[]" value="supercafe:access" id="supercafe-access">
+                <label class="form-check-label" for="supercafe-access">
+                  Acceso
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="permissions[]" value="supercafe:edit" id="supercafe-edit">
+                <label class="form-check-label" for="supercafe-edit">
+                  Editar comandas
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       <button type="submit" class="btn btn-primary mt-3">Crear Usuario</button>
+    </div>
+  </div>
+  <div class="card pad">
+    <div>
+      <h2>EntreAulas: Configuración</h2>
+      <div class="mb-3">
+        <label for="centro" class="form-label">Centro asociado:</label>
+        <select id="centro" name="centro" class="form-select">
+          <option value="">-- Selecciona un centro --</option>
+          <?php
+          $centros_folders_add = glob("/DATA/entreaulas/Centros/*", GLOB_ONLYDIR) ?: [];
+          foreach ($centros_folders_add as $centro_folder) {
+            $centro_id_opt = basename($centro_folder);
+            echo '<option value="' . htmlspecialchars($centro_id_opt) . '">' . htmlspecialchars($centro_id_opt) . '</option>';
+          }
+          ?>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label for="role" class="form-label">Rol en EntreAulas:</label>
+        <select id="role" name="role" class="form-select">
+          <option value="">-- Selecciona un rol --</option>
+          <option value="teacher">Profesor</option>
+          <option value="student">Estudiante</option>
+        </select>
+      </div>
+      <p class="text-muted"><small>Las aulas podrán asignarse tras guardar el usuario.</small></p>
     </div>
   </div>
 </form>
@@ -247,6 +297,29 @@ switch ($_GET['action'] ?? '') {
                 <input class="form-check-input" type="checkbox" name="permissions[]" value="entreaulas:proyectos:delete" id="entreaulas-proyectos-delete" <?php if (in_array('entreaulas:proyectos:delete', $userdata['permissions'] ?? [])) echo 'checked'; ?>>
                 <label class="form-check-label" for="entreaulas-proyectos-delete">
                   Eliminar Proyectos
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="headingSupercafe">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSupercafe" aria-expanded="false" aria-controls="collapseSupercafe">
+              SuperCafe
+            </button>
+          </h2>
+          <div id="collapseSupercafe" class="accordion-collapse collapse" aria-labelledby="headingSupercafe" data-bs-parent="#permissionsAccordion">
+            <div class="accordion-body">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="permissions[]" value="supercafe:access" id="supercafe-access" <?php if (in_array('supercafe:access', $userdata['permissions'] ?? [])) echo 'checked'; ?>>
+                <label class="form-check-label" for="supercafe-access">
+                  Acceso
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="permissions[]" value="supercafe:edit" id="supercafe-edit" <?php if (in_array('supercafe:edit', $userdata['permissions'] ?? [])) echo 'checked'; ?>>
+                <label class="form-check-label" for="supercafe-edit">
+                  Editar comandas
                 </label>
               </div>
             </div>
