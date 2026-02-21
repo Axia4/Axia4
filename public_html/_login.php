@@ -166,12 +166,9 @@ if (isset($_POST["user"])) {
     $password = $_POST["password"];
     $user_filename = safe_username_to_filename($user);
     $userdata = ($user_filename !== "") ? json_decode(@file_get_contents("/DATA/Usuarios/" . $user_filename . ".json"), true) : null;
-    if (!isset($userdata["password_hash"])) {
+    if (!is_array($userdata) || !isset($userdata["password_hash"])) {
         $_GET["_result"] = "El usuario no existe.";
-    }
-
-    $hash = $userdata["password_hash"] ?? null;
-    if ($hash && password_verify($password, $hash)) {
+    } elseif (password_verify($password, $userdata["password_hash"])) {
         session_regenerate_id(true);
         $_SESSION['auth_user'] = $user;
         $_SESSION['auth_data'] = $userdata;
