@@ -796,7 +796,7 @@ switch ($view_action) {
     break;
   case "menu":
     // Menú del comedor (nuevo sistema, vista simplificada)
-    $aulario_id = safe_id_segment(Sf($_GET["aulario"] ?? ''));
+    $aulario_id = safe_id_segment($_GET["aulario"] ?? '');
     $centro_id = safe_centro_id($_SESSION["auth_data"]["entreaulas"]["centro"] ?? "");
 
     $source_aulario_id = $aulario_id;
@@ -805,7 +805,7 @@ switch ($view_action) {
       $aulario_path = safe_aulario_config_path($centro_id, $aulario_id);
       $aulario = ($aulario_path && file_exists($aulario_path)) ? json_decode(file_get_contents($aulario_path), true) : null;
       if ($aulario && !empty($aulario["shared_comedor_from"])) {
-        $shared_from = safe_id_segment(Sf($aulario["shared_comedor_from"]));
+        $shared_from = safe_id_segment($aulario["shared_comedor_from"]);
         $shared_aulario_path = safe_aulario_config_path($centro_id, $shared_from);
         if ($shared_aulario_path && file_exists($shared_aulario_path)) {
           $source_aulario_id = $shared_from;

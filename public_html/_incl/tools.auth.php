@@ -8,12 +8,17 @@ $ua = $_SERVER['HTTP_USER_AGENT'];
 if (str_starts_with($ua, "Axia4Auth/")) {
     $username = explode("/", $ua)[1];
     $userpass = explode("/", $ua)[2];
-    $userdata = json_decode(file_get_contents("/DATA/Usuarios/" . Sf($username) . ".json"), true);
+    $user_filename = safe_username_to_filename($username);
+    if ($user_filename === "") {
+        header("HTTP/1.1 403 Forbidden");
+        die();
+    }
+    $userdata = json_decode(file_get_contents("/DATA/Usuarios/" . $user_filename . ".json"), true);
     if (!$userdata) {
         header("HTTP/1.1 403 Forbidden");
         die();
     }
-    if (password_verify($userpass, $userdata["password"])) {
+    if (!password_verify($userpass, $userdata["password_hash"])) {
         header("HTTP/1.1 403 Forbidden");
         die();
     }
@@ -30,11 +35,14 @@ if ($_SESSION["auth_ok"] != true && isset($_COOKIE["auth_user"]) && isset($_COOK
     $username = $_COOKIE["auth_user"];
     $userpass_b64 = $_COOKIE["auth_pass_b64"];
     $userpass = base64_decode($userpass_b64);
-    $userdata = json_decode(file_get_contents("/DATA/Usuarios/" . Sf($username) . ".json"), true);
-    if ($userdata && password_verify($userpass, $userdata["password_hash"])) {
-        $_SESSION["auth_user"] = $username;
-        $_SESSION["auth_data"] = $userdata;
-        $_SESSION["auth_ok"] = true;
+    $user_filename = safe_username_to_filename($username);
+    if ($user_filename !== "") {
+        $userdata = json_decode(file_get_contents("/DATA/Usuarios/" . $user_filename . ".json"), true);
+        if ($userdata && password_verify($userpass, $userdata["password_hash"])) {
+            $_SESSION["auth_user"] = $username;
+            $_SESSION["auth_data"] = $userdata;
+            $_SESSION["auth_ok"] = true;
+        }
     }
 }
 
@@ -42,8 +50,11 @@ if ($_SESSION["auth_ok"] != true && isset($_COOKIE["auth_user"]) && isset($_COOK
 if (isset($_SESSION["auth_ok"]) && $_SESSION["auth_ok"] && isset($_SESSION["auth_user"])) {
     if (isset($AuthConfig["session_load_mode"]) && $AuthConfig["session_load_mode"] === "force") {
         $username = $_SESSION["auth_user"];
-        $userdata = json_decode(file_get_contents("/DATA/Usuarios/" . Sf($username) . ".json"), true);
-        $_SESSION["auth_data"] = $userdata;
+        $user_filename = safe_username_to_filename($username);
+        if ($user_filename !== "") {
+            $userdata = json_decode(file_get_contents("/DATA/Usuarios/" . $user_filename . ".json"), true);
+            $_SESSION["auth_data"] = $userdata;
+        }
         $_SESSION["last_reload_time"] = time();
     } elseif (isset($AuthConfig["session_load_mode"]) && $AuthConfig["session_load_mode"] === "never") {
         // Do nothing, never reload session data
@@ -52,8 +63,11 @@ if (isset($_SESSION["auth_ok"]) && $_SESSION["auth_ok"] && isset($_SESSION["auth
             $last_reload = $_SESSION["last_reload_time"];
             if (time() - $last_reload > 300) {
                 $username = $_SESSION["auth_user"];
-                $userdata = json_decode(file_get_contents("/DATA/Usuarios/" . Sf($username) . ".json"), true);
-                $_SESSION["auth_data"] = $userdata;
+                $user_filename = safe_username_to_filename($username);
+                if ($user_filename !== "") {
+                    $userdata = json_decode(file_get_contents("/DATA/Usuarios/" . $user_filename . ".json"), true);
+                    $_SESSION["auth_data"] = $userdata;
+                }
                 $_SESSION["last_reload_time"] = time();
             }
         } else {

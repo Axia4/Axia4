@@ -52,7 +52,7 @@ if ($centro_id === "") {
 }
 
 $action = $_GET["action"] ?? ($_POST["action"] ?? "");
-$aulario_id = safe_id_segment(Sf($_GET["aulario"] ?? $_POST["aulario"] ?? ""));
+$aulario_id = safe_id_segment($_GET["aulario"] ?? $_POST["aulario"] ?? "");
 
 // Validate aulario_id
 if ($aulario_id === "") {

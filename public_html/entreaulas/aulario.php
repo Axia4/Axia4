@@ -24,7 +24,7 @@ function safe_aulario_config_path($centro_id, $aulario_id)
     return "/DATA/entreaulas/Centros/$centro/Aularios/$aulario.json";
 }
 
-$aulario_id = safe_id_segment(Sf($_GET["id"] ?? ""));
+$aulario_id = safe_id_segment($_GET["id"] ?? "");
 $centro_id = safe_centro_id($_SESSION["auth_data"]["entreaulas"]["centro"] ?? "");
 $aulario_path = safe_aulario_config_path($centro_id, $aulario_id);
 $aulario = ($aulario_path && file_exists($aulario_path)) ? json_decode(file_get_contents($aulario_path), true) : null;

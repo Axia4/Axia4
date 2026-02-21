@@ -5,11 +5,30 @@ if (!isset($AuthConfig)) {
     $AuthConfig = json_decode(file_get_contents("/DATA/AuthConfig.json"), true);
 }
 $DOMAIN = $_SERVER["HTTP_X_FORWARDED_HOST"] ?? $_SERVER["HTTP_HOST"];
+
+/**
+ * Return a safe redirect URL: only allow relative paths starting with a single slash.
+ * Falls back to "/" for any external, protocol-relative, or otherwise unsafe URLs.
+ */
+function safe_redir($url) {
+    $url = (string)$url;
+    // Must start with a single "/" but not "//" (protocol-relative)
+    if (preg_match('#^/[^/]#', $url) || $url === '/') {
+        // Strip newlines to prevent header injection
+        return preg_replace('/[\r\n]/', '', $url);
+    }
+    return '/';
+}
+
 if ($_GET["reload_user"] == "1") {
-    $user = str_replace("@", "__", $_SESSION["auth_user"]);
-    $userdata = json_decode(file_get_contents("/DATA/Usuarios/" . Sf($user) . ".json"), true);
+    $user_filename = safe_username_to_filename($_SESSION["auth_user"] ?? "");
+    if ($user_filename === "") {
+        header("Location: /");
+        die();
+    }
+    $userdata = json_decode(file_get_contents("/DATA/Usuarios/" . $user_filename . ".json"), true);
     $_SESSION['auth_data'] = $userdata;
-    $redir = $_GET["redir"] ?? "/";
+    $redir = safe_redir($_GET["redir"] ?? "/");
     header("Location: $redir");
     die();
 }
@@ -20,6 +39,15 @@ if ($_GET["google_callback"] == "1") {
     if (!isset($_GET["code"])) {
         die("Error: No se recibió el código de autorización de Google.");
     }
+
+    // Validate CSRF nonce from state parameter
+    $state_raw = $_GET["state"] ?? "";
+    $state = json_decode(base64_decode($state_raw), true);
+    $state_nonce = $state["nonce"] ?? "";
+    if (!$state_nonce || !isset($_SESSION["oauth_nonce"]) || !hash_equals($_SESSION["oauth_nonce"], $state_nonce)) {
+        die("Error: Estado OAuth inválido. Por favor, inténtalo de nuevo.");
+    }
+    unset($_SESSION["oauth_nonce"]);
     
     $code = $_GET["code"];
     
@@ -56,7 +84,11 @@ if ($_GET["google_callback"] == "1") {
     
     $email = $user_info["email"];
     $name = $user_info["name"] ?? explode("@", $email)[0];
-    $userfile = "/DATA/Usuarios/" . Sf(strtolower(str_replace("@", "__", $email))) . ".json";
+    $user_filename = safe_username_to_filename($email);
+    if ($user_filename === "") {
+        die("Error: Dirección de correo inválida.");
+    }
+    $userfile = "/DATA/Usuarios/" . $user_filename . ".json";
     $password = bin2hex(random_bytes(16)); // Generar una contraseña aleatoria para el usuario, aunque no se usará para iniciar sesión
     if (file_exists($userfile)) {
         $userdata = json_decode(file_get_contents($userfile), true);
@@ -72,13 +104,15 @@ if ($_GET["google_callback"] == "1") {
         file_put_contents($userfile, json_encode($userdata));
     }
     
+    session_regenerate_id(true);
     $_SESSION['auth_user'] = $email;
     $_SESSION['auth_data'] = $userdata;
     $_SESSION['auth_ok'] = true;
-    setcookie("auth_user", $email, time() + (86400 * 30), "/");
-    setcookie("auth_pass_b64", base64_encode($password), time() + (86400 * 30), "/");
+    $cookie_options = ["expires" => time() + (86400 * 30), "path" => "/", "httponly" => true, "secure" => true, "samesite" => "Lax"];
+    setcookie("auth_user", $email, $cookie_options);
+    setcookie("auth_pass_b64", base64_encode($password), $cookie_options);
 
-    $redir = json_decode(base64_decode($_GET["state"]), true)["redir"] ?? "/";
+    $redir = safe_redir($state["redir"] ?? "/");
 
     header("Location: $redir");
     die();
@@ -89,6 +123,10 @@ if ($_GET["google"] == "1") {
     }
     $url = "https://accounts.google.com/o/oauth2/auth";
     
+    // Generate a CSRF nonce and store it in the session
+    $oauth_nonce = bin2hex(random_bytes(16));
+    $_SESSION["oauth_nonce"] = $oauth_nonce;
+
     // build the HTTP GET query
     $params = array(
         "response_type" => "code",
@@ -96,7 +134,8 @@ if ($_GET["google"] == "1") {
         "redirect_uri" => "https://$DOMAIN/_login.php?google_callback=1",
         "scope" => "email openid profile",
         "state" => base64_encode(json_encode([
-            "redir" => $_GET["redir"] ?? "/"
+            "redir" => safe_redir($_GET["redir"] ?? "/"),
+            "nonce" => $oauth_nonce
         ]))
     );
     
@@ -107,16 +146,17 @@ if ($_GET["google"] == "1") {
     die();
 }
 if ($_GET["logout"] == "1") {
-    $redir = $_GET["redir"] ?? "/";
-    setcookie("auth_user", "", time() - 3600, "/");
-    setcookie("auth_pass_b64", "", time() - 3600, "/");
+    $redir = safe_redir($_GET["redir"] ?? "/");
+    $cookie_options_expired = ["expires" => time() - 3600, "path" => "/", "httponly" => true, "secure" => true, "samesite" => "Lax"];
+    setcookie("auth_user", "", $cookie_options_expired);
+    setcookie("auth_pass_b64", "", $cookie_options_expired);
     session_destroy();
     header("Location: $redir");
     die();
 }
 if ($_GET["clear_session"] == "1") {
     session_destroy();
-    $redir = $_GET["redir"] ?? "/";
+    $redir = safe_redir($_GET["redir"] ?? "/");
     header("Location: $redir");
     die();
 }
@@ -124,19 +164,19 @@ if (isset($_POST["user"])) {
     $valid = "";
     $user = trim(strtolower($_POST["user"]));
     $password = $_POST["password"];
-    $userdata = json_decode(file_get_contents("/DATA/Usuarios/" . Sf($user) . ".json"), true);
-    if (!isset($userdata["password_hash"])) {
+    $user_filename = safe_username_to_filename($user);
+    $userdata = ($user_filename !== "") ? json_decode(@file_get_contents("/DATA/Usuarios/" . $user_filename . ".json"), true) : null;
+    if (!is_array($userdata) || !isset($userdata["password_hash"])) {
         $_GET["_result"] = "El usuario no existe.";
-    }
-
-    $hash = $userdata["password_hash"];
-    if (password_verify($password, $hash)) {
+    } elseif (password_verify($password, $userdata["password_hash"])) {
+        session_regenerate_id(true);
         $_SESSION['auth_user'] = $user;
         $_SESSION['auth_data'] = $userdata;
         $_SESSION['auth_ok'] = true;
-        setcookie("auth_user", $user, time() + (86400 * 30), "/");
-        setcookie("auth_pass_b64", base64_encode($password), time() + (86400 * 30), "/");
-        $redir = $_GET["redir"] ?? "/";
+        $cookie_options = ["expires" => time() + (86400 * 30), "path" => "/", "httponly" => true, "secure" => true, "samesite" => "Lax"];
+        setcookie("auth_user", $user, $cookie_options);
+        setcookie("auth_pass_b64", base64_encode($password), $cookie_options);
+        $redir = safe_redir($_GET["redir"] ?? "/");
         header("Location: $redir");
         die();
     } else {
