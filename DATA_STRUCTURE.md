@@ -13,15 +13,59 @@ DATA/
     │   └── user2.json
     └── Centros/                           # Centro data
         ├── centro1/
-        │   └── Aularios/
-        │       ├── aulario_abc123.json
-        │       └── aulario_xyz456.json
+        │   ├── Aularios/
+        │   │   ├── aulario_abc123.json
+        │   │   └── aulario_xyz456.json
+        │   └── SuperCafe/                 # SuperCafe data (per centro)
+        │       ├── Personas.json          # People directory
+        │       ├── Menu.json              # Menu items / categories
+        │       └── Comandas/              # One JSON file per order
+        │           └── sc<id>.json
         └── centro2/
             └── Aularios/
                 └── aulario_def789.json
 ```
 
 ## File Examples
+
+### SuperCafe Persons (DATA/entreaulas/Centros/{centro_id}/SuperCafe/Personas.json)
+
+```json
+{
+  "persona1": { "Nombre": "Ana García", "Region": "Clase A" },
+  "persona2": { "Nombre": "Luis Martínez", "Region": "Clase B" }
+}
+```
+
+### SuperCafe Menu (DATA/entreaulas/Centros/{centro_id}/SuperCafe/Menu.json)
+
+```json
+{
+  "Bebidas": {
+    "Café": 1,
+    "Zumo": 1.5
+  },
+  "Comida": {
+    "Bocadillo": 2.5,
+    "Ensalada": 3
+  }
+}
+```
+
+### SuperCafe Order (DATA/entreaulas/Centros/{centro_id}/SuperCafe/Comandas/{id}.json)
+
+```json
+{
+  "Fecha": "2024-01-15",
+  "Persona": "persona1",
+  "Comanda": "1x Café, 1x Bocadillo",
+  "Notas": "Sin azúcar",
+  "Estado": "Pedido"
+}
+```
+
+Order statuses: `Pedido`, `En preparación`, `Listo`, `Entregado`, `Deuda`.
+A person with 3 or more orders in `Deuda` status cannot place new orders.
 
 ### Main Users (DATA/Usuarios.json)
 

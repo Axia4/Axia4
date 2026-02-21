@@ -165,6 +165,29 @@ switch ($_GET['action'] ?? '') {
             </div>
           </div>
         </div>
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="headingSupercafe">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSupercafe" aria-expanded="false" aria-controls="collapseSupercafe">
+              SuperCafe
+            </button>
+          </h2>
+          <div id="collapseSupercafe" class="accordion-collapse collapse" aria-labelledby="headingSupercafe" data-bs-parent="#permissionsAccordion">
+            <div class="accordion-body">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="permissions[]" value="supercafe:access" id="supercafe-access">
+                <label class="form-check-label" for="supercafe-access">
+                  Acceso
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="permissions[]" value="supercafe:edit" id="supercafe-edit">
+                <label class="form-check-label" for="supercafe-edit">
+                  Editar comandas
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       <button type="submit" class="btn btn-primary mt-3">Crear Usuario</button>
     </div>
@@ -247,6 +270,29 @@ switch ($_GET['action'] ?? '') {
                 <input class="form-check-input" type="checkbox" name="permissions[]" value="entreaulas:proyectos:delete" id="entreaulas-proyectos-delete" <?php if (in_array('entreaulas:proyectos:delete', $userdata['permissions'] ?? [])) echo 'checked'; ?>>
                 <label class="form-check-label" for="entreaulas-proyectos-delete">
                   Eliminar Proyectos
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="headingSupercafe">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseSupercafe" aria-expanded="false" aria-controls="collapseSupercafe">
+              SuperCafe
+            </button>
+          </h2>
+          <div id="collapseSupercafe" class="accordion-collapse collapse" aria-labelledby="headingSupercafe" data-bs-parent="#permissionsAccordion">
+            <div class="accordion-body">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="permissions[]" value="supercafe:access" id="supercafe-access" <?php if (in_array('supercafe:access', $userdata['permissions'] ?? [])) echo 'checked'; ?>>
+                <label class="form-check-label" for="supercafe-access">
+                  Acceso
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="permissions[]" value="supercafe:edit" id="supercafe-edit" <?php if (in_array('supercafe:edit', $userdata['permissions'] ?? [])) echo 'checked'; ?>>
+                <label class="form-check-label" for="supercafe-edit">
+                  Editar comandas
                 </label>
               </div>
             </div>

@@ -5,3 +5,7 @@
 <a class="sidebar-link" href="/entreaulas/">
     <span>Mi aula</span>
 </a>
+<a class="sidebar-link" href="/entreaulas/supercafe.php">
+    <img src="/static/iconexperience/purchase_order_cart.png" alt="">
+    <span>SuperCafe</span>
+</a>
