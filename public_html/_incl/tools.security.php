@@ -10,7 +10,7 @@ function Sf($filename) {
      * @return string The sanitized filename.
      */
     // Remove any path information and null bytes
-    $filename = realpath($filename);
+    $filename = basename($filename);
     if ($filename === false) {
         $filename = "";
     }
