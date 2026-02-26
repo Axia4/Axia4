@@ -1,27 +1,8 @@
 <?php
 require_once "_incl/auth_redir.php";
 require_once "_incl/pre-body.php";
+require_once "../_incl/tools.security.php";
 
-function safe_id_segment($value)
-{
-    $value = basename((string)$value);
-    return preg_replace('/[^A-Za-z0-9_-]/', '', $value);
-}
-
-function safe_centro_id($value)
-{
-    return preg_replace('/[^0-9]/', '', (string)$value);
-}
-
-function safe_aulario_config_path($centro_id, $aulario_id)
-{
-    $centro = safe_centro_id($centro_id);
-    $aulario = safe_id_segment($aulario_id);
-    if ($centro === '' || $aulario === '') {
-        return null;
-    }
-    return "/DATA/entreaulas/Centros/$centro/Aularios/$aulario.json";
-}
 ?>
 <div class="card pad">
     <div>

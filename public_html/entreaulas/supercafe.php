@@ -7,16 +7,6 @@ if (!in_array('supercafe:access', $_SESSION['auth_data']['permissions'] ?? [])) 
     die('Acceso denegado');
 }
 
-function safe_centro_id_sc($value)
-{
-    return preg_replace('/[^0-9]/', '', (string)$value);
-}
-
-function sc_safe_order_id($value)
-{
-    return preg_replace('/[^a-zA-Z0-9_-]/', '', basename((string)$value));
-}
-
 /**
  * Load personas from the existing Alumnos system.
  * Returns array keyed by "{aulario_id}:{alumno_name}" with
@@ -64,7 +54,7 @@ function sc_persona_label($persona_key, $personas)
     return $persona_key;
 }
 
-$centro_id = safe_centro_id_sc($_SESSION['auth_data']['entreaulas']['centro'] ?? '');
+$centro_id = safe_centro_id($_SESSION['auth_data']['entreaulas']['centro'] ?? '');
 if ($centro_id === '') {
     require_once "_incl/pre-body.php";
     echo '<div class="card pad"><h1>SuperCafe</h1><p>No tienes un centro asignado.</p></div>';
@@ -91,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $can_edit) {
     $action = $_POST['action'] ?? '';
 
     if ($action === 'change_status') {
-        $order_id  = sc_safe_order_id($_POST['order_id'] ?? '');
+        $order_id  = safe_id($_POST['order_id'] ?? '');
         $new_status = $_POST['status'] ?? '';
         if ($order_id !== '' && array_key_exists($new_status, $estados_colores)) {
             $order_file = SC_DATA_DIR . '/' . $order_id . '.json';
@@ -112,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $can_edit) {
     }
 
     if ($action === 'delete') {
-        $order_id = sc_safe_order_id($_POST['order_id'] ?? '');
+        $order_id = safe_id($_POST['order_id'] ?? '');
         if ($order_id !== '') {
             $order_file = SC_DATA_DIR . '/' . $order_id . '.json';
             if (is_file($order_file)) {

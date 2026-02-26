@@ -1,40 +1,12 @@
 <?php
 require_once "_incl/auth_redir.php";
-
+require_once "../_incl/tools.security.php";
 // Check if user has docente permission
 if (!in_array("entreaulas:docente", $_SESSION["auth_data"]["permissions"] ?? [])) {
     header("HTTP/1.1 403 Forbidden");
     die("Access denied");
 }
 
-function safe_id_segment($value)
-{
-    $value = basename((string)$value);
-    return preg_replace('/[^A-Za-z0-9_-]/', '', $value);
-}
-
-function safe_centro_id($value)
-{
-    return preg_replace('/[^0-9]/', '', (string)$value);
-}
-
-function safe_alumno_name($value)
-{
-    $value = basename((string)$value);
-    $value = trim($value);
-    $value = preg_replace('/[\x00-\x1F\x7F]/u', '', $value);
-    $value = str_replace(['/', '\\'], '', $value);
-    return $value;
-}
-
-function path_is_within($real_base, $real_path)
-{
-    if ($real_base === false || $real_path === false) {
-        return false;
-    }
-    $base_prefix = rtrim($real_base, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
-    return strpos($real_path, $base_prefix) === 0 || $real_path === rtrim($real_base, DIRECTORY_SEPARATOR);
-}
 
 $aulario_id = safe_id_segment($_GET["aulario"] ?? "");
 $centro_id = safe_centro_id($_SESSION["auth_data"]["entreaulas"]["centro"] ?? "");

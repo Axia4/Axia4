@@ -14,22 +14,6 @@ function safe_username($value)
 
 define('USERS_DIR', '/DATA/Usuarios/');
 
-function get_user_file_path($username)
-{
-  return USERS_DIR . $username . '.json';
-}
-
-function safe_centro_id($value)
-{
-  return preg_replace('/[^0-9]/', '', (string)$value);
-}
-
-function safe_aulario_id($value)
-{
-  $value = basename((string)$value);
-  return preg_replace('/[^a-zA-Z0-9_-]/', '', $value);
-}
-
 switch ($_GET['form'] ?? '') {
   case 'save_edit':
     $username = safe_username($_POST['username'] ?? '');

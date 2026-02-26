@@ -3,29 +3,11 @@ ini_set("display_errors", 0);
 ini_set('memory_limit', '1G');
 
 require_once __DIR__ . "/_incl/auth_redir.php";
-
+require_once "../_incl/tools.security.php";
 ob_implicit_flush(true);
 ob_end_flush();
 header("Access-Control-Allow-Origin: *");
 
-function safe_id_segment($value)
-{
-    $value = basename((string)$value);
-    return preg_replace('/[^A-Za-z0-9_-]/', '', $value);
-}
-
-function safe_centro_id($value)
-{
-    return preg_replace('/[^0-9]/', '', (string)$value);
-}
-
-function safe_filename($name)
-{
-    $name = basename((string)$name);
-    $name = preg_replace('/[^A-Za-z0-9._-]/', '_', $name);
-    $name = ltrim($name, '.');
-    return $name;
-}
 
 $type = $_GET["type"] ?? "";
 switch ($type) {

@@ -106,3 +106,62 @@ function Sb($input) {
     }
     return (bool)$input;
 }
+function get_user_file_path($username)
+{
+  return USERS_DIR . $username . '.json';
+}
+
+function safe_centro_id($value)
+{
+  return preg_replace('/[^a-zA-Z0-9._-]/', '', (string)$value);
+}
+
+function safe_aulario_id($value)
+{
+  $value = basename((string)$value);
+  return preg_replace('/[^a-zA-Z0-9._-]/', '', $value);
+}
+
+function safe_filename($name)
+{
+    $name = basename((string)$name);
+    $name = preg_replace('/[^A-Za-z0-9._-]/', '_', $name);
+    $name = ltrim($name, '.');
+    return $name;
+}
+function safe_id_segment($value)
+{
+    $value = basename((string)$value);
+    return preg_replace('/[^A-Za-z0-9._-]/', '', $value);
+}
+function safe_id($value)
+{
+    return preg_replace('/[^a-zA-Z0-9._-]/', '', basename((string)$value));
+}
+function safe_alumno_name($value)
+{
+    $value = basename((string)$value);
+    $value = trim($value);
+    $value = preg_replace('/[\x00-\x1F\x7F]/u', '', $value);
+    $value = str_replace(['/', '\\'], '', $value);
+    return $value;
+}
+
+function path_is_within($real_base, $real_path)
+{
+    if ($real_base === false || $real_path === false) {
+        return false;
+    }
+    $base_prefix = rtrim($real_base, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+    return strpos($real_path, $base_prefix) === 0 || $real_path === rtrim($real_base, DIRECTORY_SEPARATOR);
+}
+
+function safe_aulario_config_path($centro_id, $aulario_id)
+{
+    $centro = safe_centro_id($centro_id);
+    $aulario = safe_id_segment($aulario_id);
+    if ($centro === '' || $aulario === '') {
+        return null;
+    }
+    return "/DATA/entreaulas/Centros/$centro/Aularios/$aulario.json";
+}

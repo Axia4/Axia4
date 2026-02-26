@@ -7,17 +7,7 @@ if (!in_array('supercafe:edit', $_SESSION['auth_data']['permissions'] ?? [])) {
     die('Acceso denegado');
 }
 
-function safe_centro_id_sc($value)
-{
-    return preg_replace('/[^0-9]/', '', (string)$value);
-}
-
-function sc_safe_order_id($value)
-{
-    return preg_replace('/[^a-zA-Z0-9_-]/', '', basename((string)$value));
-}
-
-$centro_id = safe_centro_id_sc($_SESSION['auth_data']['entreaulas']['centro'] ?? '');
+$centro_id = safe_centro_id($_SESSION['auth_data']['entreaulas']['centro'] ?? '');
 if ($centro_id === '') {
     require_once "_incl/pre-body.php";
     echo '<div class="card pad"><h1>SuperCafe</h1><p>No tienes un centro asignado.</p></div>';
@@ -100,7 +90,7 @@ function sc_count_debts($persona_key)
 }
 
 // Determine if creating or editing
-$order_id = sc_safe_order_id($_GET['id'] ?? '');
+$order_id = safe_id($_GET['id'] ?? '');
 $is_new   = $order_id === '';
 if ($is_new) {
     $raw_id   = uniqid('sc', true);
@@ -143,21 +133,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $estado = 'Pedido';
     }
 
-    // Validate that the submitted persona key exists in the loaded list.
-    // When no alumnos are configured ($personas is empty), accept any non-empty free-text value.
+    // Validar persona
     if ($persona_key === '' || (!empty($personas) && !array_key_exists($persona_key, $personas))) {
         $error = '¡Hay que elegir una persona válida!';
     } else {
-        // Build comanda string from selected menu items
+        // Construir comanda desde los campos de categoría visual
         $comanda_parts = [];
         if (!empty($menu)) {
             foreach ($menu as $category => $items) {
-                foreach ($items as $item_name => $item_price) {
-                    $qty_key = 'item_' . md5($category . '_' . $item_name);
-                    $qty = (int)($_POST[$qty_key] ?? 0);
-                    if ($qty > 0) {
-                        $comanda_parts[] = $qty . 'x ' . $item_name;
-                    }
+                $val = trim($_POST[$category] ?? '');
+                if ($val !== '' && array_key_exists($val, $items)) {
+                    $comanda_parts[] = $val;
                 }
             }
         } else {
@@ -168,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $comanda_str = implode(', ', $comanda_parts);
 
-        // Debt check: only for new orders or when the person changes
+        // Comprobar deudas
         $prev_persona = $order_data['Persona'] ?? '';
         if ($is_new || $prev_persona !== $persona_key) {
             $debt_count = sc_count_debts($persona_key);
@@ -210,10 +196,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 require_once "_incl/pre-body.php";
 ?>
 
-<div class="card pad">
-    <h1><?= $is_new ? 'Nueva comanda' : 'Editar comanda' ?></h1>
-    <a href="/entreaulas/supercafe.php" class="btn btn-secondary">← Volver</a>
-</div>
+<h1>Comanda <code><?= htmlspecialchars($order_id) ?></code></h1>
+<a href="/entreaulas/supercafe.php" class="btn btn-secondary">Salir</a>
 
 <?php if ($error !== ''): ?>
     <div class="card pad" style="background: #f8d7da; color: #842029;">
@@ -222,14 +206,16 @@ require_once "_incl/pre-body.php";
 <?php endif; ?>
 
 <form method="post">
-    <fieldset class="card pad">
-        <legend>
-            <strong>Rellenar comanda</strong>
-            <code><?= htmlspecialchars($order_id) ?></code>
-        </legend>
+    <fieldset class="card pad" style="text-align: center;">
+        <legend>Rellenar comanda</legend>
 
-        <div class="mb-3">
-            <label class="form-label"><strong>Persona</strong></label>
+        <label style="display: none;">
+            Fecha<br>
+            <input readonly disabled type="text" value="<?= htmlspecialchars($order_data['Fecha']) ?>"><br><br>
+        </label>
+
+        <label>
+            Persona<br>
             <?php if (!empty($personas_by_aulario)): ?>
                 <select name="Persona" class="form-select" required>
                     <option value="">-- Selecciona una persona --</option>
@@ -245,7 +231,6 @@ require_once "_incl/pre-body.php";
                     <?php endforeach; ?>
                 </select>
                 <?php
-                // Show photo of the currently selected person (if editing)
                 $sel_key  = $order_data['Persona'];
                 $sel_info = $personas[$sel_key] ?? null;
                 if ($sel_info && $sel_info['HasPhoto']):
@@ -270,53 +255,102 @@ require_once "_incl/pre-body.php";
                     <a href="/entreaulas/">EntreAulas</a>.
                 </small>
             <?php endif; ?>
-        </div>
+            <br><br>
+        </label>
 
-        <?php if (!empty($menu)): ?>
-            <div class="mb-3">
-                <label class="form-label"><strong>Artículos</strong></label>
+        <label style="display: none;">
+            Comanda (utiliza el panel de relleno)<br>
+            <textarea readonly disabled><?= htmlspecialchars($order_data['Comanda']) ?></textarea><br><br>
+        </label>
+
+        <div>
+            <?php if (!empty($menu)): ?>
+                <style>
+                .sc-details { text-align: center; margin: 5px; padding: 5px; border: 2px solid black; border-radius: 5px; background: white; cursor: pointer; width: calc(100% - 25px); display: inline-block; }
+                .sc-details summary { padding: 10px; background-size: contain; background-position: left; background-repeat: no-repeat; text-align: left; padding-left: 55px; font-size: 1.1em; }
+                .sc-cat-btn { border-radius: 20px; font-size: 1.1em; margin: 6px; padding: 10px 18px; border: 2px solid #bbb; background: #f8f9fa; display: inline-block; min-width: 90px; min-height: 60px; vertical-align: top; transition: background 0.2s, border 0.2s; }
+                .sc-cat-btn.active { background: #ffe066; border: 2px solid #222; }
+                .sc-cat-btn img { height: 50px; padding: 5px; background: white; border-radius: 8px; }
+                .sc-details .sc-summary-right { float: right; display: flex; align-items: center; gap: 6px; }
+                .sc-details .sc-check { height: 30px; }
+                </style>
+                <?php
+                // Iconos por categoría (puedes ampliar este array según tus iconos)
+                $sc_actions_icons = [
+                  'Tamaño' => 'static/ico/sizes.png',
+                  'Temperatura' => 'static/ico/thermometer2.png',
+                  'Leche' => 'static/ico/milk.png',
+                  'Selección' => 'static/ico/preferences.png',
+                  'Cafeina' => 'static/ico/coffee_bean.png',
+                  'Endulzante' => 'static/ico/lollipop.png',
+                  // ...
+                ];
+                // Cargar valores previos si existen (para mantener selección tras submit fallido)
+                $selected = [];
+                foreach ($menu as $cat => $items) {
+                  foreach ($items as $iname => $iprice) {
+                    $qty_key = 'item_' . md5($cat . '_' . $iname);
+                    $selected[$cat] = isset($_POST[$cat]) ? $_POST[$cat] : (isset($order_data['Comanda']) && strpos($order_data['Comanda'], $iname) !== false ? $iname : '');
+                  }
+                }
+                ?>
                 <?php foreach ($menu as $category => $items): ?>
-                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px;">
-                        <strong><?= htmlspecialchars($category) ?></strong>
-                        <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px;">
-                            <?php foreach ($items as $item_name => $item_price):
-                                $qty_key = 'item_' . md5($category . '_' . $item_name);
-                            ?>
-                                <label style="display: flex; align-items: center; gap: 6px; background: white; padding: 6px 10px; border-radius: 6px; border: 1px solid #dee2e6;">
-                                    <input type="number" name="<?= htmlspecialchars($qty_key) ?>"
-                                           min="0" max="99" value="0"
-                                           style="width: 55px;" class="form-control form-control-sm">
-                                    <?= htmlspecialchars($item_name) ?>
-                                    <?php if ($item_price > 0): ?>
-                                        <small style="color: #6c757d;">(<?= number_format((float)$item_price, 2) ?>c)</small>
-                                    <?php endif; ?>
-                                </label>
-                            <?php endforeach; ?>
+                    <details class="sc-details">
+                        <summary style="background-image: url('<?= isset($sc_actions_icons[$category]) ? $sc_actions_icons[$category] : '' ?>');">
+                            <?= htmlspecialchars($category) ?>
+                            <span class="sc-summary-right">
+                                <span class="sc-selected-val" id="sc-val-<?= md5($category) ?>">
+                                    <?= htmlspecialchars($selected[$category] ?? '') ?>
+                                </span>
+                                <img class="sc-check" src="static/ico/checkbox_unchecked.png" id="sc-check-<?= md5($category) ?>">
+                            </span>
+                        </summary>
+                        <div>
+                        <?php foreach ($items as $item_name => $item_price):
+                            $btn_id = 'sc-btn-' . md5($category . '_' . $item_name);
+                            $is_active = ($selected[$category] ?? '') === $item_name;
+                        ?>
+                            <button type="button" class="sc-cat-btn<?= $is_active ? ' active' : '' ?>" id="<?= $btn_id ?>" onclick="
+                                document.getElementById('sc-val-<?= md5($category) ?>').innerText = '<?= htmlspecialchars($item_name) ?>';
+                                document.getElementById('sc-check-<?= md5($category) ?>').src = 'static/ico/checkbox.png';
+                                var btns = this.parentNode.querySelectorAll('.sc-cat-btn');
+                                btns.forEach(b => b.classList.remove('active'));
+                                this.classList.add('active');
+                                document.getElementById('input-<?= md5($category) ?>').value = '<?= htmlspecialchars($item_name) ?>';
+                            ">
+                                <?= htmlspecialchars($item_name) ?>
+                                <?php if ($item_price > 0): ?>
+                                    <br><small style="color: #6c757d;">(<?= number_format((float)$item_price, 2) ?>c)</small>
+                                <?php endif; ?>
+                                <!-- Aquí podrías poner una imagen si tienes -->
+                            </button>
+                        <?php endforeach; ?>
+                        <input type="hidden" name="<?= htmlspecialchars($category) ?>" id="input-<?= md5($category) ?>" value="<?= htmlspecialchars($selected[$category] ?? '') ?>">
                         </div>
-                    </div>
+                    </details>
                 <?php endforeach; ?>
-            </div>
-        <?php else: ?>
-            <div class="mb-3">
-                <label class="form-label"><strong>Comanda (texto libre)</strong></label>
-                <input type="text" name="Comanda_manual" class="form-control"
-                       value="<?= htmlspecialchars($order_data['Comanda']) ?>"
-                       placeholder="Ej. 1x Café, 1x Bocadillo">
-                <small class="text-muted">
-                    No hay menú configurado en
-                    <code>/DATA/entreaulas/Centros/<?= htmlspecialchars($centro_id) ?>/SuperCafe/Menu.json</code>.
-                </small>
-            </div>
-        <?php endif; ?>
-
-        <div class="mb-3">
-            <label class="form-label"><strong>Notas</strong></label>
-            <textarea name="Notas" class="form-control" rows="2"><?= htmlspecialchars($order_data['Notas']) ?></textarea>
+            <?php else: ?>
+                <div class="mb-3">
+                    <label class="form-label"><strong>Comanda (texto libre)</strong></label>
+                    <input type="text" name="Comanda_manual" class="form-control"
+                           value="<?= htmlspecialchars($order_data['Comanda']) ?>"
+                           placeholder="Ej. 1x Café, 1x Bocadillo">
+                    <small class="text-muted">
+                        No hay menú configurado en
+                        <code>/DATA/entreaulas/Centros/<?= htmlspecialchars($centro_id) ?>/SuperCafe/Menu.json</code>.
+                    </small>
+                </div>
+            <?php endif; ?>
         </div>
+
+        <label>
+            Notas<br>
+            <textarea name="Notas" class="form-control" rows="2"><?= htmlspecialchars($order_data['Notas']) ?></textarea><br><br>
+        </label>
 
         <?php if (!$is_new): ?>
-            <div class="mb-3">
-                <label class="form-label"><strong>Estado</strong></label>
+            <label>
+                Estado<br>
                 <select name="Estado" class="form-select">
                     <?php foreach ($valid_statuses as $st): ?>
                         <option value="<?= htmlspecialchars($st) ?>"
@@ -325,14 +359,12 @@ require_once "_incl/pre-body.php";
                         </option>
                     <?php endforeach; ?>
                 </select>
-                <small class="text-muted">El estado también se puede cambiar desde el listado.</small>
-            </div>
+                <br>Modificar en el listado de comandas<br>
+            </label>
         <?php endif; ?>
 
-        <div style="display: flex; gap: 10px;">
-            <button type="submit" class="btn btn-success">Guardar</button>
-            <a href="/entreaulas/supercafe.php" class="btn btn-secondary">Cancelar</a>
-        </div>
+        <button type="submit" class="btn btn-success">Guardar</button>
+        <a href="/entreaulas/supercafe.php" class="btn btn-secondary">Cancelar</a>
     </fieldset>
 </form>
 
