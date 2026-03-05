@@ -92,17 +92,17 @@ require_once "../_incl/pre-body.php"; ?>
     <select id="fontFamily"></select>
 
     <label>Color letra:</label>
-    <input type="color" id="fontColor" value="#000000">
-
-    <label><input type="checkbox" id="noFill"> Solo contorno</label>
-
+    <input type="color" id="fontColor" value="#000000" style="width: 20px; height: 20px; padding: 0;">
+<br>
+    <label>Solo contorno: <input type="checkbox" id="noFill" style="width: 20px; height: 20px;"></label>
+<br>
     <label>Color contorno:</label>
-    <input type="color" id="strokeColor" value="#000000">
-
+    <input type="color" id="strokeColor" value="#000000" style="width: 20px; height: 20px; padding: 0;">
+<br>
     <label>Grosor contorno base (0 para quitar):</label>
     <input type="number" id="strokeWidth" value="0" max="5" min="0">
 
-    <button id="generate">Imprimir</button>
+    <button id="generate" class="btn btn-primary">Imprimir</button>
     </div>
     `;
 
