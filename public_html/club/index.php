@@ -22,6 +22,7 @@ require_once "../_incl/pre-body.php"; ?>
 
             <li><a href="cal.php?f=<?php echo $filenam; ?>"><b><?php echo $date; ?></b></a> -
                 <?php echo $val["title"] ?: "Por nombrar"; ?>
+                <span class="btn btn-secondary">Abrir</span>
             </li>
         <?php } ?>
     </ul>

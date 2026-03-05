@@ -134,7 +134,7 @@
         background: url(/static/portugalete.jpg) #ffffffc2;
         padding: 25px 7px;
         padding-top: 50px;
-        height: 350px;
+        min-height: 350px;
         border-radius: 50px;
         background-size: cover;
         background-position: center;
