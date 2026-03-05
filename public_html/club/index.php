@@ -9,6 +9,9 @@ $APP_TITLE = "La web del Club";
 $PAGE_TITLE = "Club - Inicio";
 require_once "../_incl/pre-body.php"; ?>
 <div class="card pad">
+    <span>
+        <a href="/club/upload/" class="btn btn-secondary">+ Nuevo</a>
+    </span>
     <h2>Calendario:</h2>
     <ul>
         <?php foreach ($files as $file) {

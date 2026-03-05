@@ -1,78 +1,11 @@
 <?php
-require_once "_incl/auth_redir.php";
-require_once "_incl/pre-body.php";
-require_once "../_incl/tools.security.php";
-
-?>
+ini_set("display_errors", 0);
+$PAGE_TITLE = "EntreAulas - Inicio";
+require_once "_incl/pre-body.php"; ?>
 <div class="card pad">
-    <div>
-        <h1 class="card-title">¡Hola, <?php echo $_SESSION["auth_data"]["display_name"];?>!</h1>
-        <span>
-            Bienvenidx a la plataforma de gestión de aularios conectados. Desde aquí podrás administrar los aularios asociados a tu cuenta.
-        </span>
-    </div>
+    <h2>Recursos:</h2>
+    <ul>
+        <li><a href="/entreaulas/recursos/letras-a4.php">Generador de Letras A4 con varios estilos para imprimir</a></li>
+    </ul>
 </div>
-<div id="grid">
-    <?php $user_data = $_SESSION["auth_data"];
-    $centro_id = safe_centro_id($user_data["entreaulas"]["centro"] ?? "");
-    foreach ($user_data["entreaulas"]["aulas"] as $aulario_id) {
-        $aulario_id = safe_id_segment($aulario_id);
-        if ($aulario_id === "") {
-            continue;
-        }
-        $aulario_path = safe_aulario_config_path($centro_id, $aulario_id);
-        if (!$aulario_path || !file_exists($aulario_path)) {
-            continue;
-        }
-        $aulario = json_decode(file_get_contents($aulario_path), true);
-        if (!is_array($aulario)) {
-            continue;
-        }
-        $aulario_name = $aulario["name"] ?? $aulario_id;
-        $aulario_icon = $aulario["icon"] ?? "/static/arasaac/aulario.png";
-        echo '<a href="/entreaulas/aulario.php?id=' . urlencode($aulario_id) . '" class="btn btn-primary grid-item">
-            <img style="height: 125px;" src="' . htmlspecialchars($aulario_icon, ENT_QUOTES) . '" alt="' . htmlspecialchars($aulario_name) . ' Icono">
-            <br>
-            ' . htmlspecialchars($aulario_name) . '
-        </a>';
-    } ?>
-    <?php if (in_array('supercafe:access', $_SESSION['auth_data']['permissions'] ?? [])): ?>
-        <a href="/entreaulas/supercafe.php" class="btn btn-warning grid-item">
-            <img src="/static/iconexperience/purchase_order_cart.png" height="125"
-                 style="background: white; padding: 5px; border-radius: 10px;"
-                 alt="Icono SuperCafe">
-            <br>
-            SuperCafe
-        </a>
-    <?php endif; ?>
-</div>
-
-<style>
-    .grid-item {
-        margin-bottom: 10px !important;
-        padding: 15px;
-        width: 250px;
-        text-align: center;
-    }
-
-    .grid-item img {
-        margin: 0 auto;
-        height: 100px;
-    }
-</style>
-
-
-<script>
-    var msnry = new Masonry('#grid', {
-        "columnWidth": 250,
-        "itemSelector": ".grid-item",
-        "gutter": 10,
-        "transitionDuration": 0
-    });
-    setInterval(() => {
-        msnry.layout()
-    }, 1000);
-    msnry.layout()
-</script>
-
 <?php require_once "_incl/post-body.php"; ?>

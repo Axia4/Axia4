@@ -9,12 +9,9 @@
     <a class="btn btn-primary" href="/account/">Accede a tu cuenta</a>
 </section>
 
-<div class="notice-card">
-    <strong>Aviso: En mantenimiento</strong>
-    <span>En los siguientes días vamos a cambiar la interfaz.</span>
-</div>
 
-<div id="grid" class="app-grid" style="display: none;">
+
+<div id="grid" class="app-grid">
     <div class="app-card">
         <img src="/static/logo-club.png" alt="Logo Club">
         <div class="app-title">La web del club</div>
@@ -23,15 +20,11 @@
         </div>
     </div>
     <div class="app-card">
-        <img src="/static/logo-entreaulas.png" alt="Logo EntreAulas">
-        <div class="app-title">EntreAulas</div>
+        <img src="/static/logo-telesec.png" alt="Logo TeleSec">
+        <div class="app-title">TeleSec</div>
         <div class="app-desc">Gestión de aularios conectados.</div>
         <div class="app-actions">
-            <?php if ($_SESSION["auth_ok"] && in_array('entreaulas:access', $_SESSION["auth_data"]["permissions"] ?? [])) { ?>
-                <a href="/entreaulas/" class="btn btn-primary">Acceder</a>
-            <?php } else { ?>
-                <span class="btn btn-outline-secondary disabled">Sin permiso</span>
-            <?php } ?>
+            <a href="https://telesec.tech.eus/" target="_blank" class="btn btn-primary">Tengo cuenta</a>
         </div>
     </div>
     <div class="app-card">
@@ -48,6 +41,25 @@
             <?php } ?>
         </div>
     </div>
+    <div class="app-card">
+        <img src="/static/logo-entreaulas.png" alt="Logo EntreAulas">
+        <div class="app-title">EntreAulas</div>
+        <div class="app-desc">Recursos educativos digitales.</div>
+        <div class="app-actions">
+            <a href="/entreaulas/" target="_blank" class="btn btn-primary">Acceso publico</a>
+        </div>
+    </div>
+    <!-- Arroz con leche: Wiki publica -->
+    <div class="app-card">
+        <img src="/static/logo-arroz.png" alt="Logo Arroz con leche">
+        <div class="app-title">Arroz con leche</div>
+        <div class="app-desc">Compartiendo nuestros conocimientos.</div>
+        <div class="app-actions">
+            <a href="https://arroz.tech.eus/" target="_blank" class="btn btn-primary">Acceso público</a>
+        </div>
+    </div>
+</div>
+<div class="app-grid" style="display: none;">
     <div class="app-card is-disabled">
         <img src="/static/logo-oscar.png" alt="Logo OSCAR">
         <div class="app-title">OSCAR</div>
