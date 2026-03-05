@@ -20,9 +20,8 @@ require_once "../_incl/pre-body.php"; ?>
             $val = json_decode(file_get_contents($file . "data.json"), true)
                 ?>
 
-            <li><a href="cal.php?f=<?php echo $filenam; ?>"><b><?php echo $date; ?></b></a> -
+            <li><a class="btn btn-secondary" href="cal.php?f=<?php echo $filenam; ?>"><b><?php echo $date; ?></b></a> -
                 <?php echo $val["title"] ?: "Por nombrar"; ?>
-                <span class="btn btn-secondary">Abrir</span>
             </li>
         <?php } ?>
     </ul>
