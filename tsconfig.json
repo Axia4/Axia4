@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "preserveSymlinks": true,
+    "baseUrl": "."
+  },
+  "include": ["./**/*"],
+  "exclude": ["node_modules", "vendor"]
+}

@@ -1,0 +1,36 @@
+{
+  "name": "axia4",
+  "version": "2.0.0",
+  "description": "Plataforma unificada de EuskadiTech y Sketaria – ADIOS migration",
+  "private": true,
+  "dependencies": {
+    "adios": "file:./vendor/wai-blue/adios/src/Components",
+    "axios": "^1.7.0",
+    "moment": "^2.30.0",
+    "notyf": "^3.10.0",
+    "primereact": "^10.6.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "react-select": "^5.8.0",
+    "sweetalert2": "^11.12.0",
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@babel/preset-react": "^7.24.0",
+    "@babel/preset-typescript": "^7.24.0",
+    "@tailwindcss/cli": "^4.0.0",
+    "babel-loader": "^9.1.0",
+    "css-loader": "^7.1.0",
+    "sass": "^1.77.0",
+    "sass-loader": "^14.2.0",
+    "style-loader": "^4.0.0",
+    "tailwindcss": "^4.0.0",
+    "webpack": "^5.91.0",
+    "webpack-cli": "^5.1.0"
+  },
+  "scripts": {
+    "build": "npx webpack --mode production && npx @tailwindcss/cli -i ./src/App.twcss -o ./assets/app.css",
+    "dev": "npx webpack --mode development && npx @tailwindcss/cli -i ./src/App.twcss -o ./assets/app.css",
+    "watch": "npx webpack --mode development --watch"
+  }
+}

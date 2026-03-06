@@ -1,0 +1,18 @@
+{
+    "name": "axia4/axia4",
+    "description": "Plataforma unificada de EuskadiTech y Sketaria, migrada al framework ADIOS",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": ">=8.2",
+        "wai-blue/adios": "dev-main",
+        "twig/twig": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Axia4\\": "src/"
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

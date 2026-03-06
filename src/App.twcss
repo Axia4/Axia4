@@ -1,0 +1,52 @@
+/* Axia4 – TailwindCSS entry point                           */
+/* Layer order must follow: theme, base, components, utilities */
+
+@layer theme, base, components, utilities, primereact, adios, app;
+
+@theme {
+  /* Brand colours */
+  --color-primary:   #2563eb; /* blue-600 */
+  --color-secondary: #64748b; /* slate-500 */
+
+  /* Extra spacing */
+  --spacing-8xl: 96rem;
+  --spacing-9xl: 128rem;
+
+  /* Extra border-radius */
+  --radius-4xl: 2rem;
+}
+
+@import "tailwindcss";
+@import "../vendor/wai-blue/adios/src/Assets/Css/desktop.css";
+@import "../vendor/wai-blue/adios/src/Assets/Css/components.css";
+@import "../vendor/wai-blue/adios/src/Assets/Css/responsive.css";
+@import "../vendor/wai-blue/adios/src/Assets/Css/primereact.css";
+@import "../vendor/wai-blue/adios/src/Assets/Css/skin.css";
+@import "../vendor/wai-blue/adios/src/Assets/Css/color-scales.css";
+
+@layer app {
+  /* ── Shared component shortcuts ───────────────────────────── */
+  .btn-primary {
+    @apply inline-block bg-blue-600 text-white rounded-lg px-4 py-2 font-medium
+           hover:bg-blue-700 transition-colors text-center;
+  }
+
+  .btn-secondary {
+    @apply inline-block bg-gray-200 text-gray-700 rounded-lg px-4 py-2 font-medium
+           hover:bg-gray-300 transition-colors text-center;
+  }
+
+  .btn-outline {
+    @apply inline-block border border-blue-600 text-blue-600 rounded-lg px-4 py-2
+           font-medium hover:bg-blue-50 transition-colors text-center;
+  }
+
+  .btn-disabled {
+    @apply inline-block bg-gray-100 text-gray-400 rounded-lg px-4 py-2 font-medium
+           cursor-not-allowed text-center;
+  }
+
+  .app-card {
+    @apply bg-white rounded-2xl p-4 flex flex-col gap-2 shadow-sm;
+  }
+}

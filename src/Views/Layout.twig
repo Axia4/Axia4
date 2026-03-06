@@ -1,0 +1,59 @@
+{#
+  Layout.twig – Base Twig template for all Axia4 pages.
+  Child templates use {% block %} tags to inject page-specific content.
+#}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}Axia4{% endblock %} – Axia4</title>
+
+  {# TailwindCSS + ADIOS compiled stylesheet #}
+  <link rel="stylesheet" href="{{ config.url }}/assets/app.css" />
+
+  <link rel="icon" type="image/png" href="{{ config.url }}/static/logo.png" />
+  <link rel="manifest" href="{{ config.url }}/static/manifest.json" />
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+
+  {# ── Navigation bar ── #}
+  <nav class="bg-white shadow-sm border-b border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-14">
+      <a href="/?route=" class="flex items-center gap-2 font-bold text-gray-800 text-lg">
+        <img src="{{ config.url }}/static/logo.png" alt="Axia4" class="h-8 w-8" />
+        Axia<sup>4</sup>
+      </a>
+
+      <div class="flex items-center gap-3">
+        {% if isAuthenticated ?? false %}
+          <span class="text-sm text-gray-600 hidden sm:block">
+            {{ user.display_name ?? user.username ?? 'Usuario' }}
+          </span>
+          <a href="/?route=account" class="text-sm text-blue-600 hover:underline">Mi Cuenta</a>
+          <a href="/?route=logout" class="text-sm text-gray-500 hover:underline">Cerrar sesión</a>
+        {% else %}
+          <a href="/?route=login" class="btn-primary text-sm">Iniciar sesión</a>
+        {% endif %}
+      </div>
+    </div>
+  </nav>
+
+  {# ── Main content ── #}
+  <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+    {% block content %}{% endblock %}
+  </main>
+
+  {# ── Footer ── #}
+  <footer class="bg-white border-t border-gray-200 text-center text-xs text-gray-400 py-4">
+    © {{ "now"|date("Y") }} EuskadiTech / Sketaria &nbsp;·&nbsp;
+    <a href="/?route=politica-privacidad" class="hover:underline">Política de privacidad</a>
+  </footer>
+
+  {# ADIOS React bundle (optional UI components) #}
+  <script src="{{ config.url }}/?route=adios/cache.js"></script>
+  <script defer src="{{ config.url }}/assets/app.js"></script>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

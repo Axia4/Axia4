@@ -1,0 +1,39 @@
+{% extends '@app/Views/Layout.twig' %}
+
+{% block title %}Política de Privacidad{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto bg-white rounded-2xl shadow-sm p-8">
+  <h1 class="text-2xl font-bold text-gray-800 mb-6">Política de Privacidad – Aularios</h1>
+
+  <section class="prose prose-gray max-w-none text-sm leading-relaxed">
+    <p>Esta política de privacidad describe cómo EuskadiTech / Sketaria recopila, usa y protege
+       la información personal de los usuarios de la plataforma Axia4.</p>
+
+    <h2 class="text-lg font-semibold text-gray-800 mt-6 mb-2">Datos que recopilamos</h2>
+    <ul class="list-disc list-inside space-y-1 text-gray-600">
+      <li>Nombre de usuario y dirección de correo electrónico.</li>
+      <li>Nombre para mostrar (nombre real o alias).</li>
+      <li>Datos de sesión (cookies de autenticación).</li>
+      <li>En el caso de Google OAuth: nombre y correo obtenidos de Google.</li>
+    </ul>
+
+    <h2 class="text-lg font-semibold text-gray-800 mt-6 mb-2">Uso de los datos</h2>
+    <p>Los datos recogidos se usan exclusivamente para:</p>
+    <ul class="list-disc list-inside space-y-1 text-gray-600">
+      <li>Autenticar al usuario en la plataforma.</li>
+      <li>Mostrar información personalizada (nombre, QR, etc.).</li>
+      <li>Gestionar permisos de acceso a los módulos.</li>
+    </ul>
+
+    <h2 class="text-lg font-semibold text-gray-800 mt-6 mb-2">Almacenamiento y seguridad</h2>
+    <p>Los datos de usuario se almacenan en ficheros JSON en el servidor, protegidos por
+       contraseñas hasheadas con bcrypt. Las sesiones duran 7 días. Las cookies de autenticación
+       son <code>HttpOnly</code>, <code>Secure</code> y <code>SameSite=Lax</code>.</p>
+
+    <h2 class="text-lg font-semibold text-gray-800 mt-6 mb-2">Contacto</h2>
+    <p>Para cualquier consulta sobre privacidad, contacta con el equipo de EuskadiTech a través
+       del repositorio de GitHub o los canales oficiales.</p>
+  </section>
+</div>
+{% endblock %}

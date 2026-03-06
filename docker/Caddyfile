@@ -6,22 +6,35 @@
     root * /var/www/html
     encode zstd gzip
 
-	route {
-		intercept {
-			@accel header X-Accel-Redirect *
-			handle_response @accel {
-				root * /DATA/
-				rewrite * {resp.header.X-Accel-Redirect}
-				method * GET
+    route {
+        # Serve static assets (compiled JS/CSS) directly
+        handle /assets/* {
+            file_server
+        }
 
-				# Remove the X-Accel-Redirect header set by PHP for increased security
-				header -X-Accel-Redirect
+        # Serve legacy static files
+        handle /static/* {
+            root * /var/www/html/public_html
+            file_server
+        }
 
-				file_server
-			}
-		}
+        # X-Accel-Redirect: secure file serving from /DATA (e.g. PDFs, photos)
+        intercept {
+            @accel header X-Accel-Redirect *
+            handle_response @accel {
+                root * /DATA/
+                rewrite * {resp.header.X-Accel-Redirect}
+                method * GET
 
-		php_server
-	}
+                # Remove the X-Accel-Redirect header for security
+                header -X-Accel-Redirect
 
+                file_server
+            }
+        }
+
+        # All other requests → ADIOS PHP entry point (index.php)
+        php_server
+    }
 }
+

@@ -1,0 +1,134 @@
+{% extends '@app/Views/Layout.twig' %}
+
+{% block title %}Inicio{% endblock %}
+
+{% block content %}
+{# ── Hero section ── #}
+<section class="rounded-3xl bg-cover bg-center bg-blend-lighten text-center px-6 py-16 mb-8 min-h-64"
+         style="background-image: url({{ config.url }}/static/portugalete.jpg); background-color: rgba(255,255,255,0.75);">
+  <h1 class="text-4xl font-bold text-gray-900 mb-3">Bienvenidx a Axia4</h1>
+  <p class="text-gray-700 mb-1">La plataforma unificada de EuskadiTech y Sketaria.</p>
+  <p class="text-gray-500 text-sm mb-6">Versión 2.0.0 · Con esta versión, cambiamos la interfaz a una más sencilla.</p>
+  <a href="/?route=account" class="btn-primary">Accede a tu cuenta</a>
+</section>
+
+{# ── App grid ── #}
+<div class="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
+
+  {# Club #}
+  <div class="app-card">
+    <img src="{{ config.url }}/static/logo-club.png" alt="La web del club" class="h-16 w-16" />
+    <div class="font-semibold text-gray-800">La web del club</div>
+    <div class="app-actions mt-auto flex flex-col gap-1.5">
+      <a href="/?route=club" class="btn-primary text-sm">Acceso público</a>
+    </div>
+  </div>
+
+  {# TeleSec #}
+  <div class="app-card">
+    <img src="{{ config.url }}/static/logo-telesec.png" alt="TeleSec" class="h-16 w-16" />
+    <div class="font-semibold text-gray-800">TeleSec</div>
+    <div class="text-gray-500 text-xs">Gestión de aularios conectados.</div>
+    <div class="app-actions mt-auto flex flex-col gap-1.5">
+      <a href="https://telesec.tech.eus/" target="_blank" class="btn-primary text-sm">Tengo cuenta</a>
+    </div>
+  </div>
+
+  {# Mi Cuenta #}
+  <div class="app-card">
+    <img src="{{ config.url }}/static/logo-account.png" alt="Mi Cuenta" class="h-16 w-16" />
+    <div class="font-semibold text-gray-800">Mi Cuenta</div>
+    <div class="text-gray-500 text-xs">Acceso a la plataforma y pagos.</div>
+    <div class="app-actions mt-auto flex flex-col gap-1.5">
+      {% if isAuthenticated %}
+        <a href="/?route=account" class="btn-primary text-sm">Ir a mi cuenta</a>
+        <a href="/?route=logout" class="btn-secondary text-sm">Cerrar sesión</a>
+      {% else %}
+        <a href="/?route=login" class="btn-primary text-sm">Iniciar sesión</a>
+        <a href="/?route=account/register" class="btn-outline text-sm">Crear cuenta</a>
+      {% endif %}
+    </div>
+  </div>
+
+  {# EntreAulas #}
+  <div class="app-card">
+    <img src="{{ config.url }}/static/logo-entreaulas.png" alt="EntreAulas" class="h-16 w-16" />
+    <div class="font-semibold text-gray-800">EntreAulas</div>
+    <div class="text-gray-500 text-xs">Recursos educativos digitales.</div>
+    <div class="app-actions mt-auto flex flex-col gap-1.5">
+      <a href="/?route=entreaulas" class="btn-primary text-sm">Acceso</a>
+    </div>
+  </div>
+
+  {# Arroz con leche #}
+  <div class="app-card">
+    <img src="{{ config.url }}/static/logo-arroz.png" alt="Arroz con leche" class="h-16 w-16" />
+    <div class="font-semibold text-gray-800">Arroz con leche</div>
+    <div class="text-gray-500 text-xs">Compartiendo nuestros conocimientos.</div>
+    <div class="app-actions mt-auto flex flex-col gap-1.5">
+      <a href="https://arroz.tech.eus/" target="_blank" class="btn-primary text-sm">Acceso público</a>
+    </div>
+  </div>
+
+  {# SysAdmin (permission-gated) #}
+  {% if isAuthenticated %}
+  <div class="app-card">
+    <img src="{{ config.url }}/static/logo-sysadmin.png" alt="SysAdmin" class="h-16 w-16" />
+    <div class="font-semibold text-gray-800">SysAdmin</div>
+    <div class="text-gray-500 text-xs">Configuración de Axia4.</div>
+    <div class="app-actions mt-auto flex flex-col gap-1.5">
+      {% if 'sysadmin:access' in (user.permissions ?? []) %}
+        <a href="/?route=sysadmin" class="btn-primary text-sm">Acceder</a>
+      {% else %}
+        <span class="btn-disabled text-sm">Sin permiso</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+{# ── Upcoming / disabled apps ── #}
+<section class="mt-8">
+  <h2 class="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">Próximamente</h2>
+  <div class="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3 opacity-60">
+    {% for app in [
+      {img: 'logo-oscar.png',   name: 'OSCAR',            desc: 'Red de IA Absoluta.'},
+      {img: 'logo-media.png',   name: 'ET Media',          desc: 'Streaming de pelis y series.'},
+      {img: 'logo-hyper.png',   name: 'Hyper',             desc: 'Plataforma de gestión empresarial.'},
+      {img: 'logo-mail.png',    name: 'Comunicaciones',    desc: 'Correos electrónicos y mensajería.'},
+      {img: 'logo-malla.png',   name: 'Malla Meshtastic',  desc: 'Red de comunicación por radio.'},
+      {img: 'logo-aularios.png',name: 'Aularios²',         desc: 'Visita virtual a los aularios.'},
+      {img: 'logo-nube.png',    name: 'Nube Axia4.NET',    desc: 'Almacenamiento central de datos.'},
+      {img: 'logo-nk4.png',     name: 'Nube Kasa',         desc: 'Nube personal con domótica.'}
+    ] %}
+    <div class="app-card">
+      <img src="{{ config.url }}/static/{{ app.img }}" alt="{{ app.name }}" class="h-14 w-14" />
+      <div class="font-semibold text-gray-800 text-sm">{{ app.name }}</div>
+      <div class="text-gray-500 text-xs">{{ app.desc }}</div>
+      <span class="text-xs text-gray-400 mt-auto">Próximamente</span>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<style>
+  .app-card {
+    @apply bg-white rounded-2xl p-4 flex flex-col gap-2 shadow-sm;
+  }
+  .btn-primary {
+    @apply bg-blue-600 text-white text-center rounded-lg px-4 py-2 hover:bg-blue-700 transition-colors;
+  }
+  .btn-secondary {
+    @apply bg-gray-200 text-gray-700 text-center rounded-lg px-4 py-2 hover:bg-gray-300 transition-colors;
+  }
+  .btn-outline {
+    @apply border border-blue-600 text-blue-600 text-center rounded-lg px-4 py-2 hover:bg-blue-50 transition-colors;
+  }
+  .btn-disabled {
+    @apply bg-gray-100 text-gray-400 text-center rounded-lg px-4 py-2 cursor-not-allowed;
+  }
+</style>
+{% endblock %}

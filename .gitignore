@@ -475,3 +475,15 @@ composer.lock
 ##### Docker
 .env
 DATA/
+
+##### Node.js / npm
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+##### ADIOS / frontend build output
+assets/
+
+##### PHP environment config
+env.php

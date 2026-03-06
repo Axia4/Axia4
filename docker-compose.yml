@@ -8,9 +8,38 @@ services:
     container_name: axia4-app
     ports:
       - "882:80"
+    environment:
+      # Database connection (connect to axia4-db service below)
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: axia4
+      DB_USER: axia4
+      DB_PASS: axia4
+      # Optional: Google OAuth credentials
+      # GOOGLE_CLIENT_ID: your-client-id
+      # GOOGLE_CLIENT_SECRET: your-client-secret
+      DATA_DIR: /DATA
     volumes:
-      # Mount the DATA directory for persistent storage
+      # Mount the DATA directory for persistent storage (legacy JSON files)
       - ./DATA:/DATA
-      # Optional: Mount the application code for development
-      - ./public_html:/var/www/html
+      # Optional: Mount the application code for live development
+      # - .:/var/www/html
     restart: unless-stopped
+    depends_on:
+      - db
+
+  db:
+    image: mariadb:11
+    container_name: axia4-db
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: axia4
+      MYSQL_USER: axia4
+      MYSQL_PASSWORD: axia4
+    volumes:
+      - axia4-db-data:/var/lib/mysql
+    restart: unless-stopped
+
+volumes:
+  axia4-db-data:
+
