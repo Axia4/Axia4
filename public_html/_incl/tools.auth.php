@@ -85,3 +85,40 @@ function user_has_permission($perm)
 {
     return in_array($perm, $_SESSION["auth_data"]["permissions"] ?? []);
 }
+
+/**
+ * Returns all centro/tenant IDs the authenticated user belongs to.
+ * Supports both the legacy single-centro format (entreaulas.centro = "string")
+ * and the new multi-tenant format (entreaulas.centros = ["a", "b"]).
+ */
+function get_user_centros($auth_data = null)
+{
+    $data = $auth_data ?? $_SESSION["auth_data"] ?? [];
+    $ea = $data["entreaulas"] ?? [];
+
+    if (!empty($ea["centros"]) && is_array($ea["centros"])) {
+        return array_values($ea["centros"]);
+    }
+    if (!empty($ea["centro"])) {
+        return [$ea["centro"]];
+    }
+    return [];
+}
+
+/**
+ * Ensures $_SESSION['active_centro'] is set to a valid centro for the user.
+ * Call after user data is loaded/reloaded.
+ */
+function init_active_centro($auth_data = null)
+{
+    $centros = get_user_centros($auth_data);
+    if (empty($centros)) {
+        $_SESSION['active_centro'] = null;
+        return;
+    }
+    // Keep existing selection only if it is still valid
+    if (!empty($_SESSION['active_centro']) && in_array($_SESSION['active_centro'], $centros, true)) {
+        return;
+    }
+    $_SESSION['active_centro'] = $centros[0];
+}
