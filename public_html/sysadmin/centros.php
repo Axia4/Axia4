@@ -32,8 +32,8 @@ switch ($form_action) {
         db()->prepare("INSERT INTO centros (centro_id) VALUES (?)")->execute([$centro_id]);
         // Keep filesystem directory for activity photos (Panel/Actividades)
         $centro_path = "/DATA/entreaulas/Centros/$centro_id";
-        if (!is_dir($centro_path)) {
-            mkdir($centro_path, 0755, true);
+        if (!is_dir($centro_path) && !mkdir($centro_path, 0755, true) && !is_dir($centro_path)) {
+            error_log("centros.php: failed to create directory $centro_path");
         }
         header("Location: ?action=index");
         exit();

@@ -63,8 +63,9 @@ if (is_dir($users_dir)) {
         $user_id = (int) $db->lastInsertId();
         if ($user_id === 0) {
             // Already existed – look it up
-            $row = $db->prepare("SELECT id FROM users WHERE username = ?")->execute([$username]);
-            $user_id = (int) $db->query("SELECT id FROM users WHERE username = " . $db->quote($username))->fetchColumn();
+            $stmt2 = $db->prepare("SELECT id FROM users WHERE username = ?");
+            $stmt2->execute([$username]);
+            $user_id = (int) $stmt2->fetchColumn();
         }
 
         // Entreaulas centro assignment

@@ -72,8 +72,11 @@ switch ($form_action) {
             Sf($_POST["name"] ?? ""),
             Sf($_POST["icon"] ?? "/static/logo-entreaulas.png"),
         ]);
-        // Create Alumnos directory for photo-based features
-        @mkdir("/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id/Proyectos/", 0755, true);
+        // Create Proyectos directory for project file storage
+        $proyectos_dir = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id/Proyectos/";
+        if (!is_dir($proyectos_dir)) {
+            mkdir($proyectos_dir, 0755, true);
+        }
         header("Location: ?action=index");
         exit();
         break;

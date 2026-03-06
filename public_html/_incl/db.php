@@ -4,12 +4,12 @@
  *
  * Provides a PDO SQLite connection and a lightweight migration runner.
  * All application data previously stored as JSON files under /DATA is now
- * persisted in /DATA/axia4.db.
+ * persisted in /DATA/axia4.sqlite.
  *
  * Usage:  db()  → returns the shared PDO instance (auto-migrates on first call).
  */
 
-define('DB_PATH',        '/DATA/axia4.db');
+define('DB_PATH',        '/DATA/axia4.sqlite');
 define('MIGRATIONS_DIR', __DIR__ . '/migrations');
 
 // ── Connection ────────────────────────────────────────────────────────────────
