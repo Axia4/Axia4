@@ -1,10 +1,11 @@
 <?php
 require_once "../_incl/tools.session.php";
 require_once "../_incl/tools.security.php";
+require_once "../_incl/db.php";
 ini_set("display_errors", 0);
 $file = Sf($_GET["f"]);
 $date = implode("/", array_reverse(explode("-", $file)));
-$val = json_decode(file_get_contents("/DATA/club/IMG/$file/data.json"), true);
+$val  = db_get_club_event($file);
 
 $fotos = glob("/DATA/club/IMG/$file/*/");
 

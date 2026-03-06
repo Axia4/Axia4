@@ -1,6 +1,7 @@
 <?php
 require_once "_incl/auth_redir.php";
 require_once "../_incl/tools.security.php";
+require_once "../_incl/db.php";
 ini_set("display_errors", "0");
 
 // Funciones auxiliares para el diario
@@ -784,12 +785,10 @@ switch ($view_action) {
     $source_aulario_id = $aulario_id;
     $is_shared = false;
     if ($aulario_id !== "" && $centro_id !== "") {
-      $aulario_path = safe_aulario_config_path($centro_id, $aulario_id);
-      $aulario = ($aulario_path && file_exists($aulario_path)) ? json_decode(file_get_contents($aulario_path), true) : null;
+      $aulario = db_get_aulario($centro_id, $aulario_id);
       if ($aulario && !empty($aulario["shared_comedor_from"])) {
         $shared_from = safe_id_segment($aulario["shared_comedor_from"]);
-        $shared_aulario_path = safe_aulario_config_path($centro_id, $shared_from);
-        if ($shared_aulario_path && file_exists($shared_aulario_path)) {
+        if (db_get_aulario($centro_id, $shared_from)) {
           $source_aulario_id = $shared_from;
           $is_shared = true;
         }
@@ -800,13 +799,12 @@ switch ($view_action) {
     $dateObj = DateTime::createFromFormat("Y-m-d", $dateParam) ?: new DateTime();
     $date = $dateObj->format("Y-m-d");
 
-    $menuTypesPath = ($centro_id !== '' && $source_aulario_id !== '') ? "/DATA/entreaulas/Centros/$centro_id/Aularios/$source_aulario_id/Comedor-MenuTypes.json" : "";
     $defaultMenuTypes = [
       ["id" => "basal", "label" => "Menú basal", "color" => "#0d6efd"],
       ["id" => "vegetariano", "label" => "Menú vegetariano", "color" => "#198754"],
       ["id" => "alergias", "label" => "Menú alergias", "color" => "#dc3545"],
     ];
-    $menuTypes = ($menuTypesPath !== '' && file_exists($menuTypesPath)) ? json_decode(@file_get_contents($menuTypesPath), true) : null;
+    $menuTypes = ($centro_id !== '' && $source_aulario_id !== '') ? db_get_comedor_menu_types($centro_id, $source_aulario_id) : [];
     if (!is_array($menuTypes) || count($menuTypes) === 0) {
       $menuTypes = $defaultMenuTypes;
     }
@@ -822,17 +820,13 @@ switch ($view_action) {
       $menuTypeId = $menuTypeIds[0] ?? "basal";
     }
 
-    $ym = $dateObj->format("Y-m");
+    $ym  = $dateObj->format("Y-m");
     $day = $dateObj->format("d");
-    $dataPath = ($centro_id !== '' && $source_aulario_id !== '') ? "/DATA/entreaulas/Centros/$centro_id/Aularios/$source_aulario_id/Comedor/$ym/$day/_datos.json" : "";
 
-    $menuData = [
-      "date" => $date,
-      "menus" => []
-    ];
-    if ($dataPath !== '' && file_exists($dataPath)) {
-      $existing = json_decode(file_get_contents($dataPath), true);
-      if (is_array($existing)) {
+    $menuData = ["date" => $date, "menus" => []];
+    if ($centro_id !== '' && $source_aulario_id !== '') {
+      $existing = db_get_comedor_entry($centro_id, $source_aulario_id, $ym, $day);
+      if (!empty($existing)) {
         $menuData = array_merge($menuData, $existing);
       }
     }

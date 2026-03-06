@@ -1,5 +1,6 @@
 <?php
 ini_set("display_errors", 0);
+require_once "../_incl/db.php";
 $files = glob("/DATA/club/IMG/*/");
 sort($files);
 $files = array_reverse($files);
@@ -17,7 +18,7 @@ require_once "../_incl/pre-body.php"; ?>
         <?php foreach ($files as $file) {
             $filenam = str_replace("/", "", str_replace("/DATA/club/IMG/", "", $file));
             $date = implode("/", array_reverse(explode("-", $filenam)));
-            $val = json_decode(file_get_contents($file . "data.json"), true)
+            $val = db_get_club_event($filenam);
                 ?>
 
             <li><a class="btn btn-secondary" href="cal.php?f=<?php echo $filenam; ?>"><b><?php echo $date; ?></b></a> -

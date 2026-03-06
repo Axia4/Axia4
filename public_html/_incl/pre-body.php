@@ -27,7 +27,11 @@ if (!empty($displayName)) {
   $initials = mb_strtoupper($first . $last);
 }
 
-?>
+// Tenant (centro) management
+$userCentros  = get_user_centros($_SESSION["auth_data"] ?? []);
+$activeCentro = $_SESSION['active_centro'] ?? ($_SESSION["auth_data"]["entreaulas"]["centro"] ?? '');
+
+
 <!DOCTYPE html>
 <html lang="es">
 
@@ -526,6 +530,28 @@ if (!empty($displayName)) {
                   <div class="account-name"><?php echo htmlspecialchars($displayName); ?></div>
                   <div class="account-email"><?php echo htmlspecialchars($email); ?></div>
                 </div>
+                <?php if (!empty($userCentros) && $_SESSION["auth_ok"]): ?>
+                <div style="padding: 8px 16px; border-top: 1px solid #e0e0e0;">
+                  <div style="font-size:.75rem;font-weight:600;color:#5f6368;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">
+                    Organización activa
+                  </div>
+                  <div style="font-size:.9rem;font-weight:600;color:#1a73e8;margin-bottom:<?= count($userCentros) > 1 ? '8px' : '0' ?>;">
+                    <?= htmlspecialchars($activeCentro ?: '–') ?>
+                  </div>
+                  <?php if (count($userCentros) > 1): ?>
+                    <div style="font-size:.75rem;color:#5f6368;margin-bottom:4px;">Cambiar organización:</div>
+                    <?php foreach ($userCentros as $cid): if ($cid === $activeCentro) continue; ?>
+                      <form method="post" action="/_incl/switch_tenant.php" style="margin:0 0 4px;">
+                        <input type="hidden" name="redir" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/') ?>">
+                        <button type="submit" name="centro" value="<?= htmlspecialchars($cid) ?>"
+                                style="display:block;width:100%;text-align:left;padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px;background:#f8f9fa;font-size:.85rem;cursor:pointer;">
+                          <?= htmlspecialchars($cid) ?>
+                        </button>
+                      </form>
+                    <?php endforeach; ?>
+                  <?php endif; ?>
+                </div>
+                <?php endif; ?>
                 <div class="account-actions">
                   <?php if ($_SESSION["auth_ok"]) { ?>
                     <a href="/account/" class="btn btn-outline-secondary w-100">Gestionar cuenta</a>

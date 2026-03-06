@@ -1,28 +1,25 @@
 <?php
-if (file_exists("/DATA/SISTEMA_INSTALADO.txt")) {
+require_once "_incl/db.php";
+if (db_get_config('installed') === '1') {
     header("Location: /");
     die();
 }
 
 switch ($_GET['form'] ?? '') {
     case 'create_admin':
-        $admin_user = trim(strtolower($_POST['admin_user'] ?? ''));
+        $admin_user     = trim(strtolower($_POST['admin_user'] ?? ''));
         $admin_password = $_POST['admin_password'] ?? '';
         if (empty($admin_user) || empty($admin_password)) {
             die("El nombre de usuario y la contraseña son obligatorios.");
         }
-        $password_hash = password_hash($admin_password, PASSWORD_DEFAULT);
-        $admin_userdata = [
-            'display_name' => 'Administrador',
-            'email' => "$admin_user@nomail.arpa",
-            'permissions' => ['*', 'sysadmin:access', 'entreaulas:access'],
-            'password_hash' => $password_hash
-        ];
-        if (!is_dir("/DATA/Usuarios")) {
-            mkdir("/DATA/Usuarios", 0777, true);
-        }
-        file_put_contents("/DATA/Usuarios/$admin_user.json", json_encode($admin_userdata, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-        file_put_contents("/DATA/SISTEMA_INSTALADO.txt", "Sistema instalado el ".date("Y-m-d H:i:s")."\n");
+        db_upsert_user([
+            'username'      => $admin_user,
+            'display_name'  => 'Administrador',
+            'email'         => "$admin_user@nomail.arpa",
+            'permissions'   => ['*', 'sysadmin:access', 'entreaulas:access'],
+            'password_hash' => password_hash($admin_password, PASSWORD_DEFAULT),
+        ]);
+        db_set_config('installed', '1');
         header("Location: /_login.php");
         exit;
         break;

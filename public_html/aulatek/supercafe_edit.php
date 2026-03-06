@@ -1,6 +1,7 @@
 <?php
 require_once "_incl/auth_redir.php";
 require_once "../_incl/tools.security.php";
+require_once "../_incl/db.php";
 
 if (!in_array('supercafe:edit', $_SESSION['auth_data']['permissions'] ?? [])) {
     header('HTTP/1.1 403 Forbidden');
@@ -15,42 +16,30 @@ if ($centro_id === '') {
     exit;
 }
 
-$sc_base = "/DATA/entreaulas/Centros/$centro_id/SuperCafe";
-define('SC_DATA_DIR', "$sc_base/Comandas");
 define('SC_MAX_DEBTS', 3);
 
 $valid_statuses = ['Pedido', 'En preparación', 'Listo', 'Entregado', 'Deuda'];
 
 /**
- * Load personas from the existing Alumnos system (alumnos.php).
- * Returns array keyed by "{aulario_id}:{alumno_name}" with
- * ['Nombre', 'Region' (aulario display name), 'AularioID'] entries.
- * Groups are sorted by aulario name, alumnos sorted alphabetically.
+ * Load personas from the Alumnos filesystem (photos still on disk).
+ * Returns array keyed by "{aulario_id}:{alumno_name}".
  */
 function sc_load_personas_from_alumnos($centro_id)
 {
-    $aularios_path = "/DATA/entreaulas/Centros/$centro_id/Aularios";
-    $personas = [];
-    if (!is_dir($aularios_path)) {
-        return $personas;
-    }
-    $aulario_files = glob("$aularios_path/*.json") ?: [];
-    foreach ($aulario_files as $aulario_file) {
-        $aulario_id   = basename($aulario_file, '.json');
-        $aulario_data = json_decode(file_get_contents($aulario_file), true);
+    $aularios     = db_get_aularios($centro_id);
+    $personas     = [];
+    $aularios_dir = "/DATA/entreaulas/Centros/$centro_id/Aularios";
+    foreach ($aularios as $aulario_id => $aulario_data) {
         $aulario_name = $aulario_data['name'] ?? $aulario_id;
-        $alumnos_path = "$aularios_path/$aulario_id/Alumnos";
+        $alumnos_path = "$aularios_dir/$aulario_id/Alumnos";
         if (!is_dir($alumnos_path)) {
             continue;
         }
         $alumno_dirs = glob("$alumnos_path/*/", GLOB_ONLYDIR) ?: [];
-        usort($alumno_dirs, function ($a, $b) {
-            return strcasecmp(basename($a), basename($b));
-        });
+        usort($alumno_dirs, fn($a, $b) => strcasecmp(basename($a), basename($b)));
         foreach ($alumno_dirs as $alumno_dir) {
             $alumno_name = basename($alumno_dir);
-            // Key uses ':' as separator; safe_id_segment chars [A-Za-z0-9_-] exclude ':'
-            $key = $aulario_id . ':' . $alumno_name;
+            $key         = $aulario_id . ':' . $alumno_name;
             $personas[$key] = [
                 'Nombre'    => $alumno_name,
                 'Region'    => $aulario_name,
@@ -62,43 +51,14 @@ function sc_load_personas_from_alumnos($centro_id)
     return $personas;
 }
 
-function sc_load_menu($sc_base)
-{
-    $path = "$sc_base/Menu.json";
-    if (!file_exists($path)) {
-        return [];
-    }
-    $data = json_decode(file_get_contents($path), true);
-    return is_array($data) ? $data : [];
-}
-
-function sc_count_debts($persona_key)
-{
-    if (!is_dir(SC_DATA_DIR)) {
-        return 0;
-    }
-    $count = 0;
-    foreach (glob(SC_DATA_DIR . '/*.json') ?: [] as $file) {
-        $data = json_decode(file_get_contents($file), true);
-        if (is_array($data)
-            && ($data['Persona'] ?? '') === $persona_key
-            && ($data['Estado'] ?? '') === 'Deuda') {
-            $count++;
-        }
-    }
-    return $count;
-}
-
 // Determine if creating or editing
 $order_id = safe_id($_GET['id'] ?? '');
 $is_new   = $order_id === '';
 if ($is_new) {
-    $raw_id   = uniqid('sc', true);
-    $order_id = preg_replace('/[^a-zA-Z0-9_-]/', '', $raw_id);
+    $order_id = db_next_supercafe_ref($centro_id);
 }
 
-$order_file = SC_DATA_DIR . '/' . $order_id . '.json';
-
+// Load existing order from DB (or defaults)
 $order_data = [
     'Fecha'   => date('Y-m-d'),
     'Persona' => '',
@@ -106,15 +66,21 @@ $order_data = [
     'Notas'   => '',
     'Estado'  => 'Pedido',
 ];
-if (!$is_new && is_readable($order_file)) {
-    $existing = json_decode(file_get_contents($order_file), true);
-    if (is_array($existing)) {
-        $order_data = array_merge($order_data, $existing);
+if (!$is_new) {
+    $existing = db_get_supercafe_order($centro_id, $order_id);
+    if ($existing) {
+        $order_data = [
+            'Fecha'   => $existing['fecha'],
+            'Persona' => $existing['persona'],
+            'Comanda' => $existing['comanda'],
+            'Notas'   => $existing['notas'],
+            'Estado'  => $existing['estado'],
+        ];
     }
 }
 
 $personas = sc_load_personas_from_alumnos($centro_id);
-$menu     = sc_load_menu($sc_base);
+$menu     = db_get_supercafe_menu($centro_id);
 
 // Group personas by aulario for the optgroup picker
 $personas_by_aulario = [];
@@ -133,11 +99,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $estado = 'Pedido';
     }
 
-    // Validar persona
     if ($persona_key === '' || (!empty($personas) && !array_key_exists($persona_key, $personas))) {
         $error = '¡Hay que elegir una persona válida!';
     } else {
-        // Construir comanda desde los campos de categoría visual
         $comanda_parts = [];
         if (!empty($menu)) {
             foreach ($menu as $category => $items) {
@@ -152,48 +116,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $comanda_parts[] = $manual;
             }
         }
-        $comanda_str = implode(', ', $comanda_parts);
-
-        // Comprobar deudas
-        $prev_persona = $order_data['Persona'] ?? '';
+        $comanda_str  = implode(', ', $comanda_parts);
+        $prev_persona = $order_data['Persona'];
         if ($is_new || $prev_persona !== $persona_key) {
-            $debt_count = sc_count_debts($persona_key);
+            $debt_count = db_supercafe_count_debts($centro_id, $persona_key);
             if ($debt_count >= SC_MAX_DEBTS) {
                 $error = 'Esta persona tiene ' . $debt_count . ' comandas en deuda. No se puede realizar el pedido.';
             }
         }
-
         if ($error === '') {
-            $new_data = [
-                'Fecha'   => date('Y-m-d'),
-                'Persona' => $persona_key,
-                'Comanda' => $comanda_str,
-                'Notas'   => $notas,
-                'Estado'  => $is_new ? 'Pedido' : $estado,
-            ];
-
-            if (!is_dir(SC_DATA_DIR)) {
-                mkdir(SC_DATA_DIR, 0755, true);
-            }
-
-            $tmp   = SC_DATA_DIR . '/.' . $order_id . '.tmp';
-            $bytes = file_put_contents(
-                $tmp,
-                json_encode($new_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE),
-                LOCK_EX
+            db_upsert_supercafe_order(
+                $centro_id, $order_id,
+                date('Y-m-d'), $persona_key, $comanda_str, $notas,
+                $is_new ? 'Pedido' : $estado
             );
-            if ($bytes === false || !rename($tmp, $order_file)) {
-                @unlink($tmp);
-                $error = 'Error al guardar la comanda.';
-            } else {
-                header('Location: /entreaulas/supercafe.php');
-                exit;
-            }
+            header('Location: /entreaulas/supercafe.php');
+            exit;
         }
     }
 }
 
 require_once "_incl/pre-body.php";
+
 ?>
 
 <h1>Comanda <code><?= htmlspecialchars($order_id) ?></code></h1>

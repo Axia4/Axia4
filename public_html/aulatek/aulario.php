@@ -2,11 +2,11 @@
 require_once "_incl/auth_redir.php";
 require_once "_incl/pre-body.php";
 require_once "../_incl/tools.security.php";
+require_once "../_incl/db.php";
 
 $aulario_id = safe_id_segment($_GET["id"] ?? "");
-$centro_id = safe_centro_id($_SESSION["auth_data"]["entreaulas"]["centro"] ?? "");
-$aulario_path = safe_aulario_config_path($centro_id, $aulario_id);
-$aulario = ($aulario_path && file_exists($aulario_path)) ? json_decode(file_get_contents($aulario_path), true) : null;
+$centro_id  = safe_centro_id($_SESSION["auth_data"]["entreaulas"]["centro"] ?? "");
+$aulario    = db_get_aulario($centro_id, $aulario_id);
 
 if (!$aulario || !is_array($aulario)) {
 ?>

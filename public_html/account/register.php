@@ -1,36 +1,27 @@
 <?php
 require_once "_incl/pre-body.php";
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    // Handle form submission
-    $invitations = json_decode(file_get_contents("/DATA/Invitaciones_de_usuarios.json"), true);
-    $invi_code = strtoupper($_POST['invitation_code'] ?? '');
-    if (!isset($invitations[$invi_code])) {
+    $invi_code = strtoupper(trim($_POST['invitation_code'] ?? ''));
+    $invitation = db_get_invitation($invi_code);
+    if (!$invitation || !$invitation['active']) {
         header("Location: /?_resultcolor=red&_result=" . urlencode("Código de invitación no válido."));
         exit;
     }
-    $userdata = [
-        'display_name' => $_POST['display_name'],
-        'email' => $_POST['email'],
-        'password_hash' => password_hash($_POST['password'], PASSWORD_DEFAULT),
-        '_meta_signup' => [
-            'invitation_code' => $invi_code
-        ],
-        'permissions' => []
-    ];
-    if ($invitations[$invi_code]["active"] != true) {
-        header("Location: /?_resultcolor=red&_result=" . urlencode("Código de invitación no válido."));
-        exit;
-    }
-    $username = $_POST['username'];
-    if (file_exists("/DATA/Usuarios/$username.json")) {
+    $username = strtolower(trim($_POST['username'] ?? ''));
+    if (db_get_user($username)) {
         header("Location: /?_resultcolor=red&_result=" . urlencode("El nombre de usuario ya existe. Por favor, elige otro."));
         exit;
     }
-    file_put_contents("/DATA/Usuarios/$username.json", json_encode($userdata, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-    // Deactivate invitation code if it's single-use
-    if ($invitations[$invi_code]["single_use"] === true) {
-        $invitations[$invi_code]["active"] = false;
-        file_put_contents("/DATA/Invitaciones_de_usuarios.json", json_encode($invitations, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    db_upsert_user([
+        'username'      => $username,
+        'display_name'  => $_POST['display_name'] ?? '',
+        'email'         => $_POST['email'] ?? '',
+        'password_hash' => password_hash($_POST['password'], PASSWORD_DEFAULT),
+        'permissions'   => [],
+        '_meta_signup'  => ['invitation_code' => $invi_code],
+    ]);
+    if ($invitation['single_use']) {
+        db_deactivate_invitation($invi_code);
     }
     header("Location: /?_result=" . urlencode("Cuenta creada correctamente. Ya puedes iniciar sesión."));
     exit;

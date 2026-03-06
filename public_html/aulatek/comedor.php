@@ -1,6 +1,7 @@
 <?php
 require_once "_incl/auth_redir.php";
 require_once "../_incl/tools.security.php";
+require_once "../_incl/db.php";
 
 if (in_array("entreaulas:docente", $_SESSION["auth_data"]["permissions"] ?? []) === false) {
     header("HTTP/1.1 403 Forbidden");
@@ -22,38 +23,31 @@ if ($aulario_id === "" || $centro_id === "") {
 	exit;
 }
 
-$aulario_path = safe_aulario_config_path($centro_id, $aulario_id);
-$aulario = ($aulario_path && file_exists($aulario_path)) ? json_decode(file_get_contents($aulario_path), true) : null;
+$aulario = db_get_aulario($centro_id, $aulario_id);
 
 // Check if this aulario shares comedor data from another aulario
-$source_aulario_id = $aulario_id; // Default to current aulario
+$source_aulario_id = $aulario_id;
 $is_shared = false;
 if ($aulario && !empty($aulario["shared_comedor_from"])) {
 	$shared_from = safe_id_segment($aulario["shared_comedor_from"]);
-	$shared_aulario_path = safe_aulario_config_path($centro_id, $shared_from);
-	if ($shared_aulario_path && file_exists($shared_aulario_path)) {
-		$source_aulario_id = $shared_from;
-		$source_aulario_name = json_decode(file_get_contents($shared_aulario_path), true)["name"] ?? $shared_from;
+	$shared_aulario = db_get_aulario($centro_id, $shared_from);
+	if ($shared_aulario) {
+		$source_aulario_id   = $shared_from;
+		$source_aulario_name = $shared_aulario["name"] ?? $shared_from;
 		$is_shared = true;
 	}
 }
 
-$menuTypesPath = "/DATA/entreaulas/Centros/$centro_id/Aularios/$source_aulario_id/Comedor-MenuTypes.json";
 $defaultMenuTypes = [
-	["id" => "basal", "label" => "Menú basal", "color" => "#0d6efd"],
+	["id" => "basal",       "label" => "Menú basal",       "color" => "#0d6efd"],
 	["id" => "vegetariano", "label" => "Menú vegetariano", "color" => "#198754"],
-	["id" => "alergias", "label" => "Menú alergias", "color" => "#dc3545"],
+	["id" => "alergias",    "label" => "Menú alergias",    "color" => "#dc3545"],
 ];
-if (!file_exists($menuTypesPath)) {
-	if (!is_dir(dirname($menuTypesPath))) {
-		mkdir(dirname($menuTypesPath), 0777, true);
-	}
-	file_put_contents($menuTypesPath, json_encode($defaultMenuTypes, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-}
 
-$menuTypes = json_decode(@file_get_contents($menuTypesPath), true);
+$menuTypes = db_get_comedor_menu_types($centro_id, $source_aulario_id);
 if (!is_array($menuTypes) || count($menuTypes) === 0) {
 	$menuTypes = $defaultMenuTypes;
+	db_set_comedor_menu_types($centro_id, $source_aulario_id, $menuTypes);
 }
 
 $menuTypeIds = [];
@@ -71,10 +65,9 @@ if (!in_array($menuTypeId, $menuTypeIds, true)) {
 	$menuTypeId = $menuTypeIds[0] ?? "basal";
 }
 
-$ym = $dateObj->format("Y-m");
+$ym  = $dateObj->format("Y-m");
 $day = $dateObj->format("d");
-$baseDir = "/DATA/entreaulas/Centros/$centro_id/Aularios/$source_aulario_id/Comedor/$ym/$day";
-$dataPath = "$baseDir/_datos.json";
+
 
 function blank_menu()
 {
@@ -91,11 +84,9 @@ $menuData = [
 	"date" => $date,
 	"menus" => []
 ];
-if (file_exists($dataPath)) {
-	$existing = json_decode(file_get_contents($dataPath), true);
-	if (is_array($existing)) {
-		$menuData = array_merge($menuData, $existing);
-	}
+$existing = db_get_comedor_entry($centro_id, $source_aulario_id, $ym, $day);
+if (is_array($existing) && !empty($existing)) {
+	$menuData = array_merge($menuData, $existing);
 }
 if (!isset($menuData["menus"][$menuTypeId])) {
 	$menuData["menus"][$menuTypeId] = blank_menu();
@@ -251,14 +242,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $canEdit) {
 		if ($newId !== "" && $newLabel !== "") {
 			$exists = false;
 			foreach ($menuTypes as $t) {
-				if (($t["id"] ?? "") === $newId) {
-					$exists = true;
-					break;
-				}
+				if (($t["id"] ?? "") === $newId) { $exists = true; break; }
 			}
 			if (!$exists) {
 				$menuTypes[] = ["id" => $newId, "label" => $newLabel, "color" => $newColor];
-				file_put_contents($menuTypesPath, json_encode($menuTypes, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+				db_set_comedor_menu_types($centro_id, $source_aulario_id, $menuTypes);
 				header("Location: /entreaulas/comedor.php?aulario=" . urlencode($aulario_id) . "&date=" . urlencode($date) . "&menu=" . urlencode($newId));
 				exit;
 			}
@@ -268,19 +256,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $canEdit) {
 	if ($action === "delete_type") {
 		$deleteId = safe_id_segment(trim($_POST["delete_type_id"] ?? ""));
 		if ($deleteId !== "") {
-			$deleted = false;
-			$newMenuTypes = [];
-			foreach ($menuTypes as $t) {
-				if (($t["id"] ?? "") === $deleteId) {
-					$deleted = true;
-				} else {
-					$newMenuTypes[] = $t;
-				}
-			}
-			if ($deleted) {
+			$newMenuTypes = array_values(array_filter($menuTypes, fn($t) => ($t["id"] ?? "") !== $deleteId));
+			if (count($newMenuTypes) !== count($menuTypes)) {
 				$menuTypes = $newMenuTypes;
-				file_put_contents($menuTypesPath, json_encode($menuTypes, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-				// Redirect to the first available menu type or default
+				db_set_comedor_menu_types($centro_id, $source_aulario_id, $menuTypes);
 				$redirectMenuId = !empty($menuTypes) ? $menuTypes[0]["id"] : "basal";
 				header("Location: /entreaulas/comedor.php?aulario=" . urlencode($aulario_id) . "&date=" . urlencode($date) . "&menu=" . urlencode($redirectMenuId));
 				exit;
@@ -296,15 +275,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $canEdit) {
 			foreach ($menuTypes as &$t) {
 				if (($t["id"] ?? "") === $renameId) {
 					$t["label"] = $newLabel;
-					if ($newColor !== "") {
-						$t["color"] = $newColor;
-					}
+					if ($newColor !== "") { $t["color"] = $newColor; }
 					break;
 				}
 			}
-			// Clean up the reference to avoid accidental usage after the loop
 			unset($t);
-			file_put_contents($menuTypesPath, json_encode($menuTypes, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+			db_set_comedor_menu_types($centro_id, $source_aulario_id, $menuTypes);
 			header("Location: /entreaulas/comedor.php?aulario=" . urlencode($aulario_id) . "&date=" . urlencode($date) . "&menu=" . urlencode($renameId));
 			exit;
 		}
@@ -316,23 +292,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $canEdit) {
 			$menuData["menus"][$menuTypeId] = blank_menu();
 		}
 
+		// Pictogram images still stored on filesystem in Comedor dir
+		$baseDir = "/DATA/entreaulas/Centros/$centro_id/Aularios/$source_aulario_id/Comedor/$ym/$day";
 		$plates = ["primero", "segundo", "postre"];
 		foreach ($plates as $plate) {
 			$name = trim($_POST["name_" . $plate] ?? "");
 			$menuData["menus"][$menuTypeId]["plates"][$plate]["name"] = $name;
-
 			$pictUpload = handle_image_upload("pictogram_file_" . $plate, $menuTypeId . "_" . $plate . "_pict", $baseDir, $uploadErrors);
-
 			if ($pictUpload !== null) {
 				$menuData["menus"][$menuTypeId]["plates"][$plate]["pictogram"] = $pictUpload;
 			}
-
 		}
 
-		if (!is_dir($baseDir)) {
-			mkdir($baseDir, 0777, true);
-		}
-		file_put_contents($dataPath, json_encode($menuData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+		db_set_comedor_entry($centro_id, $source_aulario_id, $ym, $day, $menuData);
 		$saveNotice = "Menú guardado correctamente.";
 	}
 }
@@ -359,11 +331,10 @@ foreach ($userAulas as $aulaId) {
 	if ($aulaIdSafe === "") {
 		continue;
 	}
-	$aulaPath = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulaIdSafe.json";
-	$aulaData = file_exists($aulaPath) ? json_decode(file_get_contents($aulaPath), true) : null;
+	$aulaData = db_get_aulario($centro_id, $aulaIdSafe);
 	$aulaOptions[] = [
-		"id" => $aulaIdSafe,
-		"name" => $aulaData["name"] ?? $aulaIdSafe
+		"id"   => $aulaIdSafe,
+		"name" => $aulaData["name"] ?? $aulaIdSafe,
 	];
 }
 require_once "_incl/pre-body.php";

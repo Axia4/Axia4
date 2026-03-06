@@ -2,30 +2,29 @@
 require_once "_incl/auth_redir.php";
 require_once "_incl/pre-body.php";
 require_once "../_incl/tools.security.php";
+require_once "../_incl/db.php";
 
 ?>
 <div class="card pad">
     <div>
-        <h1 class="card-title">¡Hola, <?php echo $_SESSION["auth_data"]["display_name"];?>!</h1>
+        <h1 class="card-title">¡Hola, <?php echo htmlspecialchars($_SESSION["auth_data"]["display_name"]); ?>!</h1>
         <span>
             Bienvenidx a la plataforma de gestión de aularios conectados. Desde aquí podrás administrar los aularios asociados a tu cuenta.
         </span>
     </div>
 </div>
 <div id="grid">
-    <?php $user_data = $_SESSION["auth_data"];
+    <?php
+    $user_data = $_SESSION["auth_data"];
     $centro_id = safe_centro_id($user_data["entreaulas"]["centro"] ?? "");
-    foreach ($user_data["entreaulas"]["aulas"] as $aulario_id) {
+    $user_aulas = $user_data["entreaulas"]["aulas"] ?? [];
+    foreach ($user_aulas as $aulario_id) {
         $aulario_id = safe_id_segment($aulario_id);
         if ($aulario_id === "") {
             continue;
         }
-        $aulario_path = safe_aulario_config_path($centro_id, $aulario_id);
-        if (!$aulario_path || !file_exists($aulario_path)) {
-            continue;
-        }
-        $aulario = json_decode(file_get_contents($aulario_path), true);
-        if (!is_array($aulario)) {
+        $aulario = db_get_aulario($centro_id, $aulario_id);
+        if (!$aulario) {
             continue;
         }
         $aulario_name = $aulario["name"] ?? $aulario_id;
@@ -61,7 +60,6 @@ require_once "../_incl/tools.security.php";
     }
 </style>
 
-
 <script>
     var msnry = new Masonry('#grid', {
         "columnWidth": 250,
@@ -69,10 +67,7 @@ require_once "../_incl/tools.security.php";
         "gutter": 10,
         "transitionDuration": 0
     });
-    setInterval(() => {
-        msnry.layout()
-    }, 1000);
-    msnry.layout()
+    setTimeout(() => { msnry.layout() }, 250);
+    setInterval(() => { msnry.layout() }, 1000);
 </script>
-
 <?php require_once "_incl/post-body.php"; ?>

@@ -1,124 +1,80 @@
 <?php
 require_once "tools.session.php";
 require_once "tools.security.php";
+require_once __DIR__ . "/db.php";
+
+// Load auth config from DB (replaces /DATA/AuthConfig.json)
 if (!isset($AuthConfig)) {
-    $AuthConfig = json_decode(file_get_contents("/DATA/AuthConfig.json"), true);
+    $AuthConfig = db_get_all_config();
 }
-$ua = $_SERVER['HTTP_USER_AGENT'];
+
+// ── Header-based auth (Axia4Auth/{user}/{pass}) ───────────────────────────────
+$ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
 if (str_starts_with($ua, "Axia4Auth/")) {
-    $username = explode("/", $ua)[1];
-    $userpass = explode("/", $ua)[2];
-    $user_filename = safe_username_to_filename($username);
-    if ($user_filename === "") {
+    $parts    = explode("/", $ua);
+    $username = $parts[1] ?? '';
+    $userpass = $parts[2] ?? '';
+    $row      = db_get_user($username);
+    if (!$row || !password_verify($userpass, $row['password_hash'])) {
         header("HTTP/1.1 403 Forbidden");
         die();
     }
-    $userdata = json_decode(file_get_contents("/DATA/Usuarios/" . $user_filename . ".json"), true);
-    if (!$userdata) {
-        header("HTTP/1.1 403 Forbidden");
-        die();
-    }
-    if (!password_verify($userpass, $userdata["password_hash"])) {
-        header("HTTP/1.1 403 Forbidden");
-        die();
-    }
-    $_SESSION["auth_user"] = $username;
-    $_SESSION["auth_data"] = $userdata;
-    $_SESSION["auth_ok"] = true;
-    $_COOKIE["auth_user"] = $username;
-    $_COOKIE["auth_pass_b64"] = base64_encode($userpass);
-    $_SESSION["auth_external_lock"] = "header"; // Cannot logout because auth is done via header
+    $_SESSION["auth_user"]          = $username;
+    $_SESSION["auth_data"]          = db_build_auth_data($row);
+    $_SESSION["auth_ok"]            = true;
+    $_COOKIE["auth_user"]           = $username;
+    $_COOKIE["auth_pass_b64"]       = base64_encode($userpass);
+    $_SESSION["auth_external_lock"] = "header";
+    init_active_centro($_SESSION["auth_data"]);
 }
 
-// If $_SESSION is empty, check for cookies "auth_user" and "auth_pass_b64"
-if ($_SESSION["auth_ok"] != true && isset($_COOKIE["auth_user"]) && isset($_COOKIE["auth_pass_b64"])) {
+// ── Cookie-based auto-login ───────────────────────────────────────────────────
+if (($_SESSION["auth_ok"] ?? false) != true
+    && isset($_COOKIE["auth_user"], $_COOKIE["auth_pass_b64"])
+) {
     $username = $_COOKIE["auth_user"];
-    $userpass_b64 = $_COOKIE["auth_pass_b64"];
-    $userpass = base64_decode($userpass_b64);
-    $user_filename = safe_username_to_filename($username);
-    if ($user_filename !== "") {
-        $userdata = json_decode(file_get_contents("/DATA/Usuarios/" . $user_filename . ".json"), true);
-        if ($userdata && password_verify($userpass, $userdata["password_hash"])) {
-            $_SESSION["auth_user"] = $username;
-            $_SESSION["auth_data"] = $userdata;
-            $_SESSION["auth_ok"] = true;
-        }
+    $userpass = base64_decode($_COOKIE["auth_pass_b64"]);
+    $row      = db_get_user($username);
+    if ($row && password_verify($userpass, $row['password_hash'])) {
+        $_SESSION["auth_user"] = $username;
+        $_SESSION["auth_data"] = db_build_auth_data($row);
+        $_SESSION["auth_ok"]   = true;
+        init_active_centro($_SESSION["auth_data"]);
     }
 }
 
-// If session is older than 5min, reload user data
-if (isset($_SESSION["auth_ok"]) && $_SESSION["auth_ok"] && isset($_SESSION["auth_user"])) {
-    if (isset($AuthConfig["session_load_mode"]) && $AuthConfig["session_load_mode"] === "force") {
-        $username = $_SESSION["auth_user"];
-        $user_filename = safe_username_to_filename($username);
-        if ($user_filename !== "") {
-            $userdata = json_decode(file_get_contents("/DATA/Usuarios/" . $user_filename . ".json"), true);
-            $_SESSION["auth_data"] = $userdata;
+// ── Periodic session reload from DB ──────────────────────────────────────────
+if (!empty($_SESSION["auth_ok"]) && !empty($_SESSION["auth_user"])) {
+    $load_mode = $AuthConfig["session_load_mode"] ?? '';
+    if ($load_mode === "force") {
+        $row = db_get_user($_SESSION["auth_user"]);
+        if ($row) {
+            $_SESSION["auth_data"] = db_build_auth_data($row);
+            init_active_centro($_SESSION["auth_data"]);
         }
         $_SESSION["last_reload_time"] = time();
-    } elseif (isset($AuthConfig["session_load_mode"]) && $AuthConfig["session_load_mode"] === "never") {
-        // Do nothing, never reload session data
-    } else {
-        if (isset($_SESSION["last_reload_time"])) {
-            $last_reload = $_SESSION["last_reload_time"];
-            if (time() - $last_reload > 300) {
-                $username = $_SESSION["auth_user"];
-                $user_filename = safe_username_to_filename($username);
-                if ($user_filename !== "") {
-                    $userdata = json_decode(file_get_contents("/DATA/Usuarios/" . $user_filename . ".json"), true);
-                    $_SESSION["auth_data"] = $userdata;
-                }
-                $_SESSION["last_reload_time"] = time();
+    } elseif ($load_mode !== "never") {
+        $last = $_SESSION["last_reload_time"] ?? 0;
+        if (time() - $last > 300) {
+            $row = db_get_user($_SESSION["auth_user"]);
+            if ($row) {
+                $_SESSION["auth_data"] = db_build_auth_data($row);
+                init_active_centro($_SESSION["auth_data"]);
             }
-        } else {
+            $_SESSION["last_reload_time"] = time();
+        }
+        if (!isset($_SESSION["last_reload_time"])) {
             $_SESSION["last_reload_time"] = time();
         }
     }
 }
 
-
-function user_is_authenticated()
+function user_is_authenticated(): bool
 {
     return isset($_SESSION["auth_ok"]) && $_SESSION["auth_ok"] === true;
 }
-function user_has_permission($perm)
-{
-    return in_array($perm, $_SESSION["auth_data"]["permissions"] ?? []);
-}
 
-/**
- * Returns all centro/tenant IDs the authenticated user belongs to.
- * Supports both the legacy single-centro format (entreaulas.centro = "string")
- * and the new multi-tenant format (entreaulas.centros = ["a", "b"]).
- */
-function get_user_centros($auth_data = null)
+function user_has_permission(string $perm): bool
 {
-    $data = $auth_data ?? $_SESSION["auth_data"] ?? [];
-    $ea = $data["entreaulas"] ?? [];
-
-    if (!empty($ea["centros"]) && is_array($ea["centros"])) {
-        return array_values($ea["centros"]);
-    }
-    if (!empty($ea["centro"])) {
-        return [$ea["centro"]];
-    }
-    return [];
-}
-
-/**
- * Ensures $_SESSION['active_centro'] is set to a valid centro for the user.
- * Call after user data is loaded/reloaded.
- */
-function init_active_centro($auth_data = null)
-{
-    $centros = get_user_centros($auth_data);
-    if (empty($centros)) {
-        $_SESSION['active_centro'] = null;
-        return;
-    }
-    // Keep existing selection only if it is still valid
-    if (!empty($_SESSION['active_centro']) && in_array($_SESSION['active_centro'], $centros, true)) {
-        return;
-    }
-    $_SESSION['active_centro'] = $centros[0];
+    return in_array($perm, $_SESSION["auth_data"]["permissions"] ?? [], true);
 }
