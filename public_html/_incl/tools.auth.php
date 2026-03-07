@@ -22,28 +22,36 @@ if (str_starts_with($ua, "Axia4Auth/")) {
     $_SESSION["auth_user"]          = $username;
     $_SESSION["auth_data"]          = db_build_auth_data($row);
     $_SESSION["auth_ok"]            = true;
-    $_COOKIE["auth_user"]           = $username;
-    $_COOKIE["auth_pass_b64"]       = base64_encode($userpass);
     $_SESSION["auth_external_lock"] = "header";
     init_active_org($_SESSION["auth_data"]);
 }
 
-// ── Cookie-based auto-login ───────────────────────────────────────────────────
-if (($_SESSION["auth_ok"] ?? false) != true
-    && isset($_COOKIE["auth_user"], $_COOKIE["auth_pass_b64"])
-) {
-    $username = $_COOKIE["auth_user"];
-    $userpass = base64_decode($_COOKIE["auth_pass_b64"]);
-    $row      = db_get_user($username);
-    if ($row && password_verify($userpass, $row['password_hash'])) {
-        $_SESSION["auth_user"] = $username;
-        $_SESSION["auth_data"] = db_build_auth_data($row);
-        $_SESSION["auth_ok"]   = true;
-        if (empty($_SESSION["session_created"])) {
-            $_SESSION["session_created"] = time();
+// ── Remember-token auto-login ─────────────────────────────────────────────────
+// Restores the session from the opaque auth_token cookie (no password stored).
+if (($_SESSION["auth_ok"] ?? false) != true && isset($_COOKIE["auth_token"])) {
+    $expired    = ["expires" => time() - 3600, "path" => "/", "httponly" => true,
+                   "secure" => true, "samesite" => "Lax"];
+    $raw_token  = $_COOKIE["auth_token"];
+    $token_hash = hash('sha256', $raw_token);
+    $sess_row   = db_restore_session_by_remember_token($token_hash);
+    if ($sess_row) {
+        $username = $sess_row['username'];
+        $row      = db_get_user($username);
+        if ($row) {
+            $_SESSION["auth_user"] = $username;
+            $_SESSION["auth_data"] = db_build_auth_data($row);
+            $_SESSION["auth_ok"]   = true;
+            if (empty($_SESSION["session_created"])) {
+                $_SESSION["session_created"] = time();
+            }
+            init_active_org($_SESSION["auth_data"]);
+        } else {
+            // User no longer exists — clear the stale cookie
+            setcookie("auth_token", "", $expired);
         }
-        init_active_org($_SESSION["auth_data"]);
-        db_register_session($username);
+    } else {
+        // Token not found (revoked or expired) — clear the stale cookie
+        setcookie("auth_token", "", $expired);
     }
 }
 

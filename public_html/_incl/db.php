@@ -773,26 +773,53 @@ function init_active_centro(?array $auth_data = null): void
 // ── User session helpers (Dispositivos conectados) ────────────────────────────
 
 /**
- * Register or refresh a session record in user_sessions.
+ * Register a new session record in user_sessions.
+ * $remember_token_hash is the SHA-256 hash of the raw remember-me cookie value.
  * Stores a SHA-256 hash of the PHP session_id so the raw token never reaches the DB.
  */
-function db_register_session(string $username): void
+function db_register_session(string $username, string $remember_token_hash = ''): void
 {
     $token = hash('sha256', session_id());
     $ip    = $_SERVER['HTTP_X_FORWARDED_FOR']
            ?? $_SERVER['REMOTE_ADDR']
            ?? '';
-    // Only keep the first IP if X-Forwarded-For contains a list
     $ip = trim(explode(',', $ip)[0]);
     $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 512);
 
     db()->prepare(
-        "INSERT INTO user_sessions (session_token, username, ip_address, user_agent)
-         VALUES (?, ?, ?, ?)
+        "INSERT INTO user_sessions (session_token, username, ip_address, user_agent, remember_token_hash)
+         VALUES (?, ?, ?, ?, ?)
          ON CONFLICT(session_token) DO UPDATE SET
-             last_active = datetime('now'),
-             username    = excluded.username"
-    )->execute([$token, strtolower($username), $ip, $ua]);
+             last_active         = datetime('now'),
+             remember_token_hash = COALESCE(excluded.remember_token_hash, remember_token_hash)"
+    )->execute([$token, strtolower($username), $ip, $ua, $remember_token_hash ?: null]);
+}
+
+/**
+ * Restore a session from a remember-me token hash.
+ * Updates the session_token to the current PHP session_id so revocation
+ * continues to work after the PHP session was re-created.
+ * Returns the session row (including username) on success, or null if not found.
+ */
+function db_restore_session_by_remember_token(string $token_hash): ?array
+{
+    $pdo  = db();
+    $stmt = $pdo->prepare(
+        'SELECT * FROM user_sessions WHERE remember_token_hash = ? LIMIT 1'
+    );
+    $stmt->execute([$token_hash]);
+    $row = $stmt->fetch();
+    if (!$row) {
+        return null;
+    }
+    // Migrate the row to the new PHP session_id
+    $new_session_token = hash('sha256', session_id());
+    $pdo->prepare(
+        "UPDATE user_sessions
+            SET session_token = ?, last_active = datetime('now')
+          WHERE remember_token_hash = ?"
+    )->execute([$new_session_token, $token_hash]);
+    return $row;
 }
 
 /** Update last_active for the current session. */

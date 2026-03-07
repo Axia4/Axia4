@@ -100,10 +100,11 @@ if (($_GET["google_callback"] ?? "") === "1") {
     $_SESSION['auth_ok']   = true;
     $_SESSION['session_created'] = time();
     init_active_org($_SESSION['auth_data']);
-    db_register_session($username);
+    $remember_token      = bin2hex(random_bytes(32));
+    $remember_token_hash = hash('sha256', $remember_token);
+    db_register_session($username, $remember_token_hash);
     $cookie_options = ["expires" => time() + (86400 * 30), "path" => "/", "httponly" => true, "secure" => true, "samesite" => "Lax"];
-    setcookie("auth_user",      $username,               $cookie_options);
-    setcookie("auth_pass_b64",  base64_encode($password), $cookie_options);
+    setcookie("auth_token", $remember_token, $cookie_options);
 
     $redir = safe_redir($state["redir"] ?? "/");
 
@@ -141,8 +142,7 @@ if (($_GET["google"] ?? "") === "1") {
 if (($_GET["logout"] ?? "") === "1") {
     $redir = safe_redir($_GET["redir"] ?? "/");
     $cookie_options_expired = ["expires" => time() - 3600, "path" => "/", "httponly" => true, "secure" => true, "samesite" => "Lax"];
-    setcookie("auth_user", "", $cookie_options_expired);
-    setcookie("auth_pass_b64", "", $cookie_options_expired);
+    setcookie("auth_token", "", $cookie_options_expired);
     db_delete_session();
     session_unset();
     session_destroy();
@@ -168,16 +168,17 @@ if (isset($_POST["user"])) {
     if (!$row || !isset($row["password_hash"])) {
         $_GET["_result"] = "El usuario no existe.";
     } elseif (password_verify($password, $row["password_hash"])) {
+        $remember_token      = bin2hex(random_bytes(32));
+        $remember_token_hash = hash('sha256', $remember_token);
         session_regenerate_id(true);
         $_SESSION['auth_user'] = $user;
         $_SESSION['auth_data'] = db_build_auth_data($row);
         $_SESSION['auth_ok']   = true;
         $_SESSION['session_created'] = time();
         init_active_org($_SESSION['auth_data']);
-        db_register_session($user);
+        db_register_session($user, $remember_token_hash);
         $cookie_options = ["expires" => time() + (86400 * 30), "path" => "/", "httponly" => true, "secure" => true, "samesite" => "Lax"];
-        setcookie("auth_user",     $user,                    $cookie_options);
-        setcookie("auth_pass_b64", base64_encode($password), $cookie_options);
+        setcookie("auth_token", $remember_token, $cookie_options);
         $redir = safe_redir($_GET["redir"] ?? "/");
         header("Location: $redir");
         die();
