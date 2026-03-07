@@ -61,6 +61,16 @@ function render_users_mobile_styles()
 }
 
 switch ($_GET['form'] ?? '') {
+    case 'delete_user':
+        $username = safe_username($_POST['username'] ?? '');
+        if (empty($username)) {
+            die("Nombre de usuario no proporcionado.");
+        }
+        db_delete_user($username);
+        db_delete_user_sessions($username);
+        header("Location: ?action=index&_result=" . urlencode("Usuario \"$username\" eliminado correctamente."));
+        exit;
+
     case 'save_edit':
         $username = safe_username($_POST['username'] ?? '');
         if (empty($username)) {
@@ -365,6 +375,16 @@ switch ($_GET['action'] ?? '') {
     <div>
       <h2>Cambiar contraseña</h2>
       <a href="/sysadmin/reset_password.php?user=<?= urlencode($username) ?>" class="btn btn-secondary">Restablecer Contraseña</a>
+    </div>
+  </div>
+</form>
+<form method="post" action="?form=delete_user" class="users-mobile-stack mt-2" onsubmit="return confirm('¿Seguro que quieres eliminar la cuenta de <?= htmlspecialchars($username, ENT_QUOTES) ?>? Esta acción no se puede deshacer.');">
+  <div class="card pad border-danger">
+    <div>
+      <h2 class="text-danger">Zona de peligro</h2>
+      <p>Eliminar la cuenta borrará permanentemente al usuario y todas sus sesiones activas.</p>
+      <input type="hidden" name="username" value="<?= htmlspecialchars($username) ?>">
+      <button type="submit" class="btn btn-danger">Eliminar cuenta</button>
     </div>
   </div>
 </form>
