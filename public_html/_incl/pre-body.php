@@ -27,11 +27,13 @@ if (!empty($displayName)) {
   $initials = mb_strtoupper($first . $last);
 }
 
-// Tenant (centro) management
-$userCentros  = get_user_centros($_SESSION["auth_data"] ?? []);
-$activeCentro = $_SESSION['active_centro'] ?? ($_SESSION["auth_data"]["entreaulas"]["centro"] ?? '');
+// Tenant (organización) management
+$userOrganizaciones  = get_user_organizaciones($_SESSION["auth_data"] ?? []);
+$activeOrganizacionId = $_SESSION['active_organizacion']
+  ?? ($_SESSION["auth_data"]["aulatek"]["organizacion"] ?? ($_SESSION["auth_data"]["entreaulas"]["organizacion"] ?? ''));
+$activeOrganizacionName = $userOrganizaciones[$activeOrganizacionId] ?? '';
 
-
+?>
 <!DOCTYPE html>
 <html lang="es">
 
@@ -170,6 +172,7 @@ $activeCentro = $_SESSION['active_centro'] ?? ($_SESSION["auth_data"]["entreaula
       font-weight: 400;
       white-space: nowrap;
       transition: background 0.15s ease;
+      border: 1px solid grey;
     }
     .sidebar-link:hover { background: var(--gw-hover); color: var(--gw-text-primary); text-decoration: none; }
     .sidebar-link.active, .sidebar-link:focus-visible { background: var(--gw-blue-light); color: var(--gw-blue); font-weight: 500; }
@@ -505,9 +508,9 @@ $activeCentro = $_SESSION['active_centro'] ?? ($_SESSION["auth_data"]["entreaula
                     <img src="/static/logo-club.png" alt="">
                     <span>Club</span>
                   </a>
-                  <a class="menu-item" href="/entreaulas/">
+                  <a class="menu-item" href="/aulatek/">
                     <img src="/static/logo-entreaulas.png" alt="">
-                    <span>EntreAulas</span>
+                    <span>AulaTek</span>
                   </a>
                   <a class="menu-item" href="/account/">
                     <img src="/static/logo-account.png" alt="">
@@ -530,22 +533,22 @@ $activeCentro = $_SESSION['active_centro'] ?? ($_SESSION["auth_data"]["entreaula
                   <div class="account-name"><?php echo htmlspecialchars($displayName); ?></div>
                   <div class="account-email"><?php echo htmlspecialchars($email); ?></div>
                 </div>
-                <?php if (!empty($userCentros) && $_SESSION["auth_ok"]): ?>
-                <div style="padding: 8px 16px; border-top: 1px solid #e0e0e0;">
+                <?php if (!empty($userOrganizaciones) && $_SESSION["auth_ok"]): ?>
+                <div style="padding: 8px 16px;">
                   <div style="font-size:.75rem;font-weight:600;color:#5f6368;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">
                     Organización activa
                   </div>
-                  <div style="font-size:.9rem;font-weight:600;color:#1a73e8;margin-bottom:<?= count($userCentros) > 1 ? '8px' : '0' ?>;">
-                    <?= htmlspecialchars($activeCentro ?: '–') ?>
+                  <div style="font-size:.9rem;font-weight:600;color:#1a73e8;margin-bottom:<?= count($userOrganizaciones) > 1 ? '8px' : '0' ?>;">
+                    <?= htmlspecialchars($activeOrganizacionName ?: '–') ?>
                   </div>
-                  <?php if (count($userCentros) > 1): ?>
+                  <?php if (count($userOrganizaciones) > 1): ?>
                     <div style="font-size:.75rem;color:#5f6368;margin-bottom:4px;">Cambiar organización:</div>
-                    <?php foreach ($userCentros as $cid): if ($cid === $activeCentro) continue; ?>
+                    <?php foreach ($userOrganizaciones as $oid => $orgName): if ($oid === $activeOrganizacionId) continue; ?>
                       <form method="post" action="/_incl/switch_tenant.php" style="margin:0 0 4px;">
                         <input type="hidden" name="redir" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/') ?>">
-                        <button type="submit" name="centro" value="<?= htmlspecialchars($cid) ?>"
+                        <button type="submit" name="organization" value="<?= htmlspecialchars($oid) ?>"
                                 style="display:block;width:100%;text-align:left;padding:5px 8px;border:1px solid #e0e0e0;border-radius:6px;background:#f8f9fa;font-size:.85rem;cursor:pointer;">
-                          <?= htmlspecialchars($cid) ?>
+                          <?= htmlspecialchars($orgName) ?>
                         </button>
                       </form>
                     <?php endforeach; ?>
@@ -554,11 +557,11 @@ $activeCentro = $_SESSION['active_centro'] ?? ($_SESSION["auth_data"]["entreaula
                 <?php endif; ?>
                 <div class="account-actions">
                   <?php if ($_SESSION["auth_ok"]) { ?>
-                    <a href="/account/" class="btn btn-outline-secondary w-100">Gestionar cuenta</a>
-                    <a href="/_login.php?logout=1&redir=/" class="btn btn-outline-secondary w-100">Cerrar sesión</a>
+                    <a href="/account/" class="btn btn-outline-dark w-100">Gestionar cuenta</a>
+                    <a href="/_login.php?logout=1&redir=/" class="btn btn-outline-danger w-100">Cerrar sesión</a>
                   <?php } else { ?>
                     <a href="/_login.php?redir=/" class="btn btn-primary w-100">Iniciar sesión</a>
-                    <a href="/account/register.php" class="btn btn-outline-primary w-100">Crear cuenta</a>
+                    <a href="/account/register.php" class="btn btn-outline-dark w-100">Crear cuenta</a>
                   <?php } ?>
                 </div>
               </div>
@@ -569,22 +572,11 @@ $activeCentro = $_SESSION['active_centro'] ?? ($_SESSION["auth_data"]["entreaula
         <!-- ── App shell (sidebar + content) ──────────────────────── -->
         <div class="app-shell">
           <aside class="sidebar">
-            <div class="sidebar-section-label">Esta app</div>
-            <nav class="sidebar-nav">
-              <?php
-              if (file_exists(__DIR__ . "/../$APP_CODE/__menu.php")) {
-                include __DIR__ . "/../$APP_CODE/__menu.php";
-              }
-              ?>
-            </nav>
-            <div class="sidebar-divider"></div>
-            <div class="sidebar-section-label">Axia4</div>
-            <nav class="sidebar-nav">
-              <a class="sidebar-link" href="/">
-                <img src="/static/logo.png" alt="">
-                <span>Inicio</span>
-              </a>
-            </nav>
+            <?php
+            if (file_exists(__DIR__ . "/../$APP_CODE/__menu.php")) {
+              include __DIR__ . "/../$APP_CODE/__menu.php";
+            }
+            ?>
           </aside>
           <label for="sidebarToggle" class="sidebar-backdrop" aria-hidden="true"></label>
           <div class="app-content">

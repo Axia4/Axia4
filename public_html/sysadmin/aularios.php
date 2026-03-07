@@ -24,19 +24,19 @@ switch ($form_action) {
             die("Parámetros inválidos.");
         }
         // Remove from DB
-        db()->prepare("DELETE FROM aularios WHERE centro_id = ? AND aulario_id = ?")
+        db()->prepare("DELETE FROM aularios WHERE org_id = ? AND aulario_id = ?")
             ->execute([$centro_id, $aulario_id]);
         // Remove comedor, diario, panel data
-        db()->prepare("DELETE FROM comedor_menu_types WHERE centro_id = ? AND aulario_id = ?")
+        db()->prepare("DELETE FROM comedor_menu_types WHERE org_id = ? AND aulario_id = ?")
             ->execute([$centro_id, $aulario_id]);
-        db()->prepare("DELETE FROM comedor_entries WHERE centro_id = ? AND aulario_id = ?")
+        db()->prepare("DELETE FROM comedor_entries WHERE org_id = ? AND aulario_id = ?")
             ->execute([$centro_id, $aulario_id]);
-        db()->prepare("DELETE FROM diario_entries WHERE centro_id = ? AND aulario_id = ?")
+        db()->prepare("DELETE FROM diario_entries WHERE org_id = ? AND aulario_id = ?")
             ->execute([$centro_id, $aulario_id]);
-        db()->prepare("DELETE FROM panel_alumno WHERE centro_id = ? AND aulario_id = ?")
+        db()->prepare("DELETE FROM panel_alumno WHERE org_id = ? AND aulario_id = ?")
             ->execute([$centro_id, $aulario_id]);
         // Remove filesystem directory with student photos
-        $aulario_dir = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id";
+        $aulario_dir = aulatek_orgs_base_path() . "/$centro_id/Aularios/$aulario_id";
         function rrmdir($dir)
         {
             if (is_dir($dir)) {
@@ -54,26 +54,26 @@ switch ($form_action) {
         exit();
         break;
     case "create":
-        $centro_id  = safe_path_segment(Sf($_POST["centro"]  ?? ""));
+        $centro_id  = safe_path_segment(Sf($_POST["centro"]  ?? ($_POST["org"] ?? "")));
         $aulario_id = strtolower(preg_replace("/[^a-zA-Z0-9_-]/", "_", Sf($_POST["name"] ?? "")));
         if (empty($centro_id) || empty($aulario_id)) {
             die("Datos incompletos.");
         }
         // Ensure centro exists in DB
-        $stmt = db()->prepare("SELECT id FROM centros WHERE centro_id = ?");
+        $stmt = db()->prepare("SELECT id FROM organizaciones WHERE org_id = ?");
         $stmt->execute([$centro_id]);
         if (!$stmt->fetch()) {
             die("Centro no válido.");
         }
         db()->prepare(
-            "INSERT OR IGNORE INTO aularios (centro_id, aulario_id, name, icon) VALUES (?, ?, ?, ?)"
+            "INSERT OR IGNORE INTO aularios (org_id, aulario_id, name, icon) VALUES (?, ?, ?, ?)"
         )->execute([
             $centro_id, $aulario_id,
             Sf($_POST["name"] ?? ""),
             Sf($_POST["icon"] ?? "/static/logo-entreaulas.png"),
         ]);
         // Create Proyectos directory for project file storage
-        $proyectos_dir = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id/Proyectos/";
+        $proyectos_dir = aulatek_orgs_base_path() . "/$centro_id/Aularios/$aulario_id/Proyectos/";
         if (!is_dir($proyectos_dir)) {
             mkdir($proyectos_dir, 0755, true);
         }
@@ -104,7 +104,7 @@ switch ($form_action) {
             $extra['shared_comedor_from'] = Sf($_POST['shared_comedor_from']);
         }
         db()->prepare(
-            "UPDATE aularios SET name = ?, icon = ?, extra = ? WHERE centro_id = ? AND aulario_id = ?"
+            "UPDATE aularios SET name = ?, icon = ?, extra = ? WHERE org_id = ? AND aulario_id = ?"
         )->execute([
             Sf($_POST["name"] ?? ""),
             Sf($_POST["icon"] ?? "/static/logo-entreaulas.png"),
@@ -121,7 +121,7 @@ $view_action = $_GET["action"] ?? "index";
 switch ($view_action) {
     case "new":
         require_once "_incl/pre-body.php";
-        $centro_id   = safe_path_segment(Sf($_GET["centro"] ?? ""));
+        $centro_id   = safe_path_segment(Sf($_GET["centro"] ?? ($_GET["org"] ?? "")));
         $all_centros = db_get_centro_ids();
 ?>
 <div class="card pad">
@@ -129,9 +129,9 @@ switch ($view_action) {
         <h1>Nuevo Aulario</h1>
         <form method="post" action="?form=create">
             <div class="mb-3">
-                <label for="centro" class="form-label">Centro:</label>
+                <label for="centro" class="form-label">Organizacion:</label>
                 <select id="centro" name="centro" class="form-select" required>
-                    <option value="">-- Selecciona un centro --</option>
+                    <option value="">-- Selecciona una organizacion --</option>
                     <?php foreach ($all_centros as $cid): ?>
                     <option value="<?= htmlspecialchars($cid) ?>" <?= $cid === $centro_id ? 'selected' : '' ?>><?= htmlspecialchars($cid) ?></option>
                     <?php endforeach; ?>
@@ -143,7 +143,7 @@ switch ($view_action) {
             </div>
             <div class="mb-3">
                 <label for="icon" class="form-label">URL del icono:</label>
-                <input type="url" id="icon" name="icon" class="form-control" value="/static/logo-entreaulas.png">
+                <input type="text" id="icon" name="icon" class="form-control" value="/static/logo-entreaulas.png">
             </div>
             <button type="submit" class="btn btn-primary">Crear Aulario</button>
         </form>
@@ -155,7 +155,7 @@ switch ($view_action) {
     case "edit":
         require_once "_incl/pre-body.php";
         $aulario_id = safe_path_segment(Sf($_GET["aulario"] ?? ""));
-        $centro_id  = safe_path_segment(Sf($_GET["centro"]  ?? ""));
+        $centro_id  = safe_path_segment(Sf($_GET["centro"]  ?? ($_GET["org"] ?? "")));
         $aulario    = db_get_aulario($centro_id, $aulario_id);
         if (!$aulario) {
             die("Aulario no encontrado.");

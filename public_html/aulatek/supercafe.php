@@ -16,7 +16,7 @@ function sc_load_personas_from_alumnos($centro_id)
 {
     $aularios     = db_get_aularios($centro_id);
     $personas     = [];
-    $aularios_dir = "/DATA/entreaulas/Centros/$centro_id/Aularios";
+    $aularios_dir = aulatek_orgs_base_path() . "/$centro_id/Aularios";
     foreach ($aularios as $aulario_id => $aulario_data) {
         $aulario_name = $aulario_data['name'] ?? $aulario_id;
         $alumnos_path = "$aularios_dir/$aulario_id/Alumnos";
@@ -50,10 +50,11 @@ function sc_persona_label($persona_key, $personas)
     return $persona_key;
 }
 
-$centro_id = safe_centro_id($_SESSION['auth_data']['entreaulas']['centro'] ?? '');
+$tenant_data = $_SESSION['auth_data']['aulatek'] ?? ($_SESSION['auth_data']['entreaulas'] ?? []);
+$centro_id = safe_organization_id($tenant_data['organizacion'] ?? ($tenant_data['centro'] ?? ''));
 if ($centro_id === '') {
     require_once "_incl/pre-body.php";
-    echo '<div class="card pad"><h1>SuperCafe</h1><p>No tienes un centro asignado.</p></div>';
+    echo '<div class="card pad"><h1>SuperCafe</h1><p>No tienes una organizacion asignada.</p></div>';
     require_once "_incl/post-body.php";
     exit;
 }
@@ -87,17 +88,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $can_edit) {
                 );
             }
         }
-        header('Location: /entreaulas/supercafe.php');
+        header('Location: /aulatek/supercafe.php');
         exit;
     }
 
     if ($action === 'delete') {
         $order_id = safe_id($_POST['order_id'] ?? '');
         if ($order_id !== '') {
-            db()->prepare('DELETE FROM supercafe_orders WHERE centro_id = ? AND order_ref = ?')
+                db()->prepare('DELETE FROM supercafe_orders WHERE org_id = ? AND order_ref = ?')
                ->execute([$centro_id, $order_id]);
         }
-        header('Location: /entreaulas/supercafe.php');
+        header('Location: /aulatek/supercafe.php');
         exit;
     }
 }
@@ -130,7 +131,7 @@ require_once "_incl/pre-body.php";
     <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
         <h1 style="margin: 0;">SuperCafe – Cafetería</h1>
         <?php if ($can_edit): ?>
-            <a href="/entreaulas/supercafe_edit.php" class="btn btn-success">+ Nueva comanda</a>
+            <a href="/aulatek/supercafe_edit.php" class="btn btn-success">+ Nueva comanda</a>
         <?php endif; ?>
     </div>
 </div>
@@ -170,7 +171,7 @@ require_once "_incl/pre-body.php";
                             <td><strong><?= htmlspecialchars($estado) ?></strong></td>
                             <?php if ($can_edit): ?>
                                 <td style="white-space: nowrap;">
-                                    <a href="/entreaulas/supercafe_edit.php?id=<?= urlencode($order['_id']) ?>"
+                                    <a href="/aulatek/supercafe_edit.php?id=<?= urlencode($order['_id']) ?>"
                                        class="btn btn-sm btn-primary">Editar</a>
                                     <form method="post" style="display: inline;">
                                         <input type="hidden" name="action" value="change_status">
@@ -233,7 +234,7 @@ require_once "_incl/pre-body.php";
                             <td><?= htmlspecialchars($order['Notas'] ?? '') ?></td>
                             <?php if ($can_edit): ?>
                                 <td style="white-space: nowrap;">
-                                    <a href="/entreaulas/supercafe_edit.php?id=<?= urlencode($order['_id']) ?>"
+                                    <a href="/aulatek/supercafe_edit.php?id=<?= urlencode($order['_id']) ?>"
                                        class="btn btn-sm btn-primary">Editar</a>
                                     <form method="post" style="display: inline;">
                                         <input type="hidden" name="action" value="change_status">

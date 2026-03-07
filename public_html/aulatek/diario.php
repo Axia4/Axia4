@@ -3,13 +3,15 @@ require_once "_incl/auth_redir.php";
 require_once "../_incl/tools.security.php";
 
 // Check if user has docente permission
-if (!in_array("entreaulas:docente", $_SESSION["auth_data"]["permissions"] ?? [])) {
+$permissions = $_SESSION["auth_data"]["permissions"] ?? [];
+if (!in_array("aulatek:docente", $permissions, true) && !in_array("entreaulas:docente", $permissions, true)) {
     header("HTTP/1.1 403 Forbidden");
     die("Acceso denegado");
 }
 
 $aulario_id = safe_id_segment($_GET["aulario"] ?? "");
-$centro_id = safe_centro_id($_SESSION["auth_data"]["entreaulas"]["centro"] ?? "");
+$tenant_data = $_SESSION["auth_data"]["aulatek"] ?? ($_SESSION["auth_data"]["entreaulas"] ?? []);
+$centro_id = safe_organization_id($tenant_data["organizacion"] ?? ($tenant_data["centro"] ?? ""));
 $alumno = safe_id_segment($_GET["alumno"] ?? "");
 
 if (empty($aulario_id) || empty($centro_id)) {
@@ -25,7 +27,7 @@ if (empty($aulario_id) || empty($centro_id)) {
 }
 
 // Validate paths with realpath
-$base_path = "/DATA/entreaulas/Centros";
+$base_path = aulatek_orgs_base_path();
 $real_base = realpath($base_path);
 
 if ($real_base === false) {
@@ -77,7 +79,7 @@ if (empty($alumno)) {
                 <div class="card" style="padding: 0; overflow: hidden;">
                     <div style="background: #f8f9fa; padding: 15px; text-align: center;">
                         <?php if ($photo_exists): ?>
-                            <img src="_filefetch.php?type=alumno_photo&alumno=<?= urlencode($alumno_name) ?>&centro=<?= urlencode($centro_id) ?>&aulario=<?= urlencode($aulario_id) ?>" 
+                            <img src="_filefetch.php?type=alumno_photo&alumno=<?= urlencode($alumno_name) ?>&org=<?= urlencode($centro_id) ?>&aulario=<?= urlencode($aulario_id) ?>" 
                                  alt="Foto de <?= htmlspecialchars($alumno_name) ?>" 
                                  style="width: 120px; height: 120px; object-fit: cover; border-radius: 10px; border: 3px solid #ddd;">
                         <?php else: ?>

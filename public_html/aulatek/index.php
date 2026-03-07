@@ -16,8 +16,9 @@ require_once "../_incl/db.php";
 <div id="grid">
     <?php
     $user_data = $_SESSION["auth_data"];
-    $centro_id = safe_centro_id($user_data["entreaulas"]["centro"] ?? "");
-    $user_aulas = $user_data["entreaulas"]["aulas"] ?? [];
+    $tenant_data = $user_data["aulatek"] ?? ($user_data["entreaulas"] ?? []);
+    $centro_id = safe_organization_id($tenant_data["organizacion"] ?? ($tenant_data["centro"] ?? ""));
+    $user_aulas = $tenant_data["aulas"] ?? [];
     foreach ($user_aulas as $aulario_id) {
         $aulario_id = safe_id_segment($aulario_id);
         if ($aulario_id === "") {
@@ -29,14 +30,14 @@ require_once "../_incl/db.php";
         }
         $aulario_name = $aulario["name"] ?? $aulario_id;
         $aulario_icon = $aulario["icon"] ?? "/static/arasaac/aulario.png";
-        echo '<a href="/entreaulas/aulario.php?id=' . urlencode($aulario_id) . '" class="btn btn-primary grid-item">
+        echo '<a href="/aulatek/aulario.php?id=' . urlencode($aulario_id) . '" class="btn btn-primary grid-item">
             <img style="height: 125px;" src="' . htmlspecialchars($aulario_icon, ENT_QUOTES) . '" alt="' . htmlspecialchars($aulario_name) . ' Icono">
             <br>
             ' . htmlspecialchars($aulario_name) . '
         </a>';
     } ?>
     <?php if (in_array('supercafe:access', $_SESSION['auth_data']['permissions'] ?? [])): ?>
-        <a href="/entreaulas/supercafe.php" class="btn btn-warning grid-item">
+        <a href="/aulatek/supercafe.php" class="btn btn-warning grid-item">
             <img src="/static/iconexperience/purchase_order_cart.png" height="125"
                  style="background: white; padding: 5px; border-radius: 10px;"
                  alt="Icono SuperCafe">

@@ -2,14 +2,16 @@
 require_once "_incl/auth_redir.php";
 require_once "../_incl/tools.security.php";
 // Check if user has docente permission
-if (!in_array("entreaulas:docente", $_SESSION["auth_data"]["permissions"] ?? [])) {
+$permissions = $_SESSION["auth_data"]["permissions"] ?? [];
+if (!in_array("aulatek:docente", $permissions, true) && !in_array("entreaulas:docente", $permissions, true)) {
     header("HTTP/1.1 403 Forbidden");
     die("Access denied");
 }
 
 
 $aulario_id = safe_id_segment($_GET["aulario"] ?? "");
-$centro_id = safe_centro_id($_SESSION["auth_data"]["entreaulas"]["centro"] ?? "");
+$tenant_data = $_SESSION["auth_data"]["aulatek"] ?? ($_SESSION["auth_data"]["entreaulas"] ?? []);
+$centro_id = safe_organization_id($tenant_data["organizacion"] ?? ($tenant_data["centro"] ?? ""));
 
 if (empty($aulario_id) || empty($centro_id)) {
     require_once "_incl/pre-body.php";
@@ -24,7 +26,7 @@ if (empty($aulario_id) || empty($centro_id)) {
 }
 
 // Validate paths with realpath
-$base_path = "/DATA/entreaulas/Centros";
+$base_path = aulatek_orgs_base_path();
 $real_base = realpath($base_path);
 $alumnos_base_path = "$base_path/$centro_id/Aularios/$aulario_id/Alumnos";
 
@@ -250,7 +252,7 @@ switch ($_GET["action"] ?? '') {
                     <label class="form-label">Foto actual:</label>
                     <?php if ($photo_exists): ?>
                         <div class="mb-2">
-                            <img src="_filefetch.php?type=alumno_photo&alumno=<?= urlencode($nombre) ?>&centro=<?= urlencode($centro_id) ?>&aulario=<?= urlencode($aulario_id) ?>" 
+                            <img src="_filefetch.php?type=alumno_photo&alumno=<?= urlencode($nombre) ?>&org=<?= urlencode($centro_id) ?>&aulario=<?= urlencode($aulario_id) ?>" 
                                  alt="Foto de <?= htmlspecialchars($nombre) ?>" 
                                  style="max-width: 200px; max-height: 200px; border: 2px solid #ddd; border-radius: 10px;">
                         </div>
@@ -351,7 +353,7 @@ switch ($_GET["action"] ?? '') {
                         <tr>
                             <td>
                                 <?php if ($photo_exists): ?>
-                                    <img src="_filefetch.php?type=alumno_photo&alumno=<?= urlencode($nombre) ?>&centro=<?= urlencode($centro_id) ?>&aulario=<?= urlencode($aulario_id) ?>" 
+                                    <img src="_filefetch.php?type=alumno_photo&alumno=<?= urlencode($nombre) ?>&org=<?= urlencode($centro_id) ?>&aulario=<?= urlencode($aulario_id) ?>" 
                                          alt="Foto de <?= htmlspecialchars($nombre) ?>" 
                                          style="width: 50px; height: 50px; object-fit: cover; border-radius: 5px;">
                                 <?php else: ?>
@@ -379,7 +381,7 @@ switch ($_GET["action"] ?? '') {
                 </table>
             <?php endif; ?>
             
-            <a href="/entreaulas/aulario.php?id=<?= urlencode($aulario_id) ?>" class="btn btn-secondary mt-3">Volver al Aulario</a>
+            <a href="/aulatek/aulario.php?id=<?= urlencode($aulario_id) ?>" class="btn btn-secondary mt-3">Volver al Aulario</a>
         </div>
         <?php
         require_once "_incl/post-body.php";

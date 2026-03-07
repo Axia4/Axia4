@@ -7,9 +7,9 @@ require_once "_incl/pre-body.php"; ?>
 </div>
 <div id="grid">
     <div class="card grid-item">
-        <img src="/static/logo-entreaulas.png" alt="Logo EntreAulas">
-        <b>EntreAulas</b>
-        <a href="/sysadmin/centros.php" class="btn btn-primary">Gestionar Centros</a>
+        <img src="/static/logo-entreaulas.png" alt="Logo AulaTek">
+        <b>AulaTek</b>
+        <a href="/sysadmin/orgs.php" class="btn btn-primary">Gestionar Organizaciones</a>
         <a href="/sysadmin/aularios.php" class="btn btn-primary">Gestionar Aularios</a>
     </div>
     <div class="card grid-item">

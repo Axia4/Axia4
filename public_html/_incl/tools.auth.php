@@ -25,7 +25,7 @@ if (str_starts_with($ua, "Axia4Auth/")) {
     $_COOKIE["auth_user"]           = $username;
     $_COOKIE["auth_pass_b64"]       = base64_encode($userpass);
     $_SESSION["auth_external_lock"] = "header";
-    init_active_centro($_SESSION["auth_data"]);
+    init_active_org($_SESSION["auth_data"]);
 }
 
 // ── Cookie-based auto-login ───────────────────────────────────────────────────
@@ -39,7 +39,7 @@ if (($_SESSION["auth_ok"] ?? false) != true
         $_SESSION["auth_user"] = $username;
         $_SESSION["auth_data"] = db_build_auth_data($row);
         $_SESSION["auth_ok"]   = true;
-        init_active_centro($_SESSION["auth_data"]);
+        init_active_org($_SESSION["auth_data"]);
     }
 }
 
@@ -50,7 +50,7 @@ if (!empty($_SESSION["auth_ok"]) && !empty($_SESSION["auth_user"])) {
         $row = db_get_user($_SESSION["auth_user"]);
         if ($row) {
             $_SESSION["auth_data"] = db_build_auth_data($row);
-            init_active_centro($_SESSION["auth_data"]);
+            init_active_org($_SESSION["auth_data"]);
         }
         $_SESSION["last_reload_time"] = time();
     } elseif ($load_mode !== "never") {
@@ -59,7 +59,7 @@ if (!empty($_SESSION["auth_ok"]) && !empty($_SESSION["auth_user"])) {
             $row = db_get_user($_SESSION["auth_user"]);
             if ($row) {
                 $_SESSION["auth_data"] = db_build_auth_data($row);
-                init_active_centro($_SESSION["auth_data"]);
+                init_active_org($_SESSION["auth_data"]);
             }
             $_SESSION["last_reload_time"] = time();
         }

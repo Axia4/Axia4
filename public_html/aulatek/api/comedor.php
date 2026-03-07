@@ -5,15 +5,17 @@ require_once "../_incl/tools.security.php";
 require_once "../../_incl/db.php";
 
 // Check permissions
-if (!in_array("entreaulas:docente", $_SESSION["auth_data"]["permissions"] ?? [])) {
+$permissions = $_SESSION["auth_data"]["permissions"] ?? [];
+if (!in_array("aulatek:docente", $permissions, true) && !in_array("entreaulas:docente", $permissions, true)) {
     http_response_code(403);
     die(json_encode(["error" => "Access denied", "code" => "FORBIDDEN"]));
 }
 
-$centro_id = safe_centro_id($_SESSION["auth_data"]["entreaulas"]["centro"] ?? "");
+$tenant_data = $_SESSION["auth_data"]["aulatek"] ?? ($_SESSION["auth_data"]["entreaulas"] ?? []);
+$centro_id = safe_organization_id($tenant_data["organizacion"] ?? ($tenant_data["centro"] ?? ""));
 if ($centro_id === "") {
     http_response_code(400);
-    die(json_encode(["error" => "Centro not found in session", "code" => "INVALID_SESSION"]));
+    die(json_encode(["error" => "Organizacion not found in session", "code" => "INVALID_SESSION"]));
 }
 
 $action     = $_GET["action"] ?? ($_POST["action"] ?? "");
@@ -24,7 +26,7 @@ if ($aulario_id === "") {
     die(json_encode(["error" => "aulario parameter is required", "code" => "MISSING_PARAM"]));
 }
 
-$userAulas = array_values(array_filter(array_map('safe_id_segment', $_SESSION["auth_data"]["entreaulas"]["aulas"] ?? [])));
+$userAulas = array_values(array_filter(array_map('safe_id_segment', $tenant_data["aulas"] ?? [])));
 if (!in_array($aulario_id, $userAulas, true)) {
     http_response_code(403);
     die(json_encode(["error" => "Access denied to this aulario", "code" => "FORBIDDEN"]));

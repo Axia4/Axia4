@@ -1,8 +1,8 @@
 <?php
 /**
- * switch_tenant.php
- * POST endpoint to switch the active tenant/centro for the current user session.
- * Validates the requested centro against the user's allowed centros before applying.
+ * switch_organization.php
+ * POST endpoint to switch the active organization for the current user session.
+ * Validates the requested organization against the user's allowed organizations before applying.
  */
 require_once "tools.session.php";
 require_once "tools.security.php";
@@ -13,14 +13,28 @@ if (!isset($_SESSION["auth_ok"]) || $_SESSION["auth_ok"] !== true) {
     die("No autenticado.");
 }
 
-$requested = Sf($_POST['centro'] ?? '');
+$requested = safe_organization_id(
+    $_POST['organization']
+    ?? $_POST['organizacion']
+    ?? $_POST['org']
+    ?? $_POST['centro']
+    ?? ''
+);
 $redir     = safe_redir($_POST['redir'] ?? '/');
 
-$centros = get_user_centros($_SESSION['auth_data'] ?? []);
+$organizations = get_user_organizations($_SESSION['auth_data'] ?? []);
 
-if ($requested !== '' && in_array($requested, $centros, true)) {
+if ($requested !== '' && in_array($requested, $organizations, true)) {
+    $_SESSION['active_organization'] = $requested;
+    $_SESSION['active_organizacion'] = $requested;
     $_SESSION['active_centro'] = $requested;
     // Also update session auth_data so it reflects immediately
+    $_SESSION['auth_data']['active_organization'] = $requested;
+    $_SESSION['auth_data']['aulatek']['organizacion'] = $requested;
+    $_SESSION['auth_data']['aulatek']['organization'] = $requested;
+    $_SESSION['auth_data']['aulatek']['centro'] = $requested;
+    $_SESSION['auth_data']['entreaulas']['organizacion'] = $requested;
+    $_SESSION['auth_data']['entreaulas']['organization'] = $requested;
     $_SESSION['auth_data']['entreaulas']['centro'] = $requested;
 }
 

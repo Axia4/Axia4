@@ -15,7 +15,7 @@ La API utiliza el mismo sistema de autenticación que el resto de la aplicación
 
 ### 1. Obtener tipos de menú
 
-**GET** `/entreaulas/api/comedor.php?action=get_menu_types&aulario={aulario_id}`
+**GET** `/aulatek/api/comedor.php?action=get_menu_types&aulario={aulario_id}`
 
 Devuelve todos los tipos de menú disponibles para un aulario.
 
@@ -89,7 +89,7 @@ Obtiene el menú de un día específico y tipo de menú.
 
 ### 3. Guardar menú
 
-**POST** `/entreaulas/api/comedor.php?action=save_menu&aulario={aulario_id}`
+**POST** `/aulatek/api/comedor.php?action=save_menu&aulario={aulario_id}`
 
 Guarda o actualiza un menú para un día específico.
 
@@ -114,7 +114,7 @@ Guarda o actualiza un menú para un día específico.
 
 **Ejemplo de uso con curl:**
 ```bash
-curl -X POST "http://localhost/entreaulas/api/comedor.php?action=save_menu&aulario=aulario_id" \
+curl -X POST "http://localhost/aulatek/api/comedor.php?action=save_menu&aulario=aulario_id" \
   -H "Content-Type: application/json" \
   -d '{
     "date": "2026-02-18",
@@ -131,7 +131,7 @@ curl -X POST "http://localhost/entreaulas/api/comedor.php?action=save_menu&aular
 
 ### 4. Añadir nuevo tipo de menú
 
-**POST** `/entreaulas/api/comedor.php?action=add_menu_type&aulario={aulario_id}`
+**POST** `/aulatek/api/comedor.php?action=add_menu_type&aulario={aulario_id}`
 
 Crea un nuevo tipo de menú.
 
@@ -146,7 +146,7 @@ Crea un nuevo tipo de menú.
 
 **Ejemplo de uso con curl:**
 ```bash
-curl -X POST "http://localhost/entreaulas/api/comedor.php?action=add_menu_type&aulario=aulario_id" \
+curl -X POST "http://localhost/aulatek/api/comedor.php?action=add_menu_type&aulario=aulario_id" \
   -H "Content-Type: application/json" \
   -d '{
     "id": "celiaco",
@@ -159,7 +159,7 @@ curl -X POST "http://localhost/entreaulas/api/comedor.php?action=add_menu_type&a
 
 ### 5. Renombrar tipo de menú
 
-**POST** `/entreaulas/api/comedor.php?action=rename_menu_type&aulario={aulario_id}`
+**POST** `/aulatek/api/comedor.php?action=rename_menu_type&aulario={aulario_id}`
 
 Cambia el nombre o color de un tipo de menú existente.
 
@@ -176,7 +176,7 @@ Cambia el nombre o color de un tipo de menú existente.
 
 ### 6. Eliminar tipo de menú
 
-**POST** `/entreaulas/api/comedor.php?action=delete_menu_type&aulario={aulario_id}`
+**POST** `/aulatek/api/comedor.php?action=delete_menu_type&aulario={aulario_id}`
 
 Elimina un tipo de menú.
 
@@ -211,7 +211,7 @@ Elimina un tipo de menú.
 ```javascript
 async function obtenerMenu(aularioId) {
   const response = await fetch(
-    `/entreaulas/api/comedor.php?action=get_menu&aulario=${aularioId}`
+    `/aulatek/api/comedor.php?action=get_menu&aulario=${aularioId}`
   );
   const data = await response.json();
   return data.menu;
@@ -223,7 +223,7 @@ async function obtenerMenu(aularioId) {
 ```javascript
 async function guardarMenu(aularioId, fecha, tipoMenu, platos) {
   const response = await fetch(
-    `/entreaulas/api/comedor.php?action=save_menu&aulario=${aularioId}`,
+    `/aulatek/api/comedor.php?action=save_menu&aulario=${aularioId}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -243,7 +243,7 @@ async function guardarMenu(aularioId, fecha, tipoMenu, platos) {
 ```javascript
 async function obtenerTiposMenu(aularioId) {
   const response = await fetch(
-    `/entreaulas/api/comedor.php?action=get_menu_types&aulario=${aularioId}`
+    `/aulatek/api/comedor.php?action=get_menu_types&aulario=${aularioId}`
   );
   const data = await response.json();
   return data.menu_types;

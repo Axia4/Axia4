@@ -126,39 +126,65 @@ function db_get_all_users(): array
 /**
  * Build the auth_data session array from a DB user row.
  * Preserves the same format existing code expects:
- *   auth_data.permissions, auth_data.entreaulas.centro, .role, .aulas, .centros
+ *   auth_data.permissions, auth_data.active_organizations auth_data.organizations.
  */
 function db_build_auth_data(array $row): array
 {
     $permissions = json_decode($row['permissions'] ?? '[]', true) ?: [];
     $meta        = json_decode($row['meta']        ?? '{}', true) ?: [];
+    $ea          = [
+        'organization' => '',
+        'organizations' => [],
+        'role' => '',
+        'aulas' => [],
+        'organizations_data' => [],
+    ];
 
-    // Fetch all centro assignments for this user
+    // Fetch all organization assignments for this user
     $stmt = db()->prepare(
-        'SELECT centro_id, role, aulas
-           FROM user_centros
+        'SELECT org_id, role, ea_aulas
+           FROM user_orgs
           WHERE user_id = ?
-          ORDER BY centro_id'
+          ORDER BY org_id'
     );
     $stmt->execute([$row['id']]);
-    $centro_rows = $stmt->fetchAll();
-
-    $ea = ['centro' => '', 'centros' => [], 'role' => '', 'aulas' => []];
-    if (!empty($centro_rows)) {
-        $first        = $centro_rows[0];
-        $ea['centro'] = $first['centro_id'];          // legacy compat
+    $org_rows = $stmt->fetchAll();
+    $orgs = [];
+    if (!empty($org_rows)) {
+        $first        = $org_rows[0];
+        foreach ($org_rows as $r) {
+            $orgs[] = $r['org_id'];
+        }
+        $ea['organization'] = $first['org_id'];
         $ea['role']   = $first['role'];
-        $ea['aulas']  = json_decode($first['aulas'] ?? '[]', true) ?: [];
-        $ea['centros']      = array_column($centro_rows, 'centro_id');
-        $ea['centros_data'] = $centro_rows;
+        $ea['aulas']  = json_decode($first['ea_aulas'] ?? '[]', true) ?: [];
+        $ea['organizations']      = $orgs;
+        $ea['organizations_data'] = $org_rows;
     }
+
+    $active_org = $ea['organization'] ?? '';
+    $aulatek = [
+        'organizacion' => $active_org,
+        'organizaciones' => $orgs,
+        'organization' => $active_org,
+        'organizations' => $orgs,
+        'centro' => $active_org,
+        'centros' => $orgs,
+        'role' => $ea['role'] ?? '',
+        'aulas' => $ea['aulas'] ?? [],
+    ];
 
     return array_merge($meta, [
         'display_name'  => $row['display_name'],
         'email'         => $row['email'],
         'password_hash' => $row['password_hash'],
         'permissions'   => $permissions,
-        'entreaulas'    => $ea,
+        'orgs'          => $orgs,
+        'organizations' => $orgs,
+        'active_organization' => $active_org,
+        'active_organizations' => $ea,
+        'aulatek'       => $aulatek,
+        'entreaulas'    => $aulatek,
         'google_auth'   => (bool) $row['google_auth'],
     ]);
 }
@@ -166,7 +192,7 @@ function db_build_auth_data(array $row): array
 /**
  * Create or update a user.
  * $data keys: username, display_name, email, password_hash, permissions[],
- *             google_auth, entreaulas{centro,centros[],role,aulas[]}, + any extra meta.
+ *             google_auth, entreaulas{organizacion,organizaciones[],role,aulas[]}, + any extra meta.
  * Returns the user ID.
  */
 function db_upsert_user(array $data): int
@@ -180,7 +206,9 @@ function db_upsert_user(array $data): int
 
     $permissions = json_encode($data['permissions'] ?? []);
     $meta_skip   = ['username', 'display_name', 'email', 'password_hash',
-                    'permissions', 'entreaulas', 'google_auth'];
+                    'permissions', 'entreaulas', 'google_auth',
+                    'orgs', 'organizations', 'organization', 'organizacion',
+                    'role', 'aulas'];
     $meta = [];
     foreach ($data as $k => $v) {
         if (!in_array($k, $meta_skip, true)) {
@@ -228,53 +256,119 @@ function db_upsert_user(array $data): int
         $user_id = (int) $pdo->lastInsertId();
     }
 
-    // Update centro assignments when entreaulas data is provided
-    if (array_key_exists('entreaulas', $data)) {
+    // Update organization assignments if tenant data is provided.
+    $has_org_payload = array_key_exists('entreaulas', $data)
+        || array_key_exists('orgs', $data)
+        || array_key_exists('organizations', $data)
+        || array_key_exists('organization', $data)
+        || array_key_exists('organizacion', $data);
+
+    if ($has_org_payload) {
         $ea = $data['entreaulas'] ?? [];
-        $pdo->prepare('DELETE FROM user_centros WHERE user_id = ?')->execute([$user_id]);
 
-        // Support both legacy single centro and new multi-centro
-        $centros = [];
-        if (!empty($ea['centros']) && is_array($ea['centros'])) {
-            $centros = $ea['centros'];
-        } elseif (!empty($ea['centro'])) {
-            $centros = [$ea['centro']];
+        $organizations = [];
+        $candidate_lists = [
+            $data['organizations'] ?? null,
+            $data['orgs'] ?? null,
+            $ea['organizaciones'] ?? null,
+            $ea['organizations'] ?? null,
+            $ea['centros'] ?? null,
+        ];
+        foreach ($candidate_lists as $list) {
+            if (is_array($list) && !empty($list)) {
+                $organizations = $list;
+                break;
+            }
         }
-        $role  = $ea['role']  ?? '';
-        $aulas = json_encode($ea['aulas'] ?? []);
+        if (empty($organizations)) {
+            foreach ([
+                $data['organization'] ?? null,
+                $data['organizacion'] ?? null,
+                $ea['organizacion'] ?? null,
+                $ea['organization'] ?? null,
+                $ea['centro'] ?? null,
+            ] as $single) {
+                if (!empty($single)) {
+                    $organizations = [$single];
+                    break;
+                }
+            }
+        }
 
-        $ins_centro = $pdo->prepare('INSERT OR IGNORE INTO centros (centro_id) VALUES (?)');
-        $ins_uc = $pdo->prepare(
-            'INSERT OR REPLACE INTO user_centros (user_id, centro_id, role, aulas) VALUES (?, ?, ?, ?)'
+        $organizations = array_values(array_unique(array_filter(array_map(
+            static function ($value): string {
+                return preg_replace('/[^a-zA-Z0-9._-]/', '', (string) $value);
+            },
+            $organizations
+        ))));
+
+        $role = (string) ($data['role'] ?? $ea['role'] ?? '');
+        $aulas_payload = $data['aulas'] ?? $ea['aulas'] ?? [];
+        if (!is_array($aulas_payload)) {
+            $aulas_payload = [];
+        }
+        $aulas = json_encode($aulas_payload, JSON_UNESCAPED_UNICODE);
+
+        $pdo->prepare('DELETE FROM user_orgs WHERE user_id = ?')->execute([$user_id]);
+
+        $ins_org = $pdo->prepare('INSERT OR IGNORE INTO organizaciones (org_id, org_name) VALUES (?, ?)');
+        $ins_uo = $pdo->prepare(
+            'INSERT OR REPLACE INTO user_orgs (user_id, org_id, role, ea_aulas) VALUES (?, ?, ?, ?)'
         );
-        foreach ($centros as $cid) {
-            if ($cid === '') {
+        foreach ($organizations as $org_id) {
+            if ($org_id === '') {
                 continue;
             }
-            $ins_centro->execute([$cid]);
-            $ins_uc->execute([$user_id, $cid, $role, $aulas]);
+            $ins_org->execute([$org_id, $org_id]);
+            $ins_uo->execute([$user_id, $org_id, $role, $aulas]);
         }
     }
 
     return $user_id;
 }
 
-/** Delete a user and their centro assignments. */
+/** Delete a user and their organization assignments. */
 function db_delete_user(string $username): void
 {
     db()->prepare('DELETE FROM users WHERE username = ?')->execute([strtolower($username)]);
 }
 
-// ── Centro helpers ────────────────────────────────────────────────────────────
+// ── Organization helpers ─────────────────────────────────────────────────────
+
+function db_get_organizations(): array
+{
+    return db()->query('SELECT org_id, org_name FROM organizaciones ORDER BY org_id')->fetchAll();
+}
+
+function db_get_organization_ids(): array
+{
+    return db()->query('SELECT org_id FROM organizaciones ORDER BY org_id')->fetchAll(PDO::FETCH_COLUMN);
+}
+
+function db_get_organizaciones(): array
+{
+    return db_get_organizations();
+}
+
+function get_organizations(): array
+{
+    return db_get_organizations();
+}
 
 function db_get_centros(): array
 {
-    return db()->query('SELECT centro_id, name FROM centros ORDER BY centro_id')->fetchAll();
+    $rows = db_get_organizations();
+    return array_map(static function (array $row): array {
+        return [
+            'centro_id' => $row['org_id'],
+            'name' => $row['org_name'],
+        ];
+    }, $rows);
 }
 
 function db_get_centro_ids(): array
 {
-    return db()->query('SELECT centro_id FROM centros ORDER BY centro_id')->fetchAll(PDO::FETCH_COLUMN);
+    return db_get_organization_ids();
 }
 
 // ── Aulario helpers ───────────────────────────────────────────────────────────
@@ -283,7 +377,7 @@ function db_get_centro_ids(): array
 function db_get_aulario(string $centro_id, string $aulario_id): ?array
 {
     $stmt = db()->prepare(
-        'SELECT name, icon, extra FROM aularios WHERE centro_id = ? AND aulario_id = ?'
+        'SELECT name, icon, extra FROM aularios WHERE org_id = ? AND aulario_id = ?'
     );
     $stmt->execute([$centro_id, $aulario_id]);
     $row = $stmt->fetch();
@@ -298,7 +392,7 @@ function db_get_aulario(string $centro_id, string $aulario_id): ?array
 function db_get_aularios(string $centro_id): array
 {
     $stmt = db()->prepare(
-        'SELECT aulario_id, name, icon, extra FROM aularios WHERE centro_id = ? ORDER BY aulario_id'
+        'SELECT aulario_id, name, icon, extra FROM aularios WHERE org_id = ? ORDER BY aulario_id'
     );
     $stmt->execute([$centro_id]);
     $result = [];
@@ -316,7 +410,7 @@ function db_get_aularios(string $centro_id): array
 
 function db_get_supercafe_menu(string $centro_id): array
 {
-    $stmt = db()->prepare('SELECT data FROM supercafe_menu WHERE centro_id = ?');
+    $stmt = db()->prepare('SELECT data FROM supercafe_menu WHERE org_id = ?');
     $stmt->execute([$centro_id]);
     $row = $stmt->fetch();
     if ($row === false) {
@@ -327,7 +421,7 @@ function db_get_supercafe_menu(string $centro_id): array
 
 function db_set_supercafe_menu(string $centro_id, array $menu): void
 {
-    db()->prepare('INSERT OR REPLACE INTO supercafe_menu (centro_id, data, updated_at) VALUES (?, ?, datetime(\'now\'))')
+    db()->prepare('INSERT OR REPLACE INTO supercafe_menu (org_id, data, updated_at) VALUES (?, ?, datetime(\'now\'))')
        ->execute([$centro_id, json_encode($menu, JSON_UNESCAPED_UNICODE)]);
 }
 
@@ -335,7 +429,7 @@ function db_set_supercafe_menu(string $centro_id, array $menu): void
 function db_get_supercafe_orders(string $centro_id): array
 {
     $stmt = db()->prepare(
-        'SELECT * FROM supercafe_orders WHERE centro_id = ? ORDER BY created_at DESC'
+        'SELECT * FROM supercafe_orders WHERE org_id = ? ORDER BY created_at DESC'
     );
     $stmt->execute([$centro_id]);
     return $stmt->fetchAll();
@@ -345,7 +439,7 @@ function db_get_supercafe_orders(string $centro_id): array
 function db_get_supercafe_order(string $centro_id, string $order_ref): ?array
 {
     $stmt = db()->prepare(
-        'SELECT * FROM supercafe_orders WHERE centro_id = ? AND order_ref = ?'
+        'SELECT * FROM supercafe_orders WHERE org_id = ? AND order_ref = ?'
     );
     $stmt->execute([$centro_id, $order_ref]);
     $row = $stmt->fetch();
@@ -363,9 +457,9 @@ function db_upsert_supercafe_order(
     string $estado
 ): void {
     db()->prepare(
-        'INSERT INTO supercafe_orders (centro_id, order_ref, fecha, persona, comanda, notas, estado)
+        'INSERT INTO supercafe_orders (org_id, order_ref, fecha, persona, comanda, notas, estado)
              VALUES (?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(centro_id, order_ref) DO UPDATE SET
+         ON CONFLICT(org_id, order_ref) DO UPDATE SET
              fecha    = excluded.fecha,
              persona  = excluded.persona,
              comanda  = excluded.comanda,
@@ -378,7 +472,7 @@ function db_upsert_supercafe_order(
 function db_next_supercafe_ref(string $centro_id): string
 {
     $stmt = db()->prepare(
-        "SELECT order_ref FROM supercafe_orders WHERE centro_id = ? ORDER BY id DESC LIMIT 1"
+        "SELECT order_ref FROM supercafe_orders WHERE org_id = ? ORDER BY id DESC LIMIT 1"
     );
     $stmt->execute([$centro_id]);
     $last = $stmt->fetchColumn();
@@ -393,7 +487,7 @@ function db_next_supercafe_ref(string $centro_id): string
 function db_supercafe_count_debts(string $centro_id, string $persona_key): int
 {
     $stmt = db()->prepare(
-        "SELECT COUNT(*) FROM supercafe_orders WHERE centro_id = ? AND persona = ? AND estado = 'Deuda'"
+        "SELECT COUNT(*) FROM supercafe_orders WHERE org_id = ? AND persona = ? AND estado = 'Deuda'"
     );
     $stmt->execute([$centro_id, $persona_key]);
     return (int) $stmt->fetchColumn();
@@ -404,7 +498,7 @@ function db_supercafe_count_debts(string $centro_id, string $persona_key): int
 function db_get_comedor_menu_types(string $centro_id, string $aulario_id): array
 {
     $stmt = db()->prepare(
-        'SELECT data FROM comedor_menu_types WHERE centro_id = ? AND aulario_id = ?'
+        'SELECT data FROM comedor_menu_types WHERE org_id = ? AND aulario_id = ?'
     );
     $stmt->execute([$centro_id, $aulario_id]);
     $row = $stmt->fetch();
@@ -417,14 +511,14 @@ function db_get_comedor_menu_types(string $centro_id, string $aulario_id): array
 function db_set_comedor_menu_types(string $centro_id, string $aulario_id, array $types): void
 {
     db()->prepare(
-        'INSERT OR REPLACE INTO comedor_menu_types (centro_id, aulario_id, data) VALUES (?, ?, ?)'
+        'INSERT OR REPLACE INTO comedor_menu_types (org_id, aulario_id, data) VALUES (?, ?, ?)'
     )->execute([$centro_id, $aulario_id, json_encode($types, JSON_UNESCAPED_UNICODE)]);
 }
 
 function db_get_comedor_entry(string $centro_id, string $aulario_id, string $ym, string $day): array
 {
     $stmt = db()->prepare(
-        'SELECT data FROM comedor_entries WHERE centro_id = ? AND aulario_id = ? AND year_month = ? AND day = ?'
+        'SELECT data FROM comedor_entries WHERE org_id = ? AND aulario_id = ? AND year_month = ? AND day = ?'
     );
     $stmt->execute([$centro_id, $aulario_id, $ym, $day]);
     $row = $stmt->fetch();
@@ -437,7 +531,7 @@ function db_get_comedor_entry(string $centro_id, string $aulario_id, string $ym,
 function db_set_comedor_entry(string $centro_id, string $aulario_id, string $ym, string $day, array $data): void
 {
     db()->prepare(
-        'INSERT OR REPLACE INTO comedor_entries (centro_id, aulario_id, year_month, day, data) VALUES (?, ?, ?, ?, ?)'
+        'INSERT OR REPLACE INTO comedor_entries (org_id, aulario_id, year_month, day, data) VALUES (?, ?, ?, ?, ?)'
     )->execute([$centro_id, $aulario_id, $ym, $day, json_encode($data, JSON_UNESCAPED_UNICODE)]);
 }
 
@@ -446,7 +540,7 @@ function db_set_comedor_entry(string $centro_id, string $aulario_id, string $ym,
 function db_get_diario_entry(string $centro_id, string $aulario_id, string $entry_date): array
 {
     $stmt = db()->prepare(
-        'SELECT data FROM diario_entries WHERE centro_id = ? AND aulario_id = ? AND entry_date = ?'
+        'SELECT data FROM diario_entries WHERE org_id = ? AND aulario_id = ? AND entry_date = ?'
     );
     $stmt->execute([$centro_id, $aulario_id, $entry_date]);
     $row = $stmt->fetch();
@@ -459,7 +553,7 @@ function db_get_diario_entry(string $centro_id, string $aulario_id, string $entr
 function db_set_diario_entry(string $centro_id, string $aulario_id, string $entry_date, array $data): void
 {
     db()->prepare(
-        'INSERT OR REPLACE INTO diario_entries (centro_id, aulario_id, entry_date, data) VALUES (?, ?, ?, ?)'
+        'INSERT OR REPLACE INTO diario_entries (org_id, aulario_id, entry_date, data) VALUES (?, ?, ?, ?)'
     )->execute([$centro_id, $aulario_id, $entry_date, json_encode($data, JSON_UNESCAPED_UNICODE)]);
 }
 
@@ -468,7 +562,7 @@ function db_set_diario_entry(string $centro_id, string $aulario_id, string $entr
 function db_get_panel_alumno(string $centro_id, string $aulario_id, string $alumno): array
 {
     $stmt = db()->prepare(
-        'SELECT data FROM panel_alumno WHERE centro_id = ? AND aulario_id = ? AND alumno = ?'
+        'SELECT data FROM panel_alumno WHERE org_id = ? AND aulario_id = ? AND alumno = ?'
     );
     $stmt->execute([$centro_id, $aulario_id, $alumno]);
     $row = $stmt->fetch();
@@ -481,7 +575,7 @@ function db_get_panel_alumno(string $centro_id, string $aulario_id, string $alum
 function db_set_panel_alumno(string $centro_id, string $aulario_id, string $alumno, array $data): void
 {
     db()->prepare(
-        'INSERT OR REPLACE INTO panel_alumno (centro_id, aulario_id, alumno, data) VALUES (?, ?, ?, ?)'
+        'INSERT OR REPLACE INTO panel_alumno (org_id, aulario_id, alumno, data) VALUES (?, ?, ?, ?)'
     )->execute([$centro_id, $aulario_id, $alumno, json_encode($data, JSON_UNESCAPED_UNICODE)]);
 }
 
@@ -559,31 +653,113 @@ function db_set_club_event(string $date_ref, array $data): void
 
 // ── Multi-tenant helpers ──────────────────────────────────────────────────────
 
-/** Return all centro IDs the authenticated user belongs to. */
-function get_user_centros(?array $auth_data = null): array
+/** Return all organization IDs the authenticated user belongs to. */
+function get_user_organizations(?array $auth_data = null): array
 {
     $data = $auth_data ?? $_SESSION['auth_data'] ?? [];
-    $ea   = $data['entreaulas'] ?? [];
+    $orgs = $data['organizations']
+        ?? $data['orgs']
+        ?? $data['aulatek']['organizaciones']
+        ?? $data['aulatek']['organizations']
+        ?? $data['aulatek']['centros']
+        ?? $data['entreaulas']['organizaciones']
+        ?? $data['entreaulas']['organizations']
+        ?? $data['entreaulas']['centros']
+        ?? [];
 
-    if (!empty($ea['centros']) && is_array($ea['centros'])) {
-        return array_values($ea['centros']);
+    if (!empty($orgs) && is_array($orgs)) {
+        return array_values(array_unique(array_filter($orgs, static function ($value): bool {
+            return is_string($value) && $value !== '';
+        })));
     }
-    if (!empty($ea['centro'])) {
-        return [$ea['centro']];
+    if (!empty($orgs)) {
+        return [(string) $orgs];
     }
+
+    foreach ([
+        $data['active_organization'] ?? null,
+        $data['aulatek']['organizacion'] ?? null,
+        $data['aulatek']['organization'] ?? null,
+        $data['aulatek']['centro'] ?? null,
+        $data['entreaulas']['organizacion'] ?? null,
+        $data['entreaulas']['organization'] ?? null,
+        $data['entreaulas']['centro'] ?? null,
+    ] as $single) {
+        if (is_string($single) && $single !== '') {
+            return [$single];
+        }
+    }
+
     return [];
 }
 
-/** Ensure $_SESSION['active_centro'] is set to a valid centro. */
-function init_active_centro(?array $auth_data = null): void
+/** Spanish alias used by pre-body.php menu rendering. */
+function get_user_organizaciones(?array $auth_data = null): array
 {
-    $centros = get_user_centros($auth_data);
-    if (empty($centros)) {
+    $org_ids = get_user_organizations($auth_data);
+    if (empty($org_ids)) {
+        return [];
+    }
+    $name_by_id = [];
+    foreach (db_get_organizations() as $org_row) {
+        $name_by_id[$org_row['org_id']] = $org_row['org_name'];
+    }
+
+    $result = [];
+    foreach ($org_ids as $org_id) {
+        $result[$org_id] = $name_by_id[$org_id] ?? $org_id;
+    }
+    return $result;
+}
+
+function get_user_centros(?array $auth_data = null): array
+{
+    return get_user_organizations($auth_data);
+}
+
+/** Ensure active organization session keys are set and mirrored for legacy code. */
+function init_active_org(?array $auth_data = null): void
+{
+    $organizations = get_user_organizations($auth_data);
+    if (empty($organizations)) {
+        $_SESSION['active_organization'] = null;
+        $_SESSION['active_organizacion'] = null;
         $_SESSION['active_centro'] = null;
         return;
     }
-    if (!empty($_SESSION['active_centro']) && in_array($_SESSION['active_centro'], $centros, true)) {
-        return;
+
+    $current = $_SESSION['active_organization']
+        ?? $_SESSION['active_organizacion']
+        ?? $_SESSION['active_centro']
+        ?? null;
+
+    if (!is_string($current) || !in_array($current, $organizations, true)) {
+        $current = $organizations[0];
     }
-    $_SESSION['active_centro'] = $centros[0];
+
+    $_SESSION['active_organization'] = $current;
+    $_SESSION['active_organizacion'] = $current;
+    $_SESSION['active_centro'] = $current;
+
+    if (!isset($_SESSION['auth_data']) || !is_array($_SESSION['auth_data'])) {
+        $_SESSION['auth_data'] = [];
+    }
+    $_SESSION['auth_data']['active_organization'] = $current;
+    if (!isset($_SESSION['auth_data']['aulatek']) || !is_array($_SESSION['auth_data']['aulatek'])) {
+        $_SESSION['auth_data']['aulatek'] = [];
+    }
+    $_SESSION['auth_data']['aulatek']['organizacion'] = $current;
+    $_SESSION['auth_data']['aulatek']['organization'] = $current;
+    $_SESSION['auth_data']['aulatek']['centro'] = $current;
+    if (!isset($_SESSION['auth_data']['entreaulas']) || !is_array($_SESSION['auth_data']['entreaulas'])) {
+        $_SESSION['auth_data']['entreaulas'] = [];
+    }
+    $_SESSION['auth_data']['entreaulas']['organizacion'] = $current;
+    $_SESSION['auth_data']['entreaulas']['organization'] = $current;
+    $_SESSION['auth_data']['entreaulas']['centro'] = $current;
+}
+
+function init_active_centro(?array $auth_data = null): void
+{
+    init_active_org($auth_data);
 }

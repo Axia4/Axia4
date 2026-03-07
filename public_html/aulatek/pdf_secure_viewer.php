@@ -8,7 +8,7 @@ $is_valid = false;
 if ($file !== "") {
   $parsed = parse_url($file);
   if (!isset($parsed["scheme"]) && !isset($parsed["host"])) {
-    if (strpos($file, "/entreaulas/_filefetch.php") === 0) {
+    if (strpos($file, "/aulatek/_filefetch.php") === 0) {
       $is_valid = true;
     }
   }

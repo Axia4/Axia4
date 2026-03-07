@@ -7,33 +7,21 @@ if (!isset($AuthConfig)) {
 }
 $DOMAIN = $_SERVER["HTTP_X_FORWARDED_HOST"] ?? $_SERVER["HTTP_HOST"];
 
-/**
- * Return a safe redirect URL: only allow relative paths starting with a single slash.
- * Falls back to "/" for any external, protocol-relative, or otherwise unsafe URLs.
- */
-function safe_redir($url) {
-    $url = (string)$url;
-    // Must start with a single "/" but not "//" (protocol-relative)
-    if (preg_match('#^/[^/]#', $url) || $url === '/') {
-        // Strip newlines to prevent header injection
-        return preg_replace('/[\r\n]/', '', $url);
-    }
-    return '/';
-}
+// safe_redir() is provided by _incl/tools.security.php.
 
-if ($_GET["reload_user"] == "1") {
+if (($_GET["reload_user"] ?? "") === "1") {
     $row = db_get_user($_SESSION["auth_user"] ?? "");
     if (!$row) {
         header("Location: /");
         die();
     }
     $_SESSION['auth_data'] = db_build_auth_data($row);
-    init_active_centro($_SESSION['auth_data']);
+    init_active_org($_SESSION['auth_data']);
     $redir = safe_redir($_GET["redir"] ?? "/");
     header("Location: $redir");
     die();
 }
-if ($_GET["google_callback"] == "1") {
+if (($_GET["google_callback"] ?? "") === "1") {
     if (!isset($AuthConfig["google_client_id"]) || !isset($AuthConfig["google_client_secret"])) {
         die("Error: La autenticación de Google no está configurada.");
     }
@@ -110,7 +98,7 @@ if ($_GET["google_callback"] == "1") {
     $_SESSION['auth_user'] = $username;
     $_SESSION['auth_data'] = db_build_auth_data($user_row);
     $_SESSION['auth_ok']   = true;
-    init_active_centro($_SESSION['auth_data']);
+    init_active_org($_SESSION['auth_data']);
     $cookie_options = ["expires" => time() + (86400 * 30), "path" => "/", "httponly" => true, "secure" => true, "samesite" => "Lax"];
     setcookie("auth_user",      $username,               $cookie_options);
     setcookie("auth_pass_b64",  base64_encode($password), $cookie_options);
@@ -120,7 +108,7 @@ if ($_GET["google_callback"] == "1") {
     header("Location: $redir");
     die();
 }
-if ($_GET["google"] == "1") {
+if (($_GET["google"] ?? "") === "1") {
     if (!isset($AuthConfig["google_client_id"]) || !isset($AuthConfig["google_client_secret"])) {
         die("Error: La autenticación de Google no está configurada.");
     }
@@ -148,7 +136,7 @@ if ($_GET["google"] == "1") {
     header("Location: " . $request_to);
     die();
 }
-if ($_GET["logout"] == "1") {
+if (($_GET["logout"] ?? "") === "1") {
     $redir = safe_redir($_GET["redir"] ?? "/");
     $cookie_options_expired = ["expires" => time() - 3600, "path" => "/", "httponly" => true, "secure" => true, "samesite" => "Lax"];
     setcookie("auth_user", "", $cookie_options_expired);
@@ -157,7 +145,7 @@ if ($_GET["logout"] == "1") {
     header("Location: $redir");
     die();
 }
-if ($_GET["clear_session"] == "1") {
+if (($_GET["clear_session"] ?? "") === "1") {
     session_destroy();
     $redir = safe_redir($_GET["redir"] ?? "/");
     header("Location: $redir");
@@ -174,7 +162,7 @@ if (isset($_POST["user"])) {
         $_SESSION['auth_user'] = $user;
         $_SESSION['auth_data'] = db_build_auth_data($row);
         $_SESSION['auth_ok']   = true;
-        init_active_centro($_SESSION['auth_data']);
+        init_active_org($_SESSION['auth_data']);
         $cookie_options = ["expires" => time() + (86400 * 30), "path" => "/", "httponly" => true, "secure" => true, "samesite" => "Lax"];
         setcookie("auth_user",     $user,                    $cookie_options);
         setcookie("auth_pass_b64", base64_encode($password), $cookie_options);

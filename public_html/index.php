@@ -121,8 +121,8 @@
     <h1>Bienvenidx a Axia4</h1>
     <p>La plataforma unificada de EuskadiTech y Sketaria.</p>
     <hr>
-    <h3>Versión 2.0.0</h3>
-    <p>Con esta versión, cambiamos la interfaz a una más sencilla.</p>
+    <h3>Versión 2.1.0</h3>
+    <p>Con esta versión, hacemos muchos cambios.</p>
     <br>
     <a class="btn btn-primary" href="/account/">Accede a tu cuenta</a>
 </section>
@@ -160,11 +160,11 @@
         </div>
     </div>
     <div class="app-card">
-        <img src="/static/logo-entreaulas.png" alt="Logo EntreAulas">
-        <div class="app-title">EntreAulas</div>
-        <div class="app-desc">Recursos educativos digitales.</div>
+        <img src="/static/logo-aulatek.png" alt="Logo AulaTek">
+        <div class="app-title">AulaTek</div>
+        <div class="app-desc">Tu aula, digital.</div>
         <div class="app-actions">
-            <a href="/entreaulas/" target="_blank" class="btn btn-primary">Acceso público</a>
+            <a href="/aulatek/" target="_blank" class="btn btn-primary">Acceso público</a>
         </div>
     </div>
     <div class="app-card">

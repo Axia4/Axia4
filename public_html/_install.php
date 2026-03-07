@@ -16,7 +16,7 @@ switch ($_GET['form'] ?? '') {
             'username'      => $admin_user,
             'display_name'  => 'Administrador',
             'email'         => "$admin_user@nomail.arpa",
-            'permissions'   => ['*', 'sysadmin:access', 'entreaulas:access'],
+            'permissions'   => ['*', 'sysadmin:access', 'aulatek:access'],
             'password_hash' => password_hash($admin_password, PASSWORD_DEFAULT),
         ]);
         db_set_config('installed', '1');
