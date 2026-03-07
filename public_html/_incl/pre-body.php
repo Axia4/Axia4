@@ -481,7 +481,7 @@ $activeOrganizacionName = $userOrganizaciones[$activeOrganizacionId] ?? '';
           </label>
           <a class="logo-area" href="<?= $APP_ROOT ?>">
             <img src="/static/<?= $APP_ICON ?>" alt="<?= htmlspecialchars($APP_NAME) ?>" class="brand-logo">
-            <span class="brand-text hide-small"><?= $APP_NAME ?></span>
+            <span class="brand-text"><?= $APP_NAME ?></span>
           </a>
           <div class="search-bar">
             <form action="https://search.tech.eus/s/" method="get">
