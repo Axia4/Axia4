@@ -1,7 +1,7 @@
 <?php
 header("Content-Type: application/json; charset=utf-8");
-require_once "_incl/auth_redir.php";
-require_once "../_incl/tools.security.php";
+require_once "../_incl/auth_redir.php";
+require_once "../../_incl/tools.security.php";
 require_once "../../_incl/db.php";
 
 // Check permissions
@@ -70,11 +70,6 @@ function blank_menu() {
             "postre"  => ["name" => "", "pictogram" => ""],
         ]
     ];
-}
-
-function safe_filename($name) {
-    $name = basename($name);
-    return preg_replace("/[^a-zA-Z0-9._-]/", "_", $name);
 }
 
 // Routes
