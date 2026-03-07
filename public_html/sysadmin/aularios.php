@@ -107,7 +107,7 @@ switch ($form_action) {
             $extra['shared_comedor_from'] = Sf($_POST['shared_comedor_from']);
         }
         // Determine icon: uploaded photo takes priority over text input
-        $icon = Sf($_POST["icon"] ?? "/static/logo-entreaulas.png");
+        $icon = $_POST["icon"] ?? "/static/logo-entreaulas.png";
         $aulario_photo = $_FILES["photo"] ?? null;
         if ($aulario_photo !== null && $aulario_photo["error"] === UPLOAD_ERR_OK) {
             $image_info = getimagesize($aulario_photo["tmp_name"]);
