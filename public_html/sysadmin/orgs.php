@@ -19,7 +19,7 @@ $form_action = $_GET["form"] ?? "";
 switch ($form_action) {
     case "create":
         $org_id = safe_path_segment(Sf($_POST["org_id"] ?? ""));
-        $org_name = Sf($_POST["org_name"] ?? "");
+        $org_name = Ssql($_POST["org_name"] ?? "");
         if (empty($org_id)) {
             die("Nombre de la organización no proporcionado.");
         }
@@ -41,7 +41,7 @@ switch ($form_action) {
         break;
     case "edit":
         $org_id = safe_path_segment(Sf($_GET['org'] ?? ''));
-        $org_name = Sf($_POST['org_name'] ?? '');
+        $org_name = Ssql($_POST['org_name'] ?? '');
         if ($org_id === '' || $org_name === '') {
             die("Datos inválidos para actualizar la organización.");
         }

@@ -1,5 +1,10 @@
 <?php
 
+function Ssql($string) {
+    // Sanitize a SQL Parameter to be safe on html.
+    return htmlspecialchars($string);
+}
+
 function Sf($filename) {
     /**
      * Sanitize a filename by removing any path information, null bytes, and replacing any characters that are not alphanumeric, dot, hyphen, or underscore with an underscore.
