@@ -119,7 +119,7 @@
 
 <section class="hero">
     <h1>Bienvenidx a Axia4</h1>
-    <p>La plataforma unificada de EuskadiTech y Sketaria.</p>
+    <p>La plataforma unificada creada por EuskadiTech.</p>
     <hr>
     <h3>Versión 2.1.0</h3>
     <p>Con esta versión, hacemos muchos cambios.</p>
@@ -135,14 +135,6 @@
         <div class="app-title">La web del club</div>
         <div class="app-actions">
             <a href="/club/" class="btn btn-primary">Acceso público</a>
-        </div>
-    </div>
-    <div class="app-card">
-        <img src="/static/logo-telesec.png" alt="Logo TeleSec">
-        <div class="app-title">TeleSec</div>
-        <div class="app-desc">Gestión de aularios conectados.</div>
-        <div class="app-actions">
-            <a href="https://telesec.tech.eus/" target="_blank" class="btn btn-primary">Tengo cuenta</a>
         </div>
     </div>
     <div class="app-card">
@@ -165,14 +157,6 @@
         <div class="app-desc">Tu aula, digital.</div>
         <div class="app-actions">
             <a href="/aulatek/" target="_blank" class="btn btn-primary">Acceso público</a>
-        </div>
-    </div>
-    <div class="app-card">
-        <img src="/static/logo-arroz.png" alt="Logo Arroz con leche">
-        <div class="app-title">Arroz con leche</div>
-        <div class="app-desc">Compartiendo nuestros conocimientos.</div>
-        <div class="app-actions">
-            <a href="https://arroz.tech.eus/" target="_blank" class="btn btn-primary">Acceso público</a>
         </div>
     </div>
     <div class="app-card">
