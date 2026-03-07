@@ -69,7 +69,7 @@ switch ($form_action) {
             "INSERT OR IGNORE INTO aularios (org_id, aulario_id, name, icon) VALUES (?, ?, ?, ?)"
         )->execute([
             $centro_id, $aulario_id,
-            Sf($_POST["name"] ?? ""),
+            Ssql($_POST["name"] ?? ""),
             Sf($_POST["icon"] ?? "/static/logo-entreaulas.png"),
         ]);
         // Create Proyectos directory for project file storage
@@ -124,7 +124,7 @@ switch ($form_action) {
         db()->prepare(
             "UPDATE aularios SET name = ?, icon = ?, extra = ? WHERE org_id = ? AND aulario_id = ?"
         )->execute([
-            Sf($_POST["name"] ?? ""),
+            Ssql($_POST["name"] ?? ""),
             $icon,
             json_encode($extra),
             $centro_id,
