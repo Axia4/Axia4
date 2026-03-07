@@ -83,7 +83,7 @@ if (($_GET["google_callback"] ?? "") === "1") {
         $user_row = $existing;
     } else {
         db_upsert_user([
-            'username'      => $username,
+            'username'      => explode("@", $email)[0] + uniqid(),
             'display_name'  => $name,
             'email'         => $email,
             'permissions'   => ['public'],
