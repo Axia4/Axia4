@@ -122,6 +122,12 @@ if ($initials === '') {
     <div class="info-row"><span class="label">ID Sesión</span><span style="font-family:monospace;font-size:.75rem;"><?= htmlspecialchars(substr(session_id(), 0, 12)) ?>…</span></div>
     <div class="info-row"><span class="label">Org. activa</span><span><?= htmlspecialchars($activeOrganization ?: '–') ?></span></div>
     <div class="info-row"><span class="label">Autenticación</span><span><?= empty($authData['google_auth']) ? 'Contraseña' : 'Google' ?></span></div>
+    <?php if (!empty($_SESSION['session_created'])): ?>
+    <div class="info-row"><span class="label">Sesión iniciada</span><span><?= htmlspecialchars(date('d/m/Y H:i', $_SESSION['session_created'])) ?></span></div>
+    <?php endif; ?>
+    <?php if (!empty($_SESSION['last_reload_time'])): ?>
+    <div class="info-row"><span class="label">Última actividad</span><span><?= htmlspecialchars(date('d/m/Y H:i', $_SESSION['last_reload_time'])) ?></span></div>
+    <?php endif; ?>
     <div style="margin-top:16px;">
       <a href="/_incl/logout.php" class="btn btn-danger btn-sm">Cerrar sesión</a>
     </div>

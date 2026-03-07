@@ -98,6 +98,7 @@ if (($_GET["google_callback"] ?? "") === "1") {
     $_SESSION['auth_user'] = $username;
     $_SESSION['auth_data'] = db_build_auth_data($user_row);
     $_SESSION['auth_ok']   = true;
+    $_SESSION['session_created'] = time();
     init_active_org($_SESSION['auth_data']);
     $cookie_options = ["expires" => time() + (86400 * 30), "path" => "/", "httponly" => true, "secure" => true, "samesite" => "Lax"];
     setcookie("auth_user",      $username,               $cookie_options);
@@ -141,11 +142,13 @@ if (($_GET["logout"] ?? "") === "1") {
     $cookie_options_expired = ["expires" => time() - 3600, "path" => "/", "httponly" => true, "secure" => true, "samesite" => "Lax"];
     setcookie("auth_user", "", $cookie_options_expired);
     setcookie("auth_pass_b64", "", $cookie_options_expired);
+    session_unset();
     session_destroy();
     header("Location: $redir");
     die();
 }
 if (($_GET["clear_session"] ?? "") === "1") {
+    session_unset();
     session_destroy();
     $redir = safe_redir($_GET["redir"] ?? "/");
     header("Location: $redir");
@@ -154,6 +157,11 @@ if (($_GET["clear_session"] ?? "") === "1") {
 if (isset($_POST["user"])) {
     $user     = trim(strtolower($_POST["user"]));
     $password = $_POST["password"];
+    // Validate CSRF token
+    $csrf_token = $_POST["_csrf"] ?? "";
+    if (!$csrf_token || !isset($_SESSION["login_csrf"]) || !hash_equals($_SESSION["login_csrf"], $csrf_token)) {
+        $_GET["_result"] = "Token de seguridad inválido. Por favor, recarga la página e inténtalo de nuevo.";
+    } else {
     $row      = db_get_user($user);
     if (!$row || !isset($row["password_hash"])) {
         $_GET["_result"] = "El usuario no existe.";
@@ -162,6 +170,7 @@ if (isset($_POST["user"])) {
         $_SESSION['auth_user'] = $user;
         $_SESSION['auth_data'] = db_build_auth_data($row);
         $_SESSION['auth_ok']   = true;
+        $_SESSION['session_created'] = time();
         init_active_org($_SESSION['auth_data']);
         $cookie_options = ["expires" => time() + (86400 * 30), "path" => "/", "httponly" => true, "secure" => true, "samesite" => "Lax"];
         setcookie("auth_user",     $user,                    $cookie_options);
@@ -172,15 +181,20 @@ if (isset($_POST["user"])) {
     } else {
         $_GET["_result"] = "La contraseña no es correcta.";
     }
+    }
 }
 if (strval(db_get_config('installed')) !== '1') {
     header("Location: /_install.php");
     die();
 }
+if (empty($_SESSION["login_csrf"])) {
+    $_SESSION["login_csrf"] = bin2hex(random_bytes(32));
+}
 require_once "_incl/pre-body.php"; 
 ?>
 
 <form method="post" action="?redir=<?= urlencode($_GET["redir"] ?? "/") ?>">
+    <input type="hidden" name="_csrf" value="<?= htmlspecialchars($_SESSION["login_csrf"]) ?>">
     <div class="card pad" style="max-width: 500px;">
         <h1 style="text-align: center;">Iniciar sesión en Axia4</h1>
         <div>

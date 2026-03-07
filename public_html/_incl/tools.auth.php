@@ -39,6 +39,9 @@ if (($_SESSION["auth_ok"] ?? false) != true
         $_SESSION["auth_user"] = $username;
         $_SESSION["auth_data"] = db_build_auth_data($row);
         $_SESSION["auth_ok"]   = true;
+        if (empty($_SESSION["session_created"])) {
+            $_SESSION["session_created"] = time();
+        }
         init_active_org($_SESSION["auth_data"]);
     }
 }
