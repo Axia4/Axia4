@@ -1,6 +1,7 @@
 <?php
 require_once "_incl/auth_redir.php";
 require_once "../_incl/tools.security.php";
+require_once "../_incl/db.php";
 ini_set("display_errors", "0");
 
 // Funciones auxiliares para el diario
@@ -8,8 +9,8 @@ function getDiarioPath($alumno, $centro_id, $aulario_id) {
   // Validate path components to avoid directory traversal or illegal characters
   // Allow only alphanumeric, underscore and dash for alumno and aulario_id
   $idPattern = '/^[A-Za-z0-9_-]+$/';
-  // Typically centro_id is numeric; restrict it accordingly
-  $centroPattern = '/^[0-9]+$/';
+  // Organization id may include letters, numbers, dots, underscores and dashes.
+  $centroPattern = '/^[A-Za-z0-9._-]+$/';
 
   if (!preg_match($idPattern, (string)$alumno) ||
       !preg_match($idPattern, (string)$aulario_id) ||
@@ -23,9 +24,11 @@ function getDiarioPath($alumno, $centro_id, $aulario_id) {
   $centro_safe = basename($centro_id);
   $aulario_safe = basename($aulario_id);
 
-  $base_path = "/DATA/entreaulas/Centros/$centro_safe/Aularios/$aulario_safe/Alumnos/$alumno_safe";
+  $base_path = aulatek_orgs_base_path() . "/$centro_safe/Aularios/$aulario_safe/Alumnos/$alumno_safe";
   return $base_path . "/Diario/" . date("Y-m-d");
 }
+
+$tenant_data = $_SESSION["auth_data"]["aulatek"] ?? ($_SESSION["auth_data"]["entreaulas"] ?? []);
 
 function initDiario($alumno, $centro_id, $aulario_id) {
   $diario_path = getDiarioPath($alumno, $centro_id, $aulario_id);
@@ -72,14 +75,14 @@ function guardarPanelDiario($panel_name, $data, $alumno, $centro_id, $aulario_id
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_GET['api'])) {
   header('Content-Type: application/json');
   $api_action = $_GET['api'];
-  $alumno = $_SESSION["entreaulas_selected_alumno"] ?? '';
-  $centro_id = $_SESSION["auth_data"]["entreaulas"]["centro"] ?? '';
+  $alumno = $_SESSION["aulatek_selected_alumno"] ?? ($_SESSION["entreaulas_selected_alumno"] ?? '');
+  $centro_id = $tenant_data["organizacion"] ?? ($tenant_data["centro"] ?? '');
   
   if ($api_action === 'guardar_panel' && $alumno && $centro_id) {
     $input = json_decode(file_get_contents('php://input'), true);
     $panel_name = $input['panel'] ?? '';
     $panel_data = $input['data'] ?? [];
-    $aulario_id = $_SESSION["entreaulas_selected_aulario"] ?? '';
+    $aulario_id = $_SESSION["aulatek_selected_aulario"] ?? ($_SESSION["entreaulas_selected_aulario"] ?? '');
     guardarPanelDiario($panel_name, $panel_data, $alumno, $centro_id, $aulario_id);
     echo json_encode(['success' => true]);
     die();
@@ -90,10 +93,12 @@ $form_action = $_GET["form"] ?? "";
 switch ($form_action) {
   case "alumno_selected":
     $alumno = safe_id_segment($_GET["alumno"] ?? "");
-    $centro_id = safe_centro_id($_SESSION["auth_data"]["entreaulas"]["centro"] ?? "");
+    $centro_id = safe_organization_id($tenant_data["organizacion"] ?? ($tenant_data["centro"] ?? ""));
     $aulario_id = safe_id_segment($_GET["aulario"] ?? '');
     $photo_url = $_GET["photo"] ?? '';
     if ($alumno !== "" && $centro_id !== "" && $aulario_id !== "") {
+      $_SESSION["aulatek_selected_alumno"] = $alumno;
+      $_SESSION["aulatek_selected_aulario"] = $aulario_id;
       $_SESSION["entreaulas_selected_alumno"] = $alumno;
       $_SESSION["entreaulas_selected_aulario"] = $aulario_id;
       initDiario($alumno, $centro_id, $aulario_id);
@@ -208,8 +213,8 @@ ini_set("display_errors", "0");
 </script>
 <?php
 // Verificar si hay un alumno seleccionado y cargar su progreso
-$alumno_actual = $_SESSION["entreaulas_selected_alumno"] ?? '';
-$centro_id = safe_centro_id($_SESSION["auth_data"]["entreaulas"]["centro"] ?? '');
+$alumno_actual = $_SESSION["aulatek_selected_alumno"] ?? ($_SESSION["entreaulas_selected_alumno"] ?? '');
+$centro_id = safe_organization_id($tenant_data["organizacion"] ?? ($tenant_data["centro"] ?? ''));
 $aulario_id = safe_id_segment($_GET["aulario"] ?? '');
 
 $diario_data = null;
@@ -603,7 +608,7 @@ switch ($view_action) {
   case "quien_soy":
     // ¿Quién soy? - Identificación del alumno
     $aulario_id = safe_id_segment($_GET["aulario"] ?? '');
-    $centro_id = safe_centro_id($_SESSION["auth_data"]["entreaulas"]["centro"] ?? '');
+    $centro_id = safe_organization_id($tenant_data["organizacion"] ?? ($tenant_data["centro"] ?? ''));
 
     // Validate parameters
     if (empty($aulario_id) || empty($centro_id)) {
@@ -611,7 +616,7 @@ switch ($view_action) {
       break;
     }
 
-    $base_path = "/DATA/entreaulas/Centros";
+    $base_path = aulatek_orgs_base_path();
     $alumnos_path = "$base_path/$centro_id/Aularios/$aulario_id/Alumnos";
 
     // Validate the path is within the expected directory
@@ -628,12 +633,12 @@ switch ($view_action) {
         element.style.backgroundColor = "#9cff9f"; // Verde
         let photoUrl = '';
         if (hasPhoto) {
-          photoUrl = '/entreaulas/_filefetch.php?type=alumno_photo&alumno=' + encodeURIComponent(nombre) + 
+          photoUrl = '/aulatek/_filefetch.php?type=alumno_photo&alumno=' + encodeURIComponent(nombre) + 
                     '&centro=' + encodeURIComponent(centro) + '&aulario=' + encodeURIComponent(aulario);
         }
         announceAndMaybeRedirect(
           "¡Hola " + nombre + "!",
-          "/entreaulas/paneldiario.php?aulario=" + encodeURIComponent(aulario) + "&form=alumno_selected&alumno=" + encodeURIComponent(nombre) + 
+          "/aulatek/paneldiario.php?aulario=" + encodeURIComponent(aulario) + "&form=alumno_selected&alumno=" + encodeURIComponent(nombre) + 
           (photoUrl ? "&photo=" + encodeURIComponent(photoUrl) : ''),
           true
         );
@@ -661,7 +666,7 @@ switch ($view_action) {
         ?>
           <a href="#" class="card grid-item" style="color: black;" onclick='seleccionarAlumno(this, "<?php echo htmlspecialchars($alumno_name, ENT_QUOTES); ?>", <?php echo $photo_exists ? 'true' : 'false'; ?>, "<?php echo htmlspecialchars($centro_id, ENT_QUOTES); ?>", "<?php echo htmlspecialchars($aulario_id, ENT_QUOTES); ?>");' aria-label="Seleccionar alumno <?php echo htmlspecialchars($alumno_name); ?>">
             <?php if ($photo_exists): ?>
-              <img src="_filefetch.php?type=alumno_photo&alumno=<?php echo urlencode($alumno_name); ?>&centro=<?php echo urlencode($centro_id); ?>&aulario=<?php echo urlencode($aulario_id); ?>" height="150" class="bg-white" alt="Foto de <?php echo htmlspecialchars($alumno_name); ?>">
+              <img src="_filefetch.php?type=alumno_photo&alumno=<?php echo urlencode($alumno_name); ?>&org=<?php echo urlencode($centro_id); ?>&aulario=<?php echo urlencode($aulario_id); ?>" height="150" class="bg-white" alt="Foto de <?php echo htmlspecialchars($alumno_name); ?>">
             <?php else: ?>
               <div style="width: 150px; height: 150px; background: #f0f0f0; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 2px dashed #ccc;">
                 <span style="font-size: 48px;">?</span>
@@ -704,10 +709,10 @@ switch ($view_action) {
   <?php
     break;
   case "actividades":
-    $centro_actividades = safe_centro_id($_SESSION["auth_data"]["entreaulas"]["centro"] ?? '');
+    $centro_actividades = safe_organization_id($tenant_data["organizacion"] ?? ($tenant_data["centro"] ?? ''));
     $actividades = [];
     if ($centro_actividades !== '') {
-      $actividades_path = "/DATA/entreaulas/Centros/$centro_actividades/Panel/Actividades";
+      $actividades_path = aulatek_orgs_base_path() . "/$centro_actividades/Panel/Actividades";
       if (is_dir($actividades_path)) {
         $actividades = glob($actividades_path . "/*", GLOB_ONLYDIR) ?: [];
       }
@@ -718,7 +723,7 @@ switch ($view_action) {
         element.style.backgroundColor = "#9cff9f"; // Verde
         
         // Guardar al diario antes de redirigir
-        fetch('/entreaulas/paneldiario.php?api=guardar_panel', {
+        fetch('/aulatek/paneldiario.php?api=guardar_panel', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -731,7 +736,7 @@ switch ($view_action) {
         }).finally(() => {
           announceAndMaybeRedirect(
             actividad + ", Actividad seleccionada",
-            "/entreaulas/paneldiario.php?aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>",
+            "/aulatek/paneldiario.php?aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>",
             true
           );
         });
@@ -745,7 +750,7 @@ switch ($view_action) {
     <div class="grid">
       <?php foreach ($actividades as $actividad_path) {
         $actividad_name = basename($actividad_path);
-        $pictogram_url = '/entreaulas/_filefetch.php?type=panel_actividades&activity=' . urlencode($actividad_name) . '&centro=' . urlencode($centro_actividades);
+        $pictogram_url = '/aulatek/_filefetch.php?type=panel_actividades&activity=' . urlencode($actividad_name) . '&org=' . urlencode($centro_actividades);
       ?>
         <a class="card grid-item" style="color: black;" onclick="seleccionarActividad(this, '<?php echo htmlspecialchars($actividad_name); ?>', '<?php echo htmlspecialchars($pictogram_url); ?>');">
           <img src="<?php echo htmlspecialchars($pictogram_url); ?>" height="125" class="bg-white">
@@ -779,17 +784,15 @@ switch ($view_action) {
   case "menu":
     // Menú del comedor (nuevo sistema, vista simplificada)
     $aulario_id = safe_id_segment($_GET["aulario"] ?? '');
-    $centro_id = safe_centro_id($_SESSION["auth_data"]["entreaulas"]["centro"] ?? "");
+    $centro_id = safe_organization_id($tenant_data["organizacion"] ?? ($tenant_data["centro"] ?? ""));
 
     $source_aulario_id = $aulario_id;
     $is_shared = false;
     if ($aulario_id !== "" && $centro_id !== "") {
-      $aulario_path = safe_aulario_config_path($centro_id, $aulario_id);
-      $aulario = ($aulario_path && file_exists($aulario_path)) ? json_decode(file_get_contents($aulario_path), true) : null;
+      $aulario = db_get_aulario($centro_id, $aulario_id);
       if ($aulario && !empty($aulario["shared_comedor_from"])) {
         $shared_from = safe_id_segment($aulario["shared_comedor_from"]);
-        $shared_aulario_path = safe_aulario_config_path($centro_id, $shared_from);
-        if ($shared_aulario_path && file_exists($shared_aulario_path)) {
+        if (db_get_aulario($centro_id, $shared_from)) {
           $source_aulario_id = $shared_from;
           $is_shared = true;
         }
@@ -800,13 +803,12 @@ switch ($view_action) {
     $dateObj = DateTime::createFromFormat("Y-m-d", $dateParam) ?: new DateTime();
     $date = $dateObj->format("Y-m-d");
 
-    $menuTypesPath = ($centro_id !== '' && $source_aulario_id !== '') ? "/DATA/entreaulas/Centros/$centro_id/Aularios/$source_aulario_id/Comedor-MenuTypes.json" : "";
     $defaultMenuTypes = [
       ["id" => "basal", "label" => "Menú basal", "color" => "#0d6efd"],
       ["id" => "vegetariano", "label" => "Menú vegetariano", "color" => "#198754"],
       ["id" => "alergias", "label" => "Menú alergias", "color" => "#dc3545"],
     ];
-    $menuTypes = ($menuTypesPath !== '' && file_exists($menuTypesPath)) ? json_decode(@file_get_contents($menuTypesPath), true) : null;
+    $menuTypes = ($centro_id !== '' && $source_aulario_id !== '') ? db_get_comedor_menu_types($centro_id, $source_aulario_id) : [];
     if (!is_array($menuTypes) || count($menuTypes) === 0) {
       $menuTypes = $defaultMenuTypes;
     }
@@ -822,17 +824,13 @@ switch ($view_action) {
       $menuTypeId = $menuTypeIds[0] ?? "basal";
     }
 
-    $ym = $dateObj->format("Y-m");
+    $ym  = $dateObj->format("Y-m");
     $day = $dateObj->format("d");
-    $dataPath = ($centro_id !== '' && $source_aulario_id !== '') ? "/DATA/entreaulas/Centros/$centro_id/Aularios/$source_aulario_id/Comedor/$ym/$day/_datos.json" : "";
 
-    $menuData = [
-      "date" => $date,
-      "menus" => []
-    ];
-    if ($dataPath !== '' && file_exists($dataPath)) {
-      $existing = json_decode(file_get_contents($dataPath), true);
-      if (is_array($existing)) {
+    $menuData = ["date" => $date, "menus" => []];
+    if ($centro_id !== '' && $source_aulario_id !== '') {
+      $existing = db_get_comedor_entry($centro_id, $source_aulario_id, $ym, $day);
+      if (!empty($existing)) {
         $menuData = array_merge($menuData, $existing);
       }
     }
@@ -843,7 +841,7 @@ switch ($view_action) {
       if (!$value) {
         return "";
       }
-      return "/entreaulas/_filefetch.php?type=comedor_image&centro=" . urlencode($centro_id) . "&aulario=" . urlencode($aulario_id) . "&date=" . urlencode($date) . "&file=" . urlencode($value);
+      return "/aulatek/_filefetch.php?type=comedor_image&org=" . urlencode($centro_id) . "&aulario=" . urlencode($aulario_id) . "&date=" . urlencode($date) . "&file=" . urlencode($value);
     }
   ?>
     <script>
@@ -851,7 +849,7 @@ switch ($view_action) {
         element.style.backgroundColor = "#9cff9f"; // Verde
         
         // Guardar al diario antes de redirigir
-        fetch('/entreaulas/paneldiario.php?api=guardar_panel', {
+        fetch('/aulatek/paneldiario.php?api=guardar_panel', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -861,7 +859,7 @@ switch ($view_action) {
         }).finally(() => {
           announceAndMaybeRedirect(
             menu_ty + ", Menú seleccionado",
-            "/entreaulas/paneldiario.php?aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>",
+            "/aulatek/paneldiario.php?aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>",
             true
           );
         });
@@ -1034,7 +1032,7 @@ switch ($view_action) {
             element.style.backgroundColor = "#9cff9f"; // Verde
             
             // Guardar al diario antes de redirigir
-            fetch('/entreaulas/paneldiario.php?api=guardar_panel', {
+            fetch('/aulatek/paneldiario.php?api=guardar_panel', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -1142,7 +1140,7 @@ switch ($view_action) {
             element.style.backgroundColor = "#9cff9f"; // Verde
             
             // Guardar al diario antes de redirigir
-            fetch('/entreaulas/paneldiario.php?api=guardar_panel', {
+            fetch('/aulatek/paneldiario.php?api=guardar_panel', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -1152,7 +1150,7 @@ switch ($view_action) {
             }).finally(() => {
               announceAndMaybeRedirect(
                 dow[ds] + ", Correcto",
-                "/entreaulas/paneldiario.php?action=calendario_mes&aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>",
+                "/aulatek/paneldiario.php?action=calendario_mes&aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>",
                 true
               );
             });
@@ -1260,7 +1258,7 @@ switch ($view_action) {
             element.style.backgroundColor = "#9cff9f"; // Verde
             
             // Guardar al diario antes de redirigir
-            fetch('/entreaulas/paneldiario.php?api=guardar_panel', {
+            fetch('/aulatek/paneldiario.php?api=guardar_panel', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -1270,7 +1268,7 @@ switch ($view_action) {
             }).finally(() => {
               announceAndMaybeRedirect(
                 meses[mes] + ", Correcto",
-                "/entreaulas/paneldiario.php?aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>",
+                "/aulatek/paneldiario.php?aulario=<?php echo urlencode($_GET['aulario'] ?? ''); ?>",
                 true
               );
             });

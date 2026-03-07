@@ -1,19 +1,18 @@
 <?php
 ini_set("display_errors", 0);
+require_once "../_incl/db.php";
 $file = Sf($_GET["f"]);
 $date = implode("/", array_reverse(explode("-", $file)));
-$val = json_decode(file_get_contents("/DATA/club/IMG/$file/data.json"), true);
-$config = json_decode(file_get_contents("/DATA/club/config.json"), true);
-if(strtoupper($_POST["adminpw"]) == strtoupper($config["adminpw"] ?? "")) {
+$val  = db_get_club_event($file);
+$adminpw = db_get_config('club_adminpw', '');
+if (strtoupper($_POST["adminpw"] ?? '') === strtoupper($adminpw) && !empty($adminpw)) {
     $data = [
-            "title" => $_POST["title"],
-            "note" => $_POST["note"],
-            "mapa" => [
-                "url" => $_POST["mapa_url"]
-            ]
-        ];
+        "title" => $_POST["title"],
+        "note"  => $_POST["note"],
+        "mapa"  => ["url" => $_POST["mapa_url"]],
+    ];
     $file = $_POST["date"];
-    $val = file_put_contents("/DATA/club/IMG/$file/data.json", json_encode($data, JSON_UNESCAPED_SLASHES));
+    db_set_club_event($file, $data);
     header("Location: /club/");
     die();
 }

@@ -1,7 +1,8 @@
 <?php
 ini_set("display_errors", 1);
-$config = json_decode(file_get_contents("/DATA/club/config.json"), true);
-if (strtoupper($_GET["pw"]) != $config["uploadpw"]) {
+require_once "../../_incl/db.php";
+$uploadpw = db_get_config('club_uploadpw', '');
+if ($uploadpw === '' || strtoupper($_GET["pw"] ?? '') !== strtoupper($uploadpw)) {
     header("HTTP/1.1 401 Unauthorized");
     die();
 }

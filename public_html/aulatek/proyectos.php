@@ -1,14 +1,17 @@
 <?php
 require_once "_incl/auth_redir.php";
 require_once "../_incl/tools.security.php";
+require_once "../_incl/db.php";
 
-if (in_array("entreaulas:docente", $_SESSION["auth_data"]["permissions"] ?? []) === false) {
+$permissions = $_SESSION["auth_data"]["permissions"] ?? [];
+if (!in_array("aulatek:docente", $permissions, true) && !in_array("entreaulas:docente", $permissions, true)) {
   header("HTTP/1.1 403 Forbidden");
   die("Access denied");
 }
 
 $aulario_id = safe_path_segment($_GET["aulario"] ?? "");
-$centro_id = safe_path_segment($_SESSION["auth_data"]["entreaulas"]["centro"] ?? "");
+$tenant_data = $_SESSION["auth_data"]["aulatek"] ?? ($_SESSION["auth_data"]["entreaulas"] ?? []);
+$centro_id = safe_path_segment($tenant_data["organizacion"] ?? ($tenant_data["centro"] ?? ""));
 
 // Validate centro_id and aulario_id to prevent directory traversal
 if ($aulario_id === "" || $centro_id === "") {
@@ -23,10 +26,9 @@ if ($aulario_id === "" || $centro_id === "") {
   exit;
 }
 
-$aulario_path = "/DATA/entreaulas/Centros/$centro_id/Aularios/$aulario_id.json";
-$aulario = file_exists($aulario_path) ? json_decode(file_get_contents($aulario_path), true) : null;
+$aulario = db_get_aulario($centro_id, $aulario_id);
 
-$proyectos_dir = "/DATA/entreaulas/Centros/$centro_id/Proyectos";
+$proyectos_dir = aulatek_orgs_base_path() . "/$centro_id/Proyectos";
 if (!is_dir($proyectos_dir)) {
   mkdir($proyectos_dir, 0755, true);
 }
@@ -69,16 +71,6 @@ function safe_join_file($base_dir, $filename)
     return null;
   }
   return rtrim($base_dir, '/') . '/' . $safe_name;
-}
-
-function safe_aulario_config_path($centro_id, $aulario_id)
-{
-  $safe_centro = safe_path_segment($centro_id);
-  $safe_aulario = safe_path_segment($aulario_id);
-  if ($safe_centro === '' || $safe_aulario === '') {
-    return null;
-  }
-  return "/DATA/entreaulas/Centros/$safe_centro/Aularios/$safe_aulario.json";
 }
 
 function sanitize_html($html)
@@ -367,7 +359,7 @@ function get_linked_projects($aulario, $centro_id)
       continue;
     }
 
-    $projects_base = "/DATA/entreaulas/Centros/$centro_id/Proyectos";
+    $projects_base = aulatek_orgs_base_path() . "/$centro_id/Proyectos";
     $project = load_project($projects_base, $project_id);
     if ($project && ($project["parent_id"] ?? null) === null) {
       // Mark as linked and add source info
@@ -450,7 +442,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
           }
         }
 
-        header("Location: /entreaulas/proyectos.php?aulario=" . urlencode($aulario_id) . "&project=" . urlencode($project_id));
+        header("Location: /aulatek/proyectos.php?aulario=" . urlencode($aulario_id) . "&project=" . urlencode($project_id));
         exit;
       }
     } else {
@@ -459,23 +451,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   }
 
   if ($action === "share_project") {
-    $project_id = safe_path_segment($_POST["project_id"] ?? "");
+    $project_id    = safe_path_segment($_POST["project_id"] ?? "");
     $target_aulario = safe_path_segment($_POST["target_aulario"] ?? "");
 
     if ($project_id !== "" && $target_aulario !== "" && $target_aulario !== $aulario_id) {
-      // Only allow sharing local projects
       $is_local_project = (load_project($proyectos_dir, $project_id) !== null);
       if (!$is_local_project) {
         $error = "No se puede compartir un proyecto ajeno.";
       } else {
-        $target_config_path = safe_aulario_config_path($centro_id, $target_aulario);
-        if ($target_config_path === null || !file_exists($target_config_path)) {
+        $target_config = db_get_aulario($centro_id, $target_aulario);
+        if ($target_config === null) {
           $error = "Aulario de destino no encontrado.";
         } else {
-          $target_config = json_decode(file_get_contents($target_config_path), true);
-          if (!is_array($target_config)) {
-            $target_config = [];
-          }
           if (!isset($target_config["linked_projects"]) || !is_array($target_config["linked_projects"])) {
             $target_config["linked_projects"] = [];
           }
@@ -494,20 +481,30 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
           } else {
             $target_config["linked_projects"][] = [
               "source_aulario" => $aulario_id,
-              "project_id" => $project_id,
-              "permission" => "request_edit"
+              "project_id"     => $project_id,
+              "permission"     => "request_edit",
             ];
             $message = "Proyecto compartido correctamente.";
           }
 
-          file_put_contents($target_config_path, json_encode($target_config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+          // Save back: build extra JSON excluding standard fields
+          $extra_skip   = ['name', 'icon'];
+          $extra        = [];
+          foreach ($target_config as $k => $v) {
+            if (!in_array($k, $extra_skip, true)) {
+              $extra[$k] = $v;
+            }
+          }
+          db()->prepare(
+            "UPDATE aularios SET extra = ? WHERE org_id = ? AND aulario_id = ?"
+          )->execute([json_encode($extra, JSON_UNESCAPED_UNICODE), $centro_id, $target_aulario]);
         }
       }
     }
   }
 
   if ($action === "delete_project") {
-    if (in_array("entreaulas:proyectos:delete", $_SESSION["auth_data"]["permissions"] ?? []) === false) {
+    if (!in_array("aulatek:proyectos:delete", $permissions, true) && !in_array("entreaulas:proyectos:delete", $permissions, true)) {
       $error = "No tienes permisos para borrar proyectos.";
     } else {
       $project_id = safe_path_segment($_POST["project_id"] ?? "");
@@ -766,7 +763,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             if (!empty($source_aulario_param)) {
               $redirect_params .= "&source=" . urlencode($source_aulario_param);
             }
-            header("Location: /entreaulas/proyectos.php?" . $redirect_params);
+            header("Location: /aulatek/proyectos.php?" . $redirect_params);
             exit;
           }
         }
@@ -1030,7 +1027,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             if (!empty($source_aulario_param)) {
               $redirect_params .= "&source=" . urlencode($source_aulario_param);
             }
-            header("Location: /entreaulas/proyectos.php?" . $redirect_params);
+            header("Location: /aulatek/proyectos.php?" . $redirect_params);
             exit;
           }
         }
@@ -1060,7 +1057,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         if (!empty($source_aulario_param)) {
           $redirect_params .= "&source=" . urlencode($source_aulario_param);
         }
-        header("Location: /entreaulas/proyectos.php?" . $redirect_params);
+        header("Location: /aulatek/proyectos.php?" . $redirect_params);
         exit;
       }
     }
@@ -1180,7 +1177,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
               if (!empty($source_aulario_param)) {
                 $redirect_params .= "&source=" . urlencode($source_aulario_param);
               }
-              header("Location: /entreaulas/proyectos.php?" . $redirect_params);
+              header("Location: /aulatek/proyectos.php?" . $redirect_params);
               exit;
             }
           }
@@ -1382,11 +1379,11 @@ $view = $current_project ? "project" : "list";
             </p>
             <div class="d-flex gap-2">
               <?php if ($is_linked): ?>
-                <a href="/entreaulas/proyectos.php?aulario=<?= urlencode($aulario_id) ?>&project=<?= urlencode($project["id"]) ?>&source=<?= urlencode($source_aulario) ?>" class="btn btn-primary">
+                <a href="/aulatek/proyectos.php?aulario=<?= urlencode($aulario_id) ?>&project=<?= urlencode($project["id"]) ?>&source=<?= urlencode($source_aulario) ?>" class="btn btn-primary">
                   Abrir
                 </a>
               <?php else: ?>
-                <a href="/entreaulas/proyectos.php?aulario=<?= urlencode($aulario_id) ?>&project=<?= urlencode($project["id"]) ?>" class="btn btn-primary">
+                <a href="/aulatek/proyectos.php?aulario=<?= urlencode($aulario_id) ?>&project=<?= urlencode($project["id"]) ?>" class="btn btn-primary">
                   Abrir
                 </a>
                 <!-- Delete -->
@@ -1476,7 +1473,7 @@ $view = $current_project ? "project" : "list";
         $linked_permission = $link["permission"] ?? "read_only";
         break;
       }
-      $project_source_dir = "/DATA/entreaulas/Centros/$centro_id/Proyectos";
+      $project_source_dir = aulatek_orgs_base_path() . "/$centro_id/Proyectos";
       $breadcrumb_check = get_project_breadcrumb($project_source_dir, $current_project);
       foreach ($breadcrumb_check as $crumb) {
         if (($crumb["id"] ?? "") === $link_root_id) {
@@ -1489,7 +1486,7 @@ $view = $current_project ? "project" : "list";
 
     if ($valid_link) {
       $is_linked_project = true;
-      $project_source_dir = "/DATA/entreaulas/Centros/$centro_id/Proyectos";
+      $project_source_dir = aulatek_orgs_base_path() . "/$centro_id/Proyectos";
       $project = load_project($project_source_dir, $current_project);
     } else {
       // Invalid link configuration, treat as local project
@@ -1513,7 +1510,7 @@ $view = $current_project ? "project" : "list";
     <div class="card pad">
       <h1>Error</h1>
       <p>Proyecto no encontrado.</p>
-      <a href="/entreaulas/proyectos.php?aulario=<?= urlencode($aulario_id) ?>" class="btn btn-primary">Volver a Proyectos</a>
+      <a href="/aulatek/proyectos.php?aulario=<?= urlencode($aulario_id) ?>" class="btn btn-primary">Volver a Proyectos</a>
     </div>
   <?php
     require_once "_incl/post-body.php";
@@ -1533,12 +1530,12 @@ $view = $current_project ? "project" : "list";
   <div class="card pad">
     <ol class="breadcrumb">
       <li class="breadcrumb-item">
-        <a href="/entreaulas/proyectos.php?aulario=<?= urlencode($aulario_id) ?>">Proyectos</a>
+        <a href="/aulatek/proyectos.php?aulario=<?= urlencode($aulario_id) ?>">Proyectos</a>
       </li>
       <?php foreach ($breadcrumb as $idx => $crumb): ?>
         <?php if ($idx < count($breadcrumb) - 1): ?>
           <li class="breadcrumb-item">
-            <a href="/entreaulas/proyectos.php?aulario=<?= urlencode($aulario_id) ?>&project=<?= urlencode($crumb["id"]) ?><?= $is_linked_project ? "&source=" . urlencode($source_aulario_for_project) : "" ?>">
+            <a href="/aulatek/proyectos.php?aulario=<?= urlencode($aulario_id) ?>&project=<?= urlencode($crumb["id"]) ?><?= $is_linked_project ? "&source=" . urlencode($source_aulario_for_project) : "" ?>">
               <?= htmlspecialchars($crumb["name"]) ?>
             </a>
           </li>
@@ -1570,10 +1567,9 @@ $view = $current_project ? "project" : "list";
                 <path d="M18,16.08C17.24,16.08 16.56,16.38 16.04,16.85L8.91,12.7C8.96,12.47 9,12.24 9,12C9,11.76 8.96,11.53 8.91,11.3L15.96,7.19C16.5,7.69 17.21,8 18,8A3,3 0 0,0 21,5A3,3 0 0,0 18,2A3,3 0 0,0 15,5C15,5.24 15.04,5.47 15.09,5.7L8.04,9.81C7.5,9.31 6.79,9 6,9A3,3 0 0,0 3,12A3,3 0 0,0 6,15C6.79,15 7.5,14.69 8.04,14.19L15.16,18.34C15.11,18.55 15.08,18.77 15.08,19C15.08,20.61 16.39,21.91 18,21.91C19.61,21.91 20.92,20.61 20.92,19A2.92,2.92 0 0,0 18,16.08Z" />
               </svg>
               <?php
-              $source_aulario_path = safe_aulario_config_path($centro_id, $source_aulario_for_project);
               $source_aulario_name = "";
-              if ($source_aulario_path && file_exists($source_aulario_path)) {
-                $source_aulario_data = json_decode(file_get_contents($source_aulario_path), true);
+              $source_aulario_data = db_get_aulario($centro_id, $source_aulario_for_project);
+              if ($source_aulario_data) {
                 $source_aulario_name = $source_aulario_data["name"] ?? "";
               }
               ?>
@@ -1587,11 +1583,11 @@ $view = $current_project ? "project" : "list";
       </div>
       <div class="d-flex gap-2">
         <?php if (!empty($project["parent_id"])): ?>
-          <a href="/entreaulas/proyectos.php?aulario=<?= urlencode($aulario_id) ?>&project=<?= urlencode($project["parent_id"]) ?><?= $is_linked_project ? "&source=" . urlencode($source_aulario_for_project) : "" ?>" class="btn btn-secondary">
+          <a href="/aulatek/proyectos.php?aulario=<?= urlencode($aulario_id) ?>&project=<?= urlencode($project["parent_id"]) ?><?= $is_linked_project ? "&source=" . urlencode($source_aulario_for_project) : "" ?>" class="btn btn-secondary">
             ← Volver al Proyecto
           </a>
         <?php else: ?>
-          <a href="/entreaulas/proyectos.php?aulario=<?= urlencode($aulario_id) ?>" class="btn btn-secondary">
+          <a href="/aulatek/proyectos.php?aulario=<?= urlencode($aulario_id) ?>" class="btn btn-secondary">
             ← Volver al Listado
           </a>
         <?php endif; ?>
@@ -1636,27 +1632,14 @@ $view = $current_project ? "project" : "list";
               <?php
               function list_aularios($centro_id)
               {
-                $aularios_dir = "/DATA/entreaulas/Centros/$centro_id/Aularios";
+                $aularios_db = db_get_aularios($centro_id);
                 $aularios = [];
-                if (is_dir($aularios_dir)) {
-                  $entries = scandir($aularios_dir);
-                  foreach ($entries as $entry) {
-                    if ($entry === "." || $entry === "..") {
-                      continue;
-                    }
-                    $aulario_path = "$aularios_dir/$entry";
-                    if (is_dir($aulario_path)) {
-                      $config_file = "$aulario_path.json";
-                      if (file_exists($config_file)) {
-                        $config = json_decode(file_get_contents($config_file), true);
-                        $aularios[] = [
-                          "id" => $entry,
-                          "name" => $config["name"] ?? "Aulario Desconocido",
-                          "linked_projects" => $config["linked_projects"] ?? []
-                        ];
-                      }
-                    }
-                  }
+                foreach ($aularios_db as $aid => $adata) {
+                  $aularios[] = [
+                    "id"              => $aid,
+                    "name"            => $adata["name"] ?? "Aulario Desconocido",
+                    "linked_projects" => $adata["linked_projects"] ?? [],
+                  ];
                 }
                 return $aularios;
               }
@@ -1728,7 +1711,7 @@ $view = $current_project ? "project" : "list";
               </small>
             </p>
             <div class="d-flex gap-2">
-              <a href="/entreaulas/proyectos.php?aulario=<?= urlencode($aulario_id) ?>&project=<?= urlencode($subproject["id"]) ?><?= $is_linked_project ? "&source=" . urlencode($source_aulario_for_project) : "" ?>" class="btn btn-primary">
+              <a href="/aulatek/proyectos.php?aulario=<?= urlencode($aulario_id) ?>&project=<?= urlencode($subproject["id"]) ?><?= $is_linked_project ? "&source=" . urlencode($source_aulario_for_project) : "" ?>" class="btn btn-primary">
                 Abrir
               </a>
               <?php if (!$is_linked_project || ($is_linked_project && $linked_permission === "full_edit")): ?>
@@ -1833,7 +1816,7 @@ $view = $current_project ? "project" : "list";
               <?php elseif ($item["type"] === "pdf_secure"): ?>
                 <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#viewPdfSecureModal"
                   data-item-name="<?= htmlspecialchars($item["name"], ENT_QUOTES) ?>"
-                  data-file-url="/entreaulas/_filefetch.php?type=proyecto_file&centro=<?= urlencode($centro_id) ?>&project=<?= urlencode($current_project) ?>&file=<?= urlencode($item["filename"]) ?>">
+                  data-file-url="/aulatek/_filefetch.php?type=proyecto_file&org=<?= urlencode($centro_id) ?>&project=<?= urlencode($current_project) ?>&file=<?= urlencode($item["filename"]) ?>">
                   Abrir
                 </button>
               <?php elseif ($item["type"] === "videocall"): ?>
@@ -1847,7 +1830,7 @@ $view = $current_project ? "project" : "list";
                   Abrir
                 </button>
               <?php else: ?>
-                <a href="/entreaulas/_filefetch.php?type=proyecto_file&centro=<?= urlencode($centro_id) ?>&project=<?= urlencode($current_project) ?>&file=<?= urlencode($item["filename"]) ?>" target="_blank" class="btn btn-primary">
+                <a href="/aulatek/_filefetch.php?type=proyecto_file&org=<?= urlencode($centro_id) ?>&project=<?= urlencode($current_project) ?>&file=<?= urlencode($item["filename"]) ?>" target="_blank" class="btn btn-primary">
                   Abrir
                 </a>
               <?php endif; ?>
@@ -1918,10 +1901,8 @@ $view = $current_project ? "project" : "list";
       <div id="grid">
         <?php foreach ($pending_changes as $change):
           $requesting_aulario = $change["requested_by_aulario"] ?? "Desconocido";
-          // Get requesting aulario name
           $requesting_aulario = safe_path_segment($requesting_aulario);
-          $req_aul_path = safe_aulario_config_path($centro_id, $requesting_aulario);
-          $req_aul_data = ($req_aul_path && file_exists($req_aul_path)) ? json_decode(file_get_contents($req_aul_path), true) : null;
+          $req_aul_data = db_get_aulario($centro_id, $requesting_aulario);
           $req_aul_name = $req_aul_data["name"] ?? $requesting_aulario;
           $req_persona_name = $change["requested_by_persona_name"] ?? "Desconocido";
         ?>
@@ -2579,7 +2560,7 @@ $view = $current_project ? "project" : "list";
         var title = button.getAttribute('data-item-name') || 'PDF Seguro';
         var url = button.getAttribute('data-file-url') || '';
         document.getElementById('viewPdfSecureModalLabel').textContent = title;
-        document.getElementById('pdf_secure_frame').src = url ? ('/entreaulas/pdf_secure_viewer.php?file=' + encodeURIComponent(url)) : '';
+        document.getElementById('pdf_secure_frame').src = url ? ('/aulatek/pdf_secure_viewer.php?file=' + encodeURIComponent(url)) : '';
       });
       viewPdfSecureModal.addEventListener('hidden.bs.modal', function() {
         document.getElementById('pdf_secure_frame').src = '';

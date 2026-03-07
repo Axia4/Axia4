@@ -1,4 +1,65 @@
-# Example Data Structure for Axia4
+# Data Architecture for Axia4
+
+Axia4 uses a **SQLite database** (`/DATA/axia4.sqlite`) for all structured data, with the
+filesystem reserved for binary assets (photos, uploaded files, project documents).
+
+## Database (`/DATA/axia4.sqlite`)
+
+The schema is defined in `public_html/_incl/migrations/001_initial_schema.sql` and
+applied automatically on first boot via `db.php`.
+
+| Table                | Replaces                                          |
+|----------------------|---------------------------------------------------|
+| `config`             | `/DATA/AuthConfig.json`                           |
+| `users`              | `/DATA/Usuarios/*.json`                           |
+| `invitations`        | `/DATA/Invitaciones_de_usuarios.json`             |
+| `centros`            | Directory existence at `.../Centros/{id}/`        |
+| `user_centros`       | `entreaulas.centro` + `entreaulas.aulas` in users |
+| `aularios`           | `.../Aularios/{id}.json`                          |
+| `supercafe_menu`     | `.../SuperCafe/Menu.json`                         |
+| `supercafe_orders`   | `.../SuperCafe/Comandas/*.json`                   |
+| `comedor_menu_types` | `.../Comedor-MenuTypes.json`                      |
+| `comedor_entries`    | `.../Comedor/{ym}/{day}/_datos.json`              |
+| `club_events`        | `/DATA/club/IMG/{date}/data.json`                 |
+| `club_config`        | `/DATA/club/config.json`                          |
+
+## Migrations
+
+Migrations live in `public_html/_incl/migrations/`:
+
+- `001_initial_schema.sql` — DDL for all tables.
+- `002_import_json.php`    — One-time importer: reads existing JSON files and
+  inserts them into the database. Run automatically on first boot if JSON files
+  exist and the DB is empty.
+
+## Filesystem (binary / large assets)
+
+```
+DATA/
+└── entreaulas/
+    └── Centros/
+        └── {centro_id}/
+            ├── Aularios/
+            │   └── {aulario_id}/
+            │       ├── Alumnos/            # Student photo directories
+            │       │   └── {alumno}/photo.jpg
+            │       ├── Comedor/{ym}/{day}/  # Comedor pictogram images
+            │       └── Proyectos/          # Project binary files
+            └── Panel/
+                └── Actividades/{name}/photo.jpg   # Activity photos
+└── club/
+    └── IMG/{date}/          # Club event photos (still on filesystem)
+```
+
+## Multi-Tenant Support
+
+A user can belong to **multiple centros** (organizations).  The active centro
+is stored in `$_SESSION['active_centro']` and can be switched at any time via
+`POST /_incl/switch_tenant.php`.
+
+The account page (`/account/`) shows all assigned organizations and lets the
+user switch between them.
+
 
 This directory contains example data files that demonstrate the structure needed for the Axia4 application.
 

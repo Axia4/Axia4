@@ -1,6 +1,7 @@
 <?php
 require_once "_incl/auth_redir.php";
 require_once "../_incl/tools.security.php";
+require_once "../_incl/db.php";
 
 if (!in_array('supercafe:access', $_SESSION['auth_data']['permissions'] ?? [])) {
     header('HTTP/1.1 403 Forbidden');
@@ -8,28 +9,23 @@ if (!in_array('supercafe:access', $_SESSION['auth_data']['permissions'] ?? [])) 
 }
 
 /**
- * Load personas from the existing Alumnos system.
- * Returns array keyed by "{aulario_id}:{alumno_name}" with
- * ['Nombre', 'Region' (aulario display name), 'AularioID', 'HasPhoto'] entries.
+ * Load personas from the Alumnos filesystem (photos still on disk).
+ * Returns array keyed by "{aulario_id}:{alumno_name}".
  */
 function sc_load_personas_from_alumnos($centro_id)
 {
-    $aularios_path = "/DATA/entreaulas/Centros/$centro_id/Aularios";
-    $personas = [];
-    if (!is_dir($aularios_path)) {
-        return $personas;
-    }
-    foreach (glob("$aularios_path/*.json") ?: [] as $aulario_file) {
-        $aulario_id   = basename($aulario_file, '.json');
-        $aulario_data = json_decode(file_get_contents($aulario_file), true);
+    $aularios     = db_get_aularios($centro_id);
+    $personas     = [];
+    $aularios_dir = aulatek_orgs_base_path() . "/$centro_id/Aularios";
+    foreach ($aularios as $aulario_id => $aulario_data) {
         $aulario_name = $aulario_data['name'] ?? $aulario_id;
-        $alumnos_path = "$aularios_path/$aulario_id/Alumnos";
+        $alumnos_path = "$aularios_dir/$aulario_id/Alumnos";
         if (!is_dir($alumnos_path)) {
             continue;
         }
         foreach (glob("$alumnos_path/*/", GLOB_ONLYDIR) ?: [] as $alumno_dir) {
             $alumno_name = basename($alumno_dir);
-            $key = $aulario_id . ':' . $alumno_name;
+            $key         = $aulario_id . ':' . $alumno_name;
             $personas[$key] = [
                 'Nombre'    => $alumno_name,
                 'Region'    => $aulario_name,
@@ -54,15 +50,15 @@ function sc_persona_label($persona_key, $personas)
     return $persona_key;
 }
 
-$centro_id = safe_centro_id($_SESSION['auth_data']['entreaulas']['centro'] ?? '');
+$tenant_data = $_SESSION['auth_data']['aulatek'] ?? ($_SESSION['auth_data']['entreaulas'] ?? []);
+$centro_id = safe_organization_id($tenant_data['organizacion'] ?? ($tenant_data['centro'] ?? ''));
 if ($centro_id === '') {
     require_once "_incl/pre-body.php";
-    echo '<div class="card pad"><h1>SuperCafe</h1><p>No tienes un centro asignado.</p></div>';
+    echo '<div class="card pad"><h1>SuperCafe</h1><p>No tienes una organizacion asignada.</p></div>';
     require_once "_incl/post-body.php";
     exit;
 }
 
-define('SC_DATA_DIR', "/DATA/entreaulas/Centros/$centro_id/SuperCafe/Comandas");
 define('SC_MAX_DEBTS', 3);
 
 $estados_colores = [
@@ -81,57 +77,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $can_edit) {
     $action = $_POST['action'] ?? '';
 
     if ($action === 'change_status') {
-        $order_id  = safe_id($_POST['order_id'] ?? '');
+        $order_id   = safe_id($_POST['order_id'] ?? '');
         $new_status = $_POST['status'] ?? '';
         if ($order_id !== '' && array_key_exists($new_status, $estados_colores)) {
-            $order_file = SC_DATA_DIR . '/' . $order_id . '.json';
-            if (is_readable($order_file)) {
-                $data = json_decode(file_get_contents($order_file), true);
-                if (is_array($data)) {
-                    $data['Estado'] = $new_status;
-                    file_put_contents(
-                        $order_file,
-                        json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE),
-                        LOCK_EX
-                    );
-                }
+            $row = db_get_supercafe_order($centro_id, $order_id);
+            if ($row) {
+                db_upsert_supercafe_order(
+                    $centro_id, $order_id,
+                    $row['fecha'], $row['persona'], $row['comanda'], $row['notas'], $new_status
+                );
             }
         }
-        header('Location: /entreaulas/supercafe.php');
+        header('Location: /aulatek/supercafe.php');
         exit;
     }
 
     if ($action === 'delete') {
         $order_id = safe_id($_POST['order_id'] ?? '');
         if ($order_id !== '') {
-            $order_file = SC_DATA_DIR . '/' . $order_id . '.json';
-            if (is_file($order_file)) {
-                unlink($order_file);
-            }
+                db()->prepare('DELETE FROM supercafe_orders WHERE org_id = ? AND order_ref = ?')
+               ->execute([$centro_id, $order_id]);
         }
-        header('Location: /entreaulas/supercafe.php');
+        header('Location: /aulatek/supercafe.php');
         exit;
     }
 }
 
-// Load all orders
+// Load all orders from DB
+$db_orders = db_get_supercafe_orders($centro_id);
 $orders = [];
-if (is_dir(SC_DATA_DIR)) {
-    $files = glob(SC_DATA_DIR . '/*.json') ?: [];
-    foreach ($files as $file) {
-        $data = json_decode(file_get_contents($file), true);
-        if (!is_array($data)) {
-            continue;
-        }
-        $data['_id'] = basename($file, '.json');
-        $orders[] = $data;
-    }
+foreach ($db_orders as $row) {
+    $orders[] = [
+        '_id'    => $row['order_ref'],
+        'Fecha'  => $row['fecha'],
+        'Persona'=> $row['persona'],
+        'Comanda'=> $row['comanda'],
+        'Notas'  => $row['notas'],
+        'Estado' => $row['estado'],
+    ];
 }
 
 // Sort newest first (by Fecha desc)
-usort($orders, function ($a, $b) {
-    return strcmp($b['Fecha'] ?? '', $a['Fecha'] ?? '');
-});
+usort($orders, fn($a, $b) => strcmp($b['Fecha'] ?? '', $a['Fecha'] ?? ''));
 
 $orders_active = array_filter($orders, fn($o) => ($o['Estado'] ?? '') !== 'Deuda');
 $orders_deuda  = array_filter($orders, fn($o) => ($o['Estado'] ?? '') === 'Deuda');
@@ -139,11 +126,12 @@ $orders_deuda  = array_filter($orders, fn($o) => ($o['Estado'] ?? '') === 'Deuda
 require_once "_incl/pre-body.php";
 ?>
 
+
 <div class="card pad">
     <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
         <h1 style="margin: 0;">SuperCafe – Cafetería</h1>
         <?php if ($can_edit): ?>
-            <a href="/entreaulas/supercafe_edit.php" class="btn btn-success">+ Nueva comanda</a>
+            <a href="/aulatek/supercafe_edit.php" class="btn btn-success">+ Nueva comanda</a>
         <?php endif; ?>
     </div>
 </div>
@@ -183,7 +171,7 @@ require_once "_incl/pre-body.php";
                             <td><strong><?= htmlspecialchars($estado) ?></strong></td>
                             <?php if ($can_edit): ?>
                                 <td style="white-space: nowrap;">
-                                    <a href="/entreaulas/supercafe_edit.php?id=<?= urlencode($order['_id']) ?>"
+                                    <a href="/aulatek/supercafe_edit.php?id=<?= urlencode($order['_id']) ?>"
                                        class="btn btn-sm btn-primary">Editar</a>
                                     <form method="post" style="display: inline;">
                                         <input type="hidden" name="action" value="change_status">
@@ -246,7 +234,7 @@ require_once "_incl/pre-body.php";
                             <td><?= htmlspecialchars($order['Notas'] ?? '') ?></td>
                             <?php if ($can_edit): ?>
                                 <td style="white-space: nowrap;">
-                                    <a href="/entreaulas/supercafe_edit.php?id=<?= urlencode($order['_id']) ?>"
+                                    <a href="/aulatek/supercafe_edit.php?id=<?= urlencode($order['_id']) ?>"
                                        class="btn btn-sm btn-primary">Editar</a>
                                     <form method="post" style="display: inline;">
                                         <input type="hidden" name="action" value="change_status">

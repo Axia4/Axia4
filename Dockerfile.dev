@@ -8,7 +8,7 @@ FROM dunglas/frankenphp
 #     && rm -rf /var/lib/apt/lists/*
 
 # Configure PHP extensions
-RUN install-php-extensions gd opcache
+RUN install-php-extensions gd opcache pdo pdo_sqlite
 
 # Set working directory
 WORKDIR /var/www/html

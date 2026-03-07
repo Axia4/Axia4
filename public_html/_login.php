@@ -1,38 +1,27 @@
 <?php
 require_once "_incl/tools.session.php";
 require_once "_incl/tools.security.php";
+require_once "_incl/db.php";
 if (!isset($AuthConfig)) {
-    $AuthConfig = json_decode(file_get_contents("/DATA/AuthConfig.json"), true);
+    $AuthConfig = db_get_all_config();
 }
 $DOMAIN = $_SERVER["HTTP_X_FORWARDED_HOST"] ?? $_SERVER["HTTP_HOST"];
 
-/**
- * Return a safe redirect URL: only allow relative paths starting with a single slash.
- * Falls back to "/" for any external, protocol-relative, or otherwise unsafe URLs.
- */
-function safe_redir($url) {
-    $url = (string)$url;
-    // Must start with a single "/" but not "//" (protocol-relative)
-    if (preg_match('#^/[^/]#', $url) || $url === '/') {
-        // Strip newlines to prevent header injection
-        return preg_replace('/[\r\n]/', '', $url);
-    }
-    return '/';
-}
+// safe_redir() is provided by _incl/tools.security.php.
 
-if ($_GET["reload_user"] == "1") {
-    $user_filename = safe_username_to_filename($_SESSION["auth_user"] ?? "");
-    if ($user_filename === "") {
+if (($_GET["reload_user"] ?? "") === "1") {
+    $row = db_get_user($_SESSION["auth_user"] ?? "");
+    if (!$row) {
         header("Location: /");
         die();
     }
-    $userdata = json_decode(file_get_contents("/DATA/Usuarios/" . $user_filename . ".json"), true);
-    $_SESSION['auth_data'] = $userdata;
+    $_SESSION['auth_data'] = db_build_auth_data($row);
+    init_active_org($_SESSION['auth_data']);
     $redir = safe_redir($_GET["redir"] ?? "/");
     header("Location: $redir");
     die();
 }
-if ($_GET["google_callback"] == "1") {
+if (($_GET["google_callback"] ?? "") === "1") {
     if (!isset($AuthConfig["google_client_id"]) || !isset($AuthConfig["google_client_secret"])) {
         die("Error: La autenticación de Google no está configurada.");
     }
@@ -83,41 +72,43 @@ if ($_GET["google_callback"] == "1") {
     }
     
     $email = $user_info["email"];
-    $name = $user_info["name"] ?? explode("@", $email)[0];
-    $user_filename = safe_username_to_filename($email);
-    if ($user_filename === "") {
+    $name  = $user_info["name"] ?? explode("@", $email)[0];
+    $username = strtolower($email);
+    if ($username === "") {
         die("Error: Dirección de correo inválida.");
     }
-    $userfile = "/DATA/Usuarios/" . $user_filename . ".json";
-    $password = bin2hex(random_bytes(16)); // Generar una contraseña aleatoria para el usuario, aunque no se usará para iniciar sesión
-    if (file_exists($userfile)) {
-        $userdata = json_decode(file_get_contents($userfile), true);
+    $password  = bin2hex(random_bytes(16));
+    $existing  = db_get_user($username);
+    if ($existing) {
+        $user_row = $existing;
     } else {
-        $userdata = [
-            "display_name" => $name,
-            "email" => $email,
-            "permissions" => ["public"],
-            "password_hash" => password_hash($password, PASSWORD_DEFAULT),
-            "google_auth" => true,
-            "#" => "Este usuario fue creado automáticamente al iniciar sesión con Google por primera vez.",
-        ];
-        file_put_contents($userfile, json_encode($userdata));
+        db_upsert_user([
+            'username'      => $username,
+            'display_name'  => $name,
+            'email'         => $email,
+            'permissions'   => ['public'],
+            'password_hash' => password_hash($password, PASSWORD_DEFAULT),
+            'google_auth'   => true,
+            '#'             => 'Este usuario fue creado automáticamente al iniciar sesión con Google por primera vez.',
+        ]);
+        $user_row = db_get_user($username);
     }
-    
+
     session_regenerate_id(true);
-    $_SESSION['auth_user'] = $email;
-    $_SESSION['auth_data'] = $userdata;
-    $_SESSION['auth_ok'] = true;
+    $_SESSION['auth_user'] = $username;
+    $_SESSION['auth_data'] = db_build_auth_data($user_row);
+    $_SESSION['auth_ok']   = true;
+    init_active_org($_SESSION['auth_data']);
     $cookie_options = ["expires" => time() + (86400 * 30), "path" => "/", "httponly" => true, "secure" => true, "samesite" => "Lax"];
-    setcookie("auth_user", $email, $cookie_options);
-    setcookie("auth_pass_b64", base64_encode($password), $cookie_options);
+    setcookie("auth_user",      $username,               $cookie_options);
+    setcookie("auth_pass_b64",  base64_encode($password), $cookie_options);
 
     $redir = safe_redir($state["redir"] ?? "/");
 
     header("Location: $redir");
     die();
 }
-if ($_GET["google"] == "1") {
+if (($_GET["google"] ?? "") === "1") {
     if (!isset($AuthConfig["google_client_id"]) || !isset($AuthConfig["google_client_secret"])) {
         die("Error: La autenticación de Google no está configurada.");
     }
@@ -145,7 +136,7 @@ if ($_GET["google"] == "1") {
     header("Location: " . $request_to);
     die();
 }
-if ($_GET["logout"] == "1") {
+if (($_GET["logout"] ?? "") === "1") {
     $redir = safe_redir($_GET["redir"] ?? "/");
     $cookie_options_expired = ["expires" => time() - 3600, "path" => "/", "httponly" => true, "secure" => true, "samesite" => "Lax"];
     setcookie("auth_user", "", $cookie_options_expired);
@@ -154,27 +145,26 @@ if ($_GET["logout"] == "1") {
     header("Location: $redir");
     die();
 }
-if ($_GET["clear_session"] == "1") {
+if (($_GET["clear_session"] ?? "") === "1") {
     session_destroy();
     $redir = safe_redir($_GET["redir"] ?? "/");
     header("Location: $redir");
     die();
 }
 if (isset($_POST["user"])) {
-    $valid = "";
-    $user = trim(strtolower($_POST["user"]));
+    $user     = trim(strtolower($_POST["user"]));
     $password = $_POST["password"];
-    $user_filename = safe_username_to_filename($user);
-    $userdata = ($user_filename !== "") ? json_decode(@file_get_contents("/DATA/Usuarios/" . $user_filename . ".json"), true) : null;
-    if (!is_array($userdata) || !isset($userdata["password_hash"])) {
+    $row      = db_get_user($user);
+    if (!$row || !isset($row["password_hash"])) {
         $_GET["_result"] = "El usuario no existe.";
-    } elseif (password_verify($password, $userdata["password_hash"])) {
+    } elseif (password_verify($password, $row["password_hash"])) {
         session_regenerate_id(true);
         $_SESSION['auth_user'] = $user;
-        $_SESSION['auth_data'] = $userdata;
-        $_SESSION['auth_ok'] = true;
+        $_SESSION['auth_data'] = db_build_auth_data($row);
+        $_SESSION['auth_ok']   = true;
+        init_active_org($_SESSION['auth_data']);
         $cookie_options = ["expires" => time() + (86400 * 30), "path" => "/", "httponly" => true, "secure" => true, "samesite" => "Lax"];
-        setcookie("auth_user", $user, $cookie_options);
+        setcookie("auth_user",     $user,                    $cookie_options);
         setcookie("auth_pass_b64", base64_encode($password), $cookie_options);
         $redir = safe_redir($_GET["redir"] ?? "/");
         header("Location: $redir");
@@ -182,9 +172,8 @@ if (isset($_POST["user"])) {
     } else {
         $_GET["_result"] = "La contraseña no es correcta.";
     }
-
 }
-if (!file_exists("/DATA/SISTEMA_INSTALADO.txt")) {
+if (db_get_config('installed') !== '1') {
     header("Location: /_install.php");
     die();
 }

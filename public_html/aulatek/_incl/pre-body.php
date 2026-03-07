@@ -1,5 +1,5 @@
 <?php 
-  $APP_CODE = "entreaulas";
-  $APP_NAME = "EntreAulas";
-  $APP_TITLE = "EntreAulas";
+  $APP_CODE = "aulatek";
+  $APP_NAME = "AulaTek";
+  $APP_TITLE = "AulaTek";
   require_once __DIR__ . "/../../_incl/pre-body.php";

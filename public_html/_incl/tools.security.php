@@ -108,12 +108,23 @@ function Sb($input) {
 }
 function get_user_file_path($username)
 {
-  return USERS_DIR . $username . '.json';
+    $users_dir = defined('USERS_DIR') ? USERS_DIR : '/DATA/Usuarios/';
+    return rtrim($users_dir, '/') . '/' . $username . '.json';
+}
+
+function safe_organization_id($value)
+{
+  return preg_replace('/[^a-zA-Z0-9._-]/', '', (string)$value);
+}
+
+function safe_organizacion_id($value)
+{
+        return safe_organization_id($value);
 }
 
 function safe_centro_id($value)
 {
-  return preg_replace('/[^a-zA-Z0-9._-]/', '', (string)$value);
+        return safe_organization_id($value);
 }
 
 function safe_aulario_id($value)
@@ -156,12 +167,42 @@ function path_is_within($real_base, $real_path)
     return strpos($real_path, $base_prefix) === 0 || $real_path === rtrim($real_base, DIRECTORY_SEPARATOR);
 }
 
+function aulatek_orgs_base_path()
+{
+    $orgs_path = '/DATA/entreaulas/Organizaciones';
+    $legacy_path = '/DATA/entreaulas/Centros';
+    if (is_dir($orgs_path)) {
+        return $orgs_path;
+    }
+    if (is_dir($legacy_path)) {
+        return $legacy_path;
+    }
+    return $orgs_path;
+}
+
+function entreaulas_orgs_base_path()
+{
+    return aulatek_orgs_base_path();
+}
+
 function safe_aulario_config_path($centro_id, $aulario_id)
 {
-    $centro = safe_centro_id($centro_id);
+    $centro = safe_organization_id($centro_id);
     $aulario = safe_id_segment($aulario_id);
     if ($centro === '' || $aulario === '') {
         return null;
     }
-    return "/DATA/entreaulas/Centros/$centro/Aularios/$aulario.json";
+    return aulatek_orgs_base_path() . "/$centro/Aularios/$aulario.json";
+}
+
+function safe_redir($url, $default = "/")
+{
+    if (empty($url) || !is_string($url)) {
+        return $default;
+    }
+    // Only allow relative URLs that start with /
+    if (str_starts_with($url, "/") && !str_contains($url, "\0")) {
+        return $url;
+    }
+    return $default;
 }

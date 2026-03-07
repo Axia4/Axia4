@@ -10,9 +10,10 @@ header("Access-Control-Allow-Origin: *");
 
 
 $type = $_GET["type"] ?? "";
+$orgs_base_dir = basename(aulatek_orgs_base_path());
 switch ($type) {
     case "alumno_photo":
-        $centro = safe_centro_id($_GET["centro"] ?? '');
+        $centro = safe_organization_id($_GET["organization"] ?? $_GET["organizacion"] ?? $_GET["org"] ?? $_GET["centro"] ?? '');
         $aulario = safe_id_segment($_GET["aulario"] ?? '');
         $alumno = safe_id_segment($_GET["alumno"] ?? '');
         // Additional validation to prevent empty names
@@ -20,19 +21,19 @@ switch ($type) {
             header("HTTP/1.1 403 Forbidden");
             die("Invalid parameters");
         }
-        $relpath = "entreaulas/Centros/$centro/Aularios/$aulario/Alumnos/$alumno/photo.jpg";
+        $relpath = "entreaulas/$orgs_base_dir/$centro/Aularios/$aulario/Alumnos/$alumno/photo.jpg";
         break;
     case "panel_actividades":
-        $centro = safe_centro_id($_GET["centro"] ?? '');
+        $centro = safe_organization_id($_GET["organization"] ?? $_GET["organizacion"] ?? $_GET["org"] ?? $_GET["centro"] ?? '');
         $activity = safe_id_segment($_GET["activity"] ?? '');
         if (empty($centro) || empty($activity)) {
             header("HTTP/1.1 400 Bad Request");
             die("Invalid parameters");
         }
-        $relpath = "entreaulas/Centros/$centro/Panel/Actividades/$activity/photo.jpg";
+        $relpath = "entreaulas/$orgs_base_dir/$centro/Panel/Actividades/$activity/photo.jpg";
         break;
     case "comedor_image":
-        $centro = safe_centro_id($_GET["centro"] ?? '');
+        $centro = safe_organization_id($_GET["organization"] ?? $_GET["organizacion"] ?? $_GET["org"] ?? $_GET["centro"] ?? '');
         $aulario = safe_id_segment($_GET["aulario"] ?? '');
         $date = preg_replace('/[^0-9-]/', '', $_GET["date"] ?? '');
         $file = safe_filename($_GET["file"] ?? '');
@@ -46,10 +47,10 @@ switch ($type) {
         }
         $ym = substr($date, 0, 7);
         $day = substr($date, 8, 2);
-        $relpath = "entreaulas/Centros/$centro/Aularios/$aulario/Comedor/$ym/$day/$file";
+        $relpath = "entreaulas/$orgs_base_dir/$centro/Aularios/$aulario/Comedor/$ym/$day/$file";
         break;
     case "proyecto_file":
-        $centro = safe_centro_id($_GET["centro"] ?? '');
+        $centro = safe_organization_id($_GET["organization"] ?? $_GET["organizacion"] ?? $_GET["org"] ?? $_GET["centro"] ?? '');
         $project = safe_id_segment($_GET["project"] ?? '');
         $file = safe_filename($_GET["file"] ?? '');
         if (empty($centro) || empty($project) || empty($file)) {
@@ -61,7 +62,7 @@ switch ($type) {
             header("HTTP/1.1 400 Bad Request");
             die("Invalid file name");
         }
-        $projects_base = "/DATA/entreaulas/Centros/$centro/Proyectos";
+        $projects_base = aulatek_orgs_base_path() . "/$centro/Proyectos";
         $project_dir = null;
         if (is_dir($projects_base)) {
             $iterator = new RecursiveIteratorIterator(

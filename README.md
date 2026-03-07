@@ -1,6 +1,6 @@
 # Axia4
 
-Axia4 is a unified platform for EuskadiTech and Sketaria, providing various services including EntreAulas (connected classroom management system).
+Axia4 is a unified platform for EuskadiTech and Sketaria, providing various services including AulaTek (connected classroom management system).
 
 ## Quick Start with Docker
 
@@ -13,7 +13,7 @@ cd Axia4
 
 # 2. Create the data directory structure
 mkdir -p DATA/entreaulas/Usuarios
-mkdir -p DATA/entreaulas/Centros
+mkdir -p DATA/entreaulas/Organizaciones
 
 # 3. Start the application
 docker compose up -d
@@ -29,7 +29,7 @@ docker compose up -d
 
 ## Features
 
-- **EntreAulas**: Management system for connected classrooms
+- **AulaTek**: Management system for connected classrooms
 - **Aularios**: Centralized access to classroom resources
 - Integration with multiple external services
 
