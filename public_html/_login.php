@@ -173,7 +173,7 @@ if (isset($_POST["user"])) {
         $_GET["_result"] = "La contraseña no es correcta.";
     }
 }
-if (db_get_config('installed') !== '1') {
+if (strval(db_get_config('installed')) !== '1') {
     header("Location: /_install.php");
     die();
 }

@@ -1,6 +1,6 @@
 <?php
 require_once "_incl/db.php";
-if (db_get_config('installed') === '1') {
+if (strval(db_get_config('installed')) === '1') {
     header("Location: /");
     die();
 }
