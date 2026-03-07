@@ -23,6 +23,15 @@ switch ($type) {
         }
         $relpath = "entreaulas/$orgs_base_dir/$centro/Aularios/$aulario/Alumnos/$alumno/photo.jpg";
         break;
+    case "aulario_photo":
+        $centro = safe_organization_id($_GET["organization"] ?? $_GET["organizacion"] ?? $_GET["org"] ?? $_GET["centro"] ?? '');
+        $aulario = safe_id_segment($_GET["aulario"] ?? '');
+        if (empty($centro) || empty($aulario)) {
+            header("HTTP/1.1 400 Bad Request");
+            die("Invalid parameters");
+        }
+        $relpath = "entreaulas/$orgs_base_dir/$centro/Aularios/$aulario/photo.jpg";
+        break;
     case "panel_actividades":
         $centro = safe_organization_id($_GET["organization"] ?? $_GET["organizacion"] ?? $_GET["org"] ?? $_GET["centro"] ?? '');
         $activity = safe_id_segment($_GET["activity"] ?? '');

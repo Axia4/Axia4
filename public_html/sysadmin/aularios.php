@@ -81,6 +81,9 @@ switch ($form_action) {
         exit();
         break;
     case "save_edit":
+        ini_set('memory_limit', '512M');
+        ini_set('upload_max_filesize', '256M');
+        ini_set('post_max_size', '256M');
         $aulario_id = safe_path_segment(Sf($_POST["aulario_id"] ?? ""));
         $centro_id  = safe_path_segment(Sf($_POST["centro_id"]  ?? ""));
         if ($aulario_id === "" || $centro_id === "") {
@@ -103,11 +106,26 @@ switch ($form_action) {
         if (isset($_POST['shared_comedor_from'])) {
             $extra['shared_comedor_from'] = Sf($_POST['shared_comedor_from']);
         }
+        // Determine icon: uploaded photo takes priority over text input
+        $icon = Sf($_POST["icon"] ?? "/static/logo-entreaulas.png");
+        $aulario_photo = $_FILES["photo"] ?? null;
+        if ($aulario_photo !== null && $aulario_photo["error"] === UPLOAD_ERR_OK) {
+            $image_info = getimagesize($aulario_photo["tmp_name"]);
+            if ($image_info !== false) {
+                $aulario_dir = aulatek_orgs_base_path() . "/$centro_id/Aularios/$aulario_id";
+                if (!is_dir($aulario_dir)) {
+                    mkdir($aulario_dir, 0755, true);
+                }
+                if (move_uploaded_file($aulario_photo["tmp_name"], "$aulario_dir/photo.jpg")) {
+                    $icon = "/aulatek/_filefetch.php?type=aulario_photo&org=" . urlencode($centro_id) . "&aulario=" . urlencode($aulario_id);
+                }
+            }
+        }
         db()->prepare(
             "UPDATE aularios SET name = ?, icon = ?, extra = ? WHERE org_id = ? AND aulario_id = ?"
         )->execute([
             Sf($_POST["name"] ?? ""),
-            Sf($_POST["icon"] ?? "/static/logo-entreaulas.png"),
+            $icon,
             json_encode($extra),
             $centro_id,
             $aulario_id,
@@ -165,7 +183,7 @@ switch ($view_action) {
 <div class="card pad">
     <div>
         <h1>Aulario: <?= htmlspecialchars($aulario['name'] ?? $aulario_id) ?></h1>
-        <form method="post" action="?form=save_edit">
+        <form method="post" action="?form=save_edit" enctype="multipart/form-data">
             <input type="hidden" name="aulario_id" value="<?= htmlspecialchars($aulario_id) ?>">
             <input type="hidden" name="centro_id"  value="<?= htmlspecialchars($centro_id) ?>">
             <div class="mb-3">
@@ -173,9 +191,15 @@ switch ($view_action) {
                 <input required type="text" id="name" name="name" class="form-control" value="<?= htmlspecialchars($aulario['name'] ?? '') ?>">
             </div>
             <div class="mb-3">
-                <label for="icon" class="form-label">URL del icono:</label>
-                <input type="text" id="icon" name="icon" class="form-control" value="<?= htmlspecialchars($aulario['icon'] ?? '') ?>">
+                <label class="form-label">Foto actual:</label><br>
+                <img src="<?= htmlspecialchars($aulario['icon'] ?: '/static/logo-entreaulas.png') ?>" style="height: 80px; border: 1px solid #ccc; border-radius: 6px; padding: 4px;">
             </div>
+            <div class="mb-3">
+                <label for="photo" class="form-label">Subir nueva foto del aulario:</label>
+                <input type="file" id="photo" name="photo" class="form-control" accept="image/*">
+                <small class="form-text text-muted">Dejar vacío para mantener la imagen actual.</small>
+            </div>
+            <input type="hidden" id="icon" name="icon" value="<?= htmlspecialchars($aulario['icon'] ?? '') ?>">
             <div class="mb-3">
                 <label for="shared_comedor_from" class="form-label">Compartir comedor de:</label>
                 <select id="shared_comedor_from" name="shared_comedor_from" class="form-select">
