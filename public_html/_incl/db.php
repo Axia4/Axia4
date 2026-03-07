@@ -108,9 +108,15 @@ function db_get_all_config(): array
 
 // ── User helpers ──────────────────────────────────────────────────────────────
 
-/** Find a user by username (always lower-cased). Returns DB row or null. */
+/** Find a user by username or email (always lower-cased). Returns DB row or null. */
 function db_get_user(string $username): ?array
 {
+    if (str_contains($username, "@")) {
+        $stmt = db()->prepare('SELECT * FROM users WHERE email = ?');
+        $stmt->execute([strtolower($username)]);
+        $row = $stmt->fetch();
+        return $row !== false ? $row : null;
+    }
     $stmt = db()->prepare('SELECT * FROM users WHERE username = ?');
     $stmt->execute([strtolower($username)]);
     $row = $stmt->fetch();
