@@ -43,6 +43,19 @@ if (($_SESSION["auth_ok"] ?? false) != true
             $_SESSION["session_created"] = time();
         }
         init_active_org($_SESSION["auth_data"]);
+        db_register_session($username);
+    }
+}
+
+// ── Validate session is still active in user_sessions (enables revocation) ───
+if (!empty($_SESSION["auth_ok"]) && !empty($_SESSION["auth_user"])
+    && empty($_SESSION["auth_external_lock"])
+) {
+    if (!db_session_is_valid($_SESSION["auth_user"])) {
+        session_unset();
+        session_destroy();
+        header("Location: /_login.php?_result=" . urlencode("Tu sesión fue revocada. Inicia sesión de nuevo."));
+        die();
     }
 }
 
@@ -56,6 +69,7 @@ if (!empty($_SESSION["auth_ok"]) && !empty($_SESSION["auth_user"])) {
             init_active_org($_SESSION["auth_data"]);
         }
         $_SESSION["last_reload_time"] = time();
+        db_touch_session();
     } elseif ($load_mode !== "never") {
         $last = $_SESSION["last_reload_time"] ?? 0;
         if (time() - $last > 300) {
@@ -65,6 +79,7 @@ if (!empty($_SESSION["auth_ok"]) && !empty($_SESSION["auth_user"])) {
                 init_active_org($_SESSION["auth_data"]);
             }
             $_SESSION["last_reload_time"] = time();
+            db_touch_session();
         }
         if (!isset($_SESSION["last_reload_time"])) {
             $_SESSION["last_reload_time"] = time();

@@ -100,6 +100,7 @@ if (($_GET["google_callback"] ?? "") === "1") {
     $_SESSION['auth_ok']   = true;
     $_SESSION['session_created'] = time();
     init_active_org($_SESSION['auth_data']);
+    db_register_session($username);
     $cookie_options = ["expires" => time() + (86400 * 30), "path" => "/", "httponly" => true, "secure" => true, "samesite" => "Lax"];
     setcookie("auth_user",      $username,               $cookie_options);
     setcookie("auth_pass_b64",  base64_encode($password), $cookie_options);
@@ -142,6 +143,7 @@ if (($_GET["logout"] ?? "") === "1") {
     $cookie_options_expired = ["expires" => time() - 3600, "path" => "/", "httponly" => true, "secure" => true, "samesite" => "Lax"];
     setcookie("auth_user", "", $cookie_options_expired);
     setcookie("auth_pass_b64", "", $cookie_options_expired);
+    db_delete_session();
     session_unset();
     session_destroy();
     header("Location: $redir");
@@ -172,6 +174,7 @@ if (isset($_POST["user"])) {
         $_SESSION['auth_ok']   = true;
         $_SESSION['session_created'] = time();
         init_active_org($_SESSION['auth_data']);
+        db_register_session($user);
         $cookie_options = ["expires" => time() + (86400 * 30), "path" => "/", "httponly" => true, "secure" => true, "samesite" => "Lax"];
         setcookie("auth_user",     $user,                    $cookie_options);
         setcookie("auth_pass_b64", base64_encode($password), $cookie_options);
