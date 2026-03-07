@@ -769,3 +769,115 @@ function init_active_centro(?array $auth_data = null): void
 {
     init_active_org($auth_data);
 }
+
+// ── User session helpers (Dispositivos conectados) ────────────────────────────
+
+/**
+ * Register a new session record in user_sessions.
+ * $remember_token_hash is the SHA-256 hash of the raw remember-me cookie value.
+ * Stores a SHA-256 hash of the PHP session_id so the raw token never reaches the DB.
+ */
+function db_register_session(string $username, string $remember_token_hash = ''): void
+{
+    $token = hash('sha256', session_id());
+    $ip    = $_SERVER['HTTP_X_FORWARDED_FOR']
+           ?? $_SERVER['REMOTE_ADDR']
+           ?? '';
+    $ip = trim(explode(',', $ip)[0]);
+    $ua = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 512);
+
+    db()->prepare(
+        "INSERT INTO user_sessions (session_token, username, ip_address, user_agent, remember_token_hash)
+         VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(session_token) DO UPDATE SET
+             last_active         = datetime('now'),
+             remember_token_hash = COALESCE(excluded.remember_token_hash, remember_token_hash)"
+    )->execute([$token, strtolower($username), $ip, $ua, $remember_token_hash ?: null]);
+}
+
+/**
+ * Restore a session from a remember-me token hash.
+ * Updates the session_token to the current PHP session_id so revocation
+ * continues to work after the PHP session was re-created.
+ * Returns the session row (including username) on success, or null if not found.
+ */
+function db_restore_session_by_remember_token(string $token_hash): ?array
+{
+    $pdo  = db();
+    $stmt = $pdo->prepare(
+        'SELECT * FROM user_sessions WHERE remember_token_hash = ? LIMIT 1'
+    );
+    $stmt->execute([$token_hash]);
+    $row = $stmt->fetch();
+    if (!$row) {
+        return null;
+    }
+    // Migrate the row to the new PHP session_id
+    $new_session_token = hash('sha256', session_id());
+    $pdo->prepare(
+        "UPDATE user_sessions
+            SET session_token = ?, last_active = datetime('now')
+          WHERE remember_token_hash = ?"
+    )->execute([$new_session_token, $token_hash]);
+    return $row;
+}
+
+/** Update last_active for the current session. */
+function db_touch_session(): void
+{
+    $token = hash('sha256', session_id());
+    db()->prepare(
+        "UPDATE user_sessions SET last_active = datetime('now') WHERE session_token = ?"
+    )->execute([$token]);
+}
+
+/** Delete the current session record from the DB. */
+function db_delete_session(): void
+{
+    $token = hash('sha256', session_id());
+    db()->prepare('DELETE FROM user_sessions WHERE session_token = ?')->execute([$token]);
+}
+
+/**
+ * Delete a specific session by token for a given user.
+ * Enforces that the session belongs to the requesting user.
+ */
+function db_revoke_session(string $token, string $username): void
+{
+    db()->prepare('DELETE FROM user_sessions WHERE session_token = ? AND username = ?')
+        ->execute([$token, strtolower($username)]);
+}
+
+/** Delete all session records for a user (e.g. on password change or account wipe). */
+function db_delete_user_sessions(string $username): void
+{
+    db()->prepare('DELETE FROM user_sessions WHERE username = ?')
+        ->execute([strtolower($username)]);
+}
+
+/** Return all session rows for a user, newest first. */
+function db_get_user_sessions(string $username): array
+{
+    $stmt = db()->prepare(
+        'SELECT session_token, ip_address, user_agent, created_at, last_active
+           FROM user_sessions
+          WHERE username = ?
+          ORDER BY last_active DESC'
+    );
+    $stmt->execute([strtolower($username)]);
+    return $stmt->fetchAll();
+}
+
+/**
+ * Check whether the current PHP session has a valid record in user_sessions.
+ * Returns false if the session was revoked or was never registered.
+ */
+function db_session_is_valid(string $username): bool
+{
+    $token = hash('sha256', session_id());
+    $stmt  = db()->prepare(
+        'SELECT 1 FROM user_sessions WHERE session_token = ? AND username = ? LIMIT 1'
+    );
+    $stmt->execute([$token, strtolower($username)]);
+    return $stmt->fetchColumn() !== false;
+}
